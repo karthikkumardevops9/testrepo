@@ -1,0 +1,541 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+  <data name="BuildSLIndexerIndex" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\BuildSLIndexerIndex.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="BurstImagePointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\BurstImagePointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CheckIn" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CheckIn.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CheckOut" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CheckOut.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CheckOutUndo" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CheckOutUndo.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CopyAnnotations" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CopyAnnotations.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CopyDatabaseImagePointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CopyDatabaseImagePointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CopyImagePointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CopyImagePointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CopyPCFilesPointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\CopyPCFilesPointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="CreateDestructionCertificateItem" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\CreateDestructionCertificateItem.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="DeleteAllTrackables" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteAllTrackables.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteAnnotations" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteAnnotations.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteCollectionItems" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteCollectionItems.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteDestructionCertificate" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\DeleteDestructionCertificate.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="DeleteDestructionCertificateItem" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\DeleteDestructionCertificateItem.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="DeleteImageTableRecords" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteImageTableRecords.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteIndexerRecords" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteIndexerRecords.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteNote" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteNote.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteNoteByTableNameId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteNoteByTableNameId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeletePointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeletePointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteTrackable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteTrackable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="DeleteUserlink" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\DeleteUserlink.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="EditNote" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\EditNote.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="FullTextShowAllClause" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\FullTextShowAllClause.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="FullTextTemplate" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\FullTextTemplate.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="FullTextWithoutPreviousVersions" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\FullTextWithoutPreviousVersions.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllAttachments" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllAttachments.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllAttachmentsWithCheckOut" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllAttachmentsWithCheckOut.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllDirectoriesByVolumeId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllDirectoriesByVolumeId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllOrphans" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllOrphans.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllOrphansCount" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllOrphansCount.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetAllOrphansWCF" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllOrphansWCF.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllVersions" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllVersions.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllVersionsWithCheckedOut" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllVersionsWithCheckedOut.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAllViewsForTable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAllViewsForTable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAnnotations" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAnnotations.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAttachment" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAttachment.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetAttachmentByPointerId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetAttachmentByPointerId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetBatchesForScannedPointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetBatchesForScannedPointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetBatchForPCFilesPointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetBatchForPCFilesPointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetCheckedOutToAnyoneVersion" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetCheckedOutToAnyoneVersion.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetCheckedOutVersion" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetCheckedOutVersion.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetCollection" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetCollection.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetCollectionItems" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetCollectionItems.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetDatabaseImage" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetDatabaseImage.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetDefaultOutputSettingDirectoryID" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetDefaultOutputSettingDirectoryID.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetDefaultOutputSettingName" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetDefaultOutputSettingName.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetDestructionCertChildrenCount" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\GetDestructionCertChildrenCount.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetDestructionCertID" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\GetDestructionCertID.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetFirstAttachment" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetFirstAttachment.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetFullPathByPointerId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetFullPathByPointerId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetIdFieldFromTable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetIdFieldFromTable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetIdFieldIsString" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetIdFieldIsString.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetImagePointerFilename" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetImagePointerFilename.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetImagePointerId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetImagePointerId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetImagePointerIdByAttachment" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetImagePointerIdByAttachment.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetImagePointerIdForOrphan" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetImagePointerIdForOrphan.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetLastAttachment" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetLastAttachment.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetLastVersionNumberForTrackable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetLastVersionNumberForTrackable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetMailItemChanges" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetMailItemChanges.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetNextDocumentNumber" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetNextDocumentNumber.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetNextTrackableNumber" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetNextTrackableNumber.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetNoteCount" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetNoteCount.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetNotes" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetNotes.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOfficialRecordSettingForTable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOfficialRecordSettingForTable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOrphan" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOrphan.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOrphanByPointerId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOrphanByPointerId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOrphansByScanBatchesId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOrphansByScanBatchesId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOrphansForPCFilesPointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOrphansForPCFilesPointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOutputSetting" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOutputSetting.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOutputSettingByDirectoriesId" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOutputSettingByDirectoriesId.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetOutputSettingWithoutDirectory" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetOutputSettingWithoutDirectory.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetPermissionChildAttachments" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetPermissionChildAttachments.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetPermissionsAnyVolumeAdd" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetPermissionsAnyVolumeAdd.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetPermissionsAttachment" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetPermissionsAttachment.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetPermissionsVolume" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetPermissionsVolume.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetRelatedChildRecords" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetRelatedChildRecords.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetRequests" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\GetRequests.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="GetRetentionPermissionsForUser" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\GetRetentionPermissionsForUser.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetRetentionPermissionsForUser1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetRetentionPermissionsForUser.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetSettings" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetSettings.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetTableHasImaging" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetTableHasImaging.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetTableRelationships" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetTableRelationships.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetUserlinkSize" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetUserlinkSize.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetUserName" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetUserName.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetVersion" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetVersion.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetViewPermissionsForUser" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetViewPermissionsForUser.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetVolumeByID" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetVolumeByID.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetVolumeIdFromDirectories" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetVolumeIdFromDirectories.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="GetVolumeIDFromOutputSetting" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\GetVolumeIDFromOutputSetting.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertAnnotation" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertAnnotation.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertAuditConfData" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertAuditConfData.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertAuditUpdateChildren" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertAuditUpdateChildren.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertAuditUpdates" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertAuditUpdates.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertCollection" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertCollection.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertCollectionItem" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertCollectionItem.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertImagePointer" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertImagePointer.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertImageTableRecords" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertImageTableRecords.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertNewDirectory" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertNewDirectory.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertNote" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertNote.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertPCFilePointer" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertPCFilePointer.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertScanBatch" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertScanBatch.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertTrackablesUserlinks" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertTrackablesUserlinks.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="InsertUserlinkForOrphan" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertUserlinkForOrphan.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="InsertUserlinks" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\InsertUserlinks.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="Invalid" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Invalid.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="InvalidThumb" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\InvalidThumb.bmp;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="InvalidThumb1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\InvalidThumb.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IsCheckedOut" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\IsCheckedOut.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="IsCheckedOutToMe" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\IsCheckedOutToMe.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="IsInactivityOnForTable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\IsInactivityOnForTable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="isRequestable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\isRequestable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="IsRetentionOnForTable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\IsRetentionOnForTable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="IsUserInAdministratorGroup" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\IsUserInAdministratorGroup.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="LEADTOOLSLICENSE" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\LEADTOOLSLICENSE.lic;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="MarkOfficialRecord" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\MarkOfficialRecord.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="NotAvailableLarge" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\NotAvailableLarge.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RenamePointerOrgFileNameById" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\RenamePointerOrgFileNameById.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="ReorderImagePointerPageNumbers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\ReorderImagePointerPageNumbers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="SearchTree" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\SearchTree.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateAnnotation" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateAnnotation.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateDestructionCertificateItem" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\UpdateDestructionCertificateItem.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateDirectoryDirFullFlag" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateDirectoryDirFullFlag.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateImagePointerFileName" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateImagePointerFileName.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateImagePointerImageTableName" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateImagePointerImageTableName.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateImagePointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateImagePointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateImageTableRecords" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateImageTableRecords.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateOrphanTrackableRecord" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateOrphanTrackableRecord.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateOrphanUserLinkAndTrackableRecord" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateOrphanUserLinkAndTrackableRecord.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateOrphanUserLinkRecord" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateOrphanUserLinkRecord.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateOutputSettingWithDirectoryID" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateOutputSettingWithDirectoryID.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdatePCFilesPointerFileName" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdatePCFilesPointerFileName.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdatePCFilesPointers" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdatePCFilesPointers.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdatePointerRecordsWithNewTrackable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdatePointerRecordsWithNewTrackable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateRetentionCodeInTable" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\UpdateRetentionCodeInTable.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateSLIndexer" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\UpdateSLIndexer.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateSLIndexerAdd" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\RecordsManager\UpdateSLIndexerAdd.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="UpdateTrackablePageCount" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateTrackablePageCount.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="UpdateUserlinkAttachmentNumber" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\UpdateUserlinkAttachmentNumber.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+  </data>
+  <data name="WalkUpRelationshipsForAuditUpdates" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Sql\Imaging\WalkUpRelationshipsForAuditUpdates.sql;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+</root>

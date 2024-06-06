@@ -1,0 +1,2 @@
+INSERT INTO PCFilesPointers (TrackablesId, TrackablesRecordVersion, Pages, FileName, ScanDirectoriesId, OrgFullPath, OrgFileName, ScanDateTime)
+VAlUES                      (@trackableId, @versionNumber, 1, @fileName, @directoriesId, @orgFullPath, @orgFileName, getdate())

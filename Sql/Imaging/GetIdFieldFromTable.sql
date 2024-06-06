@@ -1,0 +1,1 @@
+SELECT IDFieldName FROM Tables WHERE TableName = @tableName

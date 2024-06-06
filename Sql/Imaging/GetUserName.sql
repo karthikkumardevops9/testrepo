@@ -1,0 +1,1 @@
+SELECT UserName, FullName, DisplayName FROM SecureUser WHERE UserId = @userId

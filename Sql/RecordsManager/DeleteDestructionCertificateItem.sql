@@ -1,0 +1,1 @@
+﻿DELETE [SLDestructCertItems] WHERE [ID] = @destructionCertID

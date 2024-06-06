@@ -1,0 +1,1 @@
+UPDATE PCFilesPointers SET FileName = @fileName, ScanDirectoriesID = @directoryId WHERE Id = @Id

@@ -1,0 +1,1 @@
+SELECT TOP 1 [VolumesID] FROM [OutputSettings] WHERE [Id] = @Id

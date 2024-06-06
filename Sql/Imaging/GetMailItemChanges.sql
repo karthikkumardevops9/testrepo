@@ -1,0 +1,1 @@
+SELECT Item, ItemValue FROM Settings WHERE Section = 'OutlookProperty'

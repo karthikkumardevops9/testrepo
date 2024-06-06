@@ -1,0 +1,1 @@
+SELECT TOP 1 [RecordVersion] FROM [Trackables] WHERE [ID] = @trackablesID ORDER BY [RecordVersion] DESC

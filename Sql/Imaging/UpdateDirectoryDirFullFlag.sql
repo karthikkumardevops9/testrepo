@@ -1,0 +1,1 @@
+UPDATE [Directories] SET [DirFullFlag] = @flag WHERE [ID] = @Id

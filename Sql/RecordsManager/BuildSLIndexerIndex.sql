@@ -1,0 +1,18 @@
+﻿DROP FULLTEXT INDEX ON SLIndexer;
+GO
+
+DECLARE @DropCatalog varchar(255);
+SELECT @DropCatalog = 'DROP FULLTEXT CATALOG ftcat' + DB_NAME();
+EXEC (@DropCatalog);
+GO
+
+DECLARE @CreateCatalog VARCHAR (255);
+SELECT  @CreateCatalog = 'CREATE FULLTEXT CATALOG ftcat' + DB_NAME();
+EXEC (@CreateCatalog);
+GO
+
+CREATE FULLTEXT INDEX ON SLIndexer(IndexData) KEY INDEX SLIndexer_PK;
+GO
+
+ALTER FULLTEXT INDEX ON SLIndexer SET CHANGE_TRACKING AUTO;
+GO

@@ -1,0 +1,1 @@
+SELECT TOP 1 [DirectoriesID] FROM [OutputSettings] WHERE [ID] = (SELECT TOP 1 DefaultOutputSettingsId FROM [System])

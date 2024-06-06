@@ -1,0 +1,1 @@
+SELECT [Annotation] FROM Annotations WHERE [TableId] = @tableId AND [Table] = 'REDLINE'

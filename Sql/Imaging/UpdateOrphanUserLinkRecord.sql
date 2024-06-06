@@ -1,0 +1,2 @@
+﻿INSERT INTO Userlinks (TrackablesId, RecordVersion, IndexTableId, IndexTable, AttachmentNumber, VersionUpdated)
+			                                VALUES (@trackableId, 1, @recordId, @tableName, @attachmentNumber, 1)

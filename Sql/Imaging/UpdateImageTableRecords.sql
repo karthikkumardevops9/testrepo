@@ -1,0 +1,1 @@
+UPDATE {0} SET ImageField = @imageField WHERE Id = @recordId

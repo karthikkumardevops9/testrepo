@@ -1,0 +1,1 @@
+SELECT [RetentionInactivityActive] FROM [Tables] WHERE [TableName] = @TableName

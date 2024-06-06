@@ -1,0 +1,1 @@
+SELECT IndexTableId FROM Userlinks WHERE 0=1
