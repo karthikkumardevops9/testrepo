@@ -3,7 +3,7 @@
 ################################################################################
 
 /.vs/MicroserviceTemplate
-/bin/Debug/net8.0
+/bin
 /obj
 /.vs/ProjectEvaluation
 /.vs
