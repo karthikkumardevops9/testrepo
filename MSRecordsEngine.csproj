@@ -76,6 +76,9 @@
     <Reference Include="System.ServiceModel">
       <HintPath>..\Resources\Assemblies\System.ServiceModel.dll</HintPath>
     </Reference>
+    <Reference Include="System.Windows.Forms">
+      <HintPath>..\Resources\Assemblies\System.Windows.Forms.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
