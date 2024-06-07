@@ -9,7 +9,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using Leadtools;
 using Leadtools.Codecs;
-using Leadtools.WinForms;
+using Leadtools.Controls;
 using Microsoft.VisualBasic; // Install-Package Microsoft.VisualBasic
 using Microsoft.VisualBasic.CompilerServices; // Install-Package Microsoft.VisualBasic
 using MSRecordsEngine.Properties;
@@ -962,8 +962,9 @@ namespace MSRecordsEngine.Imaging
                         var codec = new RasterCodecs();
                         CodecsImageInfo info = codec.GetInformation(FileNames[i], false, 1);
                         var rc = new System.Drawing.Rectangle(0, 0, ThumbSize.Width, ThumbSize.Height);
-                        rc = RasterImageList.GetFixedAspectRatioImageRectangle(info.Width, info.Height, rc);
-
+                        //rc = RasterImageList.GetFixedAspectRatioImageRectangle(info.Width, info.Height, rc);
+                        rc.Width = info.Width;
+                        rc.Height = info.Height;
                         if (info.BitsPerPixel > 4)
                         {
                             img = new RasterImage(codec.Load(FileNames[i], rc.Width, rc.Height, info.BitsPerPixel, RasterSizeFlags.Resample, CodecsLoadByteOrder.RgbOrGray, 1, 1));
@@ -1077,7 +1078,9 @@ namespace MSRecordsEngine.Imaging
                 CodecsImageInfo info = codec.GetInformation(fileName, false, 1);
 
                 var rc = new System.Drawing.Rectangle(0, 0, ThumbSize.Width, ThumbSize.Height);
-                rc = RasterImageList.GetFixedAspectRatioImageRectangle(info.Width, info.Height, rc);
+                //rc = RasterImageList.GetFixedAspectRatioImageRectangle(info.Width, info.Height, rc);
+                rc.Width = info.Width;
+                rc.Height = info.Height;
                 return new RasterImage(codec.Load(fileName, rc.Width, rc.Height, info.BitsPerPixel, RasterSizeFlags.Resample, CodecsLoadByteOrder.RgbOrGray, 1, 1));
             }
             catch (Exception ex)
@@ -1134,7 +1137,7 @@ namespace MSRecordsEngine.Imaging
             if (img is null || string.IsNullOrEmpty(fileName))
                 return;
 
-            RasterImageViewer imageViewer = default;
+            ImageViewer imageViewer = default;
 
             try
             {
@@ -1176,11 +1179,11 @@ namespace MSRecordsEngine.Imaging
                     rc.Height = img.Height;
                 }
 
-                rc = RasterImageList.GetFixedAspectRatioImageRectangle(img.Width, img.Height, rc);
+                //rc = RasterImageList.GetFixedAspectRatioImageRectangle(img.Width, img.Height, rc);
 
                 using (var newImg = new RasterImage(codec.Load(cachedFileName, 24, TranslateCodecsLoadByteOrder(img.Order), 1, 1)))
                 {
-                    imageViewer = new RasterImageViewer();
+                    imageViewer = new ImageViewer();
                     imageViewer.AutoDisposeImages = true;
                     imageViewer.Image = newImg;
                     Page.RealizeRedactions(imageViewer, annotations, Attachments.AnnotationsDrawMode.RedactionOnly);
@@ -1202,7 +1205,7 @@ namespace MSRecordsEngine.Imaging
             {
                 if (imageViewer.Image is not null)
                     imageViewer.Image.Dispose();
-                imageViewer.Dispose();
+                imageViewer.Image.Dispose();
                 imageViewer = default;
             }
         }

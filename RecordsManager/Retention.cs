@@ -42,7 +42,7 @@ namespace MSRecordsEngine.RecordsManager
             Purge = 3
         }
 
-        public static void UpdateInActiveFlag(Models.Table table, Models.SLRetentionCode PRetentionCode, Passport passport, bool ForceEndOfYear = false)
+        public static void UpdateInActiveFlag(Entities.Table table, Entities.SLRetentionCode PRetentionCode, Passport passport, bool ForceEndOfYear = false)
         {
             string sSQL = string.Empty;
             string sTableIdField;

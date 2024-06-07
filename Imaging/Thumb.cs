@@ -2,7 +2,6 @@
 using System.IO;
 using System.Runtime.Serialization;
 using Leadtools;
-using Leadtools.WinForms;
 using Smead.Security;
 /// <summary>
 /// A thumbnail image of a single page.

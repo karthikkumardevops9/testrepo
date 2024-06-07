@@ -1,0 +1,170 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Entity.ModelConfiguration;
+
+namespace MSRecordsEngine.Entities.Mapping
+{
+    public class ScanRuleMap : EntityTypeConfiguration<ScanRule>
+    {
+        public ScanRuleMap()
+        {
+            // Primary Key
+            this.HasKey(t => t.ScanRulesId);
+
+            // Properties
+            this.Property(t => t.Id)
+                .IsRequired();
+            
+            // Table & Column Mappings
+            this.ToTable("ScanRules");
+            this.Property(t => t.ScanRulesId).HasColumnName("ScanRulesId");
+            this.Property(t => t.Id).HasColumnName("Id");
+            this.Property(t => t.DataBaseList).HasColumnName("DataBaseList");
+            this.Property(t => t.DirectoriesId).HasColumnName("DirectoriesId");
+            this.Property(t => t.InQueDiskPattern).HasColumnName("InQueDiskPattern");
+            this.Property(t => t.OutputSettingsId).HasColumnName("OutputSettingsId");
+            this.Property(t => t.FileNamePrefix).HasColumnName("FileNamePrefix");
+            this.Property(t => t.FileExtension).HasColumnName("FileExtension");
+            this.Property(t => t.NextDocNum).HasColumnName("NextDocNum");
+            this.Property(t => t.ActiveDevice).HasColumnName("ActiveDevice");
+            this.Property(t => t.AsyncInterval).HasColumnName("AsyncInterval");
+            this.Property(t => t.DeviceCache).HasColumnName("DeviceCache");
+            this.Property(t => t.DeviceDeleteBack).HasColumnName("DeviceDeleteBack");
+            this.Property(t => t.DeviceDeleteBackChecked).HasColumnName("DeviceDeleteBackChecked");
+            this.Property(t => t.DeviceDeleteFront).HasColumnName("DeviceDeleteFront");
+            this.Property(t => t.DeviceDeleteFrontChecked).HasColumnName("DeviceDeleteFrontChecked");
+            this.Property(t => t.DeviceTimeout).HasColumnName("DeviceTimeout");
+            this.Property(t => t.Display).HasColumnName("Display");
+            this.Property(t => t.IOCompression).HasColumnName("IOCompression");
+            this.Property(t => t.IOStgFlt).HasColumnName("IOStgFlt");
+            this.Property(t => t.ScanContinuous).HasColumnName("ScanContinuous");
+            this.Property(t => t.ScanContrast).HasColumnName("ScanContrast");
+            this.Property(t => t.ScanCustomCmd).HasColumnName("ScanCustomCmd");
+            this.Property(t => t.ScanDensity).HasColumnName("ScanDensity");
+            this.Property(t => t.ScanDestination).HasColumnName("ScanDestination");
+            this.Property(t => t.ScanDirection).HasColumnName("ScanDirection");
+            this.Property(t => t.ScanDPI).HasColumnName("ScanDPI");
+            this.Property(t => t.ScanDuplex).HasColumnName("ScanDuplex");
+            this.Property(t => t.ScanManualStart).HasColumnName("ScanManualStart");
+            this.Property(t => t.ScanMode).HasColumnName("ScanMode");
+            this.Property(t => t.ScanPad).HasColumnName("ScanPad");
+            this.Property(t => t.ScanSource).HasColumnName("ScanSource");
+            this.Property(t => t.Unit).HasColumnName("Unit");
+            this.Property(t => t.BarCheckSum).HasColumnName("BarCheckSum");
+            this.Property(t => t.BarCode).HasColumnName("BarCode");
+            this.Property(t => t.BarDensity).HasColumnName("BarDensity");
+            this.Property(t => t.BarHeight).HasColumnName("BarHeight");
+            this.Property(t => t.BarHorzMax).HasColumnName("BarHorzMax");
+            this.Property(t => t.BarLearn).HasColumnName("BarLearn");
+            this.Property(t => t.BarLength).HasColumnName("BarLength");
+            this.Property(t => t.BarMax).HasColumnName("BarMax");
+            this.Property(t => t.BarOrientation).HasColumnName("BarOrientation");
+            this.Property(t => t.BarQuality).HasColumnName("BarQuality");
+            this.Property(t => t.BarRatio).HasColumnName("BarRatio");
+            this.Property(t => t.BarReturnsPatch).HasColumnName("BarReturnsPatch");
+            this.Property(t => t.BarSkew).HasColumnName("BarSkew");
+            this.Property(t => t.BarType).HasColumnName("BarType");
+            this.Property(t => t.BarWidth).HasColumnName("BarWidth");
+            this.Property(t => t.FontBackGround).HasColumnName("FontBackGround");
+            this.Property(t => t.FontDPI).HasColumnName("FontDPI");
+            this.Property(t => t.FontName).HasColumnName("FontName");
+            this.Property(t => t.FontOrientation).HasColumnName("FontOrientation");
+            this.Property(t => t.FontSize).HasColumnName("FontSize");
+            this.Property(t => t.PatchCode).HasColumnName("PatchCode");
+            this.Property(t => t.PatchLeft).HasColumnName("PatchLeft");
+            this.Property(t => t.PSAnnotate).HasColumnName("PSAnnotate");
+            this.Property(t => t.PSEndorse).HasColumnName("PSEndorse");
+            this.Property(t => t.PSAnnotateLeft).HasColumnName("PSAnnotateLeft");
+            this.Property(t => t.PSAnnotateText).HasColumnName("PSAnnotateText");
+            this.Property(t => t.PSAnnotateTop).HasColumnName("PSAnnotateTop");
+            this.Property(t => t.PSEndorseLeft).HasColumnName("PSEndorseLeft");
+            this.Property(t => t.PSEndorseText).HasColumnName("PSEndorseText");
+            this.Property(t => t.PSEndorseTop).HasColumnName("PSEndorseTop");
+            this.Property(t => t.SkewCorrect).HasColumnName("SkewCorrect");
+            this.Property(t => t.SkewDetect).HasColumnName("SkewDetect");
+            this.Property(t => t.SkewMaxAngle).HasColumnName("SkewMaxAngle");
+            this.Property(t => t.SkewMinAngle).HasColumnName("SkewMinAngle");
+            this.Property(t => t.DocumentChangeRule).HasColumnName("DocumentChangeRule");
+            this.Property(t => t.DupsNewVersion).HasColumnName("DupsNewVersion");
+            this.Property(t => t.DupsNewPage).HasColumnName("DupsNewPage");
+            this.Property(t => t.ViewGroup).HasColumnName("ViewGroup");
+            this.Property(t => t.AutoPrint).HasColumnName("AutoPrint");
+            this.Property(t => t.BlackBorder).HasColumnName("BlackBorder");
+            this.Property(t => t.BlackBorderCropImage).HasColumnName("BlackBorderCropImage");
+            this.Property(t => t.BlackBorderWhiteNoiseGap).HasColumnName("BlackBorderWhiteNoiseGap");
+            this.Property(t => t.DeleteSourceFiles).HasColumnName("DeleteSourceFiles");
+            this.Property(t => t.DeshadeCorrect).HasColumnName("DeshadeCorrect");
+            this.Property(t => t.DeshadeDetect).HasColumnName("DeshadeDetect");
+            this.Property(t => t.DeshadeHorzSpeckleAdj).HasColumnName("DeshadeHorzSpeckleAdj");
+            this.Property(t => t.DeshadeHorzSpeckleMax).HasColumnName("DeshadeHorzSpeckleMax");
+            this.Property(t => t.DeshadeMinHeight).HasColumnName("DeshadeMinHeight");
+            this.Property(t => t.DeshadeMinWidth).HasColumnName("DeshadeMinWidth");
+            this.Property(t => t.DeshadeUnit).HasColumnName("DeshadeUnit");
+            this.Property(t => t.DeshadeVertSpeckleAdj).HasColumnName("DeshadeVertSpeckleAdj");
+            this.Property(t => t.DeshadeVertSpeckleMax).HasColumnName("DeshadeVertSpeckleMax");
+            this.Property(t => t.Despeckle).HasColumnName("Despeckle");
+            this.Property(t => t.DespeckleHeight).HasColumnName("DespeckleHeight");
+            this.Property(t => t.DespeckleUnit).HasColumnName("DespeckleUnit");
+            this.Property(t => t.DespeckleWidth).HasColumnName("DespeckleWidth");
+            this.Property(t => t.DeviceAlias).HasColumnName("DeviceAlias");
+            this.Property(t => t.DeviceBackPickingHeight).HasColumnName("DeviceBackPickingHeight");
+            this.Property(t => t.DeviceBackPickingLeft).HasColumnName("DeviceBackPickingLeft");
+            this.Property(t => t.DeviceBackPickingPixels).HasColumnName("DeviceBackPickingPixels");
+            this.Property(t => t.DeviceBackPickingRect).HasColumnName("DeviceBackPickingRect");
+            this.Property(t => t.DeviceBackPickingTop).HasColumnName("DeviceBackPickingTop");
+            this.Property(t => t.DeviceBackPickingWidth).HasColumnName("DeviceBackPickingWidth");
+            this.Property(t => t.DeviceBackRotate).HasColumnName("DeviceBackRotate");
+            this.Property(t => t.DeviceFrontPickingHeight).HasColumnName("DeviceFrontPickingHeight");
+            this.Property(t => t.DeviceFrontPickingLeft).HasColumnName("DeviceFrontPickingLeft");
+            this.Property(t => t.DeviceFrontPickingPixels).HasColumnName("DeviceFrontPickingPixels");
+            this.Property(t => t.DeviceFrontPickingRect).HasColumnName("DeviceFrontPickingRect");
+            this.Property(t => t.DeviceFrontPickingTop).HasColumnName("DeviceFrontPickingTop");
+            this.Property(t => t.DeviceFrontPickingWidth).HasColumnName("DeviceFrontPickingWidth");
+            this.Property(t => t.DeviceFrontRotate).HasColumnName("DeviceFrontRotate");
+            this.Property(t => t.EdgeEnhancement).HasColumnName("EdgeEnhancement");
+            this.Property(t => t.EdgeEnhancementAlgorithm).HasColumnName("EdgeEnhancementAlgorithm");
+            this.Property(t => t.HorzLineEdgeCleanFactor).HasColumnName("HorzLineEdgeCleanFactor");
+            this.Property(t => t.HorzLineMaxGap).HasColumnName("HorzLineMaxGap");
+            this.Property(t => t.HorzLineMaxHeight).HasColumnName("HorzLineMaxHeight");
+            this.Property(t => t.HorzLineMinLength).HasColumnName("HorzLineMinLength");
+            this.Property(t => t.HorzLineReconstruct).HasColumnName("HorzLineReconstruct");
+            this.Property(t => t.HorzLineReconstructionHeight).HasColumnName("HorzLineReconstructionHeight");
+            this.Property(t => t.HorzLineReconstructionWidth).HasColumnName("HorzLineReconstructionWidth");
+            this.Property(t => t.HorzLineRemoval).HasColumnName("HorzLineRemoval");
+            this.Property(t => t.HorzLineUnit).HasColumnName("HorzLineUnit");
+            this.Property(t => t.MultiPage).HasColumnName("MultiPage");
+            this.Property(t => t.PatchTrigger).HasColumnName("PatchTrigger");
+            this.Property(t => t.PatchTriggers).HasColumnName("PatchTriggers");
+            this.Property(t => t.ReadSubDirectories).HasColumnName("ReadSubDirectories");
+            this.Property(t => t.ScanBackSize).HasColumnName("ScanBackSize");
+            this.Property(t => t.ScanColorMode).HasColumnName("ScanColorMode");
+            this.Property(t => t.ScanDither).HasColumnName("ScanDither");
+            this.Property(t => t.ScanFrontSize).HasColumnName("ScanFrontSize");
+            this.Property(t => t.ScanStartTimeOut).HasColumnName("ScanStartTimeOut");
+            this.Property(t => t.SliceCols).HasColumnName("SliceCols");
+            this.Property(t => t.SliceHeight).HasColumnName("SliceHeight");
+            this.Property(t => t.SliceKeepOriginal).HasColumnName("SliceKeepOriginal");
+            this.Property(t => t.SliceOffsetCol).HasColumnName("SliceOffsetCol");
+            this.Property(t => t.SliceOffsetRow).HasColumnName("SliceOffsetRow");
+            this.Property(t => t.SliceOffsetX).HasColumnName("SliceOffsetX");
+            this.Property(t => t.SliceOffsetY).HasColumnName("SliceOffsetY");
+            this.Property(t => t.SliceRows).HasColumnName("SliceRows");
+            this.Property(t => t.SliceSkipBarcodes).HasColumnName("SliceSkipBarcodes");
+            this.Property(t => t.SliceUseBarCodes).HasColumnName("SliceUseBarCodes");
+            this.Property(t => t.SliceWidth).HasColumnName("SliceWidth");
+            this.Property(t => t.SlicingOn).HasColumnName("SlicingOn");
+            this.Property(t => t.StreakRemoval).HasColumnName("StreakRemoval");
+            this.Property(t => t.StreakWidth).HasColumnName("StreakWidth");
+            this.Property(t => t.TestPage).HasColumnName("TestPage");
+            this.Property(t => t.VertLineEdgeCleanFactor).HasColumnName("VertLineEdgeCleanFactor");
+            this.Property(t => t.VertLineMaxGap).HasColumnName("VertLineMaxGap");
+            this.Property(t => t.VertLineMaxWidth).HasColumnName("VertLineMaxWidth");
+            this.Property(t => t.VertLineMinHeight).HasColumnName("VertLineMinHeight");
+            this.Property(t => t.VertLineReconstruct).HasColumnName("VertLineReconstruct");
+            this.Property(t => t.VertLineReconstructionHeight).HasColumnName("VertLineReconstructionHeight");
+            this.Property(t => t.VertLineReconstructionWidth).HasColumnName("VertLineReconstructionWidth");
+            this.Property(t => t.VertLineRemoval).HasColumnName("VertLineRemoval");
+            this.Property(t => t.VertLineUnit).HasColumnName("VertLineUnit");
+            this.Property(t => t.MultiPageWriteWhenComplete).HasColumnName("MultiPageWriteWhenComplete");
+        }
+    }
+}

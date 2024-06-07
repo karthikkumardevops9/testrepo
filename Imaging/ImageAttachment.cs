@@ -10,7 +10,7 @@ using System.Xml.Linq;
 using Leadtools;
 using Leadtools.Annotations;
 using Leadtools.Codecs;
-using Leadtools.WinForms;
+using Leadtools.Controls;
 using Microsoft.VisualBasic; // Install-Package Microsoft.VisualBasic
 using Microsoft.VisualBasic.CompilerServices; // Install-Package Microsoft.VisualBasic
 using MSRecordsEngine.Properties;
@@ -389,7 +389,7 @@ namespace MSRecordsEngine.Imaging
 
             var codec = new RasterCodecs();
             CodecsImageInfo info = default;
-            var imageViewer = new RasterImageViewer();
+            var imageViewer = new ImageViewer();
             imageViewer.AutoDisposeImages = true;
 
             try
@@ -504,7 +504,7 @@ namespace MSRecordsEngine.Imaging
             return rtn;
         }
 
-        private void RotatePageWithAnnotations(string IpAddress, RasterImageViewer imageViewer, AttachmentPart part, int pointerId, int pageNumber, int angle, SqlConnection conn)
+        private void RotatePageWithAnnotations(string IpAddress, ImageViewer imageViewer, AttachmentPart part, int pointerId, int pageNumber, int angle, SqlConnection conn)
         {
             // Try
             // Dim annotations As String = Attachments.GetAnnotation(Attachments.AttachmentTypes.tkImage, pageNumber, pointerId, conn)

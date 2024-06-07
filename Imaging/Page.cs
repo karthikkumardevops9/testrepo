@@ -7,7 +7,8 @@ using System.Runtime.Serialization;
 using Leadtools;
 using Leadtools.Annotations;
 using Leadtools.Codecs;
-using Leadtools.WinForms;
+using Leadtools.Controls;
+
 
 
 namespace MSRecordsEngine.Imaging
@@ -202,13 +203,13 @@ namespace MSRecordsEngine.Imaging
 
             if (_image is null)
                 return;
-            RasterImageViewer imageViewer = default;
+            ImageViewer imageViewer = default;
 
             try
             {
                 if ((Attachments.AnnotationsDrawMode)_annotationsDrawMode != Attachments.AnnotationsDrawMode.None)
                 {
-                    imageViewer = new RasterImageViewer();
+                    imageViewer = new ImageViewer();
                     imageViewer.AutoDisposeImages = true;
                     imageViewer.Image = _image;
                     RealizeRedactions(imageViewer, Annotations, (Attachments.AnnotationsDrawMode)_annotationsDrawMode);
@@ -249,12 +250,12 @@ namespace MSRecordsEngine.Imaging
             {
                 if (imageViewer.Image is not null)
                     imageViewer.Image.Dispose();
-                imageViewer.Dispose();
+                imageViewer.Image.Dispose();
                 imageViewer = default;
             }
         }
 
-        internal static void RealizeRedactions(RasterImageViewer imageViewer, string annotations, Attachments.AnnotationsDrawMode annotationsDrawMode)
+        internal static void RealizeRedactions(ImageViewer imageViewer, string annotations, Attachments.AnnotationsDrawMode annotationsDrawMode)
         {
             // If imageViewer Is Nothing Then Return
             // If annotationsDrawMode = Attachments.AnnotationsDrawMode.None Then Return

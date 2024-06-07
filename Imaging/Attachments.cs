@@ -193,7 +193,7 @@ namespace MSRecordsEngine.Imaging
                 return new ErrorAttachment(ex, userId, pass.ServerAndDatabaseName, tableName, tableId);
             }
         }
-       
+
         private static string GetAttachmentPath(int userId, string databaseName, string tableName, string tableId, SqlConnection conn, ref bool validAttachment, ref string fullPath)
         {
             string paddedTableId = PadTableId(tableName, tableId, conn);
@@ -459,7 +459,7 @@ namespace MSRecordsEngine.Imaging
             }
             catch (Exception ex)
             {
-               // Logs.Loginformation(string.Format("Error \"{0}\" in Attachments.AppendDisplayFields(DescFieldNameTwo)", ex.Message));
+                // Logs.Loginformation(string.Format("Error \"{0}\" in Attachments.AppendDisplayFields(DescFieldNameTwo)", ex.Message));
             }
 
             if (sb.Length < 3)
@@ -849,7 +849,7 @@ namespace MSRecordsEngine.Imaging
             return InjectWhereIntoSQL(sSQL, "");
         }
 
-        
+
 
         public static Attachment AddAnAttachment(string ClientIpAddress, string Ticket, int userId, Passport pass, string tableName, string tableId, int attachmentNumber, string outputSettingName, string fileName, string originalFullPath, string extension, bool childAttachmentsOn, string renameFileName, bool IsAnImage, int totalPages, int height, int width, long sizeOnDisk)
         {
@@ -1061,7 +1061,7 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-       
+
         //this method call from the controller and get an exception before get in.
         public static string AddOrphan(string Ticket, int userId, Passport pass, string outputSettingName, string fileName, dynamic info, string extension, bool returnSuccess)
         {
@@ -1113,7 +1113,7 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-        
+
 
         public static OcrText OcrImageClip(string Ticket, int userId, string databaseName, string tableName, string tableId, byte[] byteArray)
         {
@@ -1463,7 +1463,7 @@ namespace MSRecordsEngine.Imaging
             {
                 using (var conn = new SqlConnection(pass.ConnectionString))
                 {
-                    conn.Open();   
+                    conn.Open();
                     var dt = GetOrphanRows(trackableID, conn);
                     if (dt.Rows.Count == 0)
                         return new ErrorAttachment(new Exception(Permissions.ExceptionString.NoRecords), userId, pass.DatabaseName, OrphanName, string.Empty, new SecurityInfo(OrphanName, userId, conn), conn);
@@ -1715,7 +1715,7 @@ namespace MSRecordsEngine.Imaging
             {
                 filter = "";
             }
-            using (var conn =  new SqlConnection(passport.ConnectionString))
+            using (var conn = new SqlConnection(passport.ConnectionString))
             {
                 using (var cmd = new SqlCommand(Resources.GetAllOrphans, conn))
                 {
@@ -2034,7 +2034,7 @@ namespace MSRecordsEngine.Imaging
             // If checkedOutToMe Then Return ""
             return Resources.GetFirstAttachment;
         }
-
+        //moti mashiah
         private static Attachment GetValidAttachment(int userId, string databaseName, string tableName, string paddedTableId, AttachmentTypes attachmentType, int attachmentNumber, DataRow row, SqlConnection conn)
         {
             try
@@ -2209,7 +2209,7 @@ namespace MSRecordsEngine.Imaging
             return ocrPage;
         }
 
-        
+
 
         private static byte[] GetStream(string path)
         {
@@ -2789,9 +2789,6 @@ namespace MSRecordsEngine.Imaging
                 return new ErrorAttachment(ex, userId, pass.ServerAndDatabaseName, tableName, tableId);
             }
         }
-
-      
-
         private static int CheckOutAttachment(int userId, string tableName, string tableId, int attachmentNumber, int versionNumber, string checkedOutFolder, string IPAddress, string MACAddress, bool persistedCheckout, SqlConnection conn)
         {
             try
@@ -2970,7 +2967,7 @@ namespace MSRecordsEngine.Imaging
 
         internal static SqlConnection GetConnection(string databaseName)
         {
-            
+
 
             return null;
         }
@@ -3333,7 +3330,7 @@ namespace MSRecordsEngine.Imaging
         {
 
             //SlimShared.AppName = "TAB FusionRMS Image Service";
-           // RasterSupport.SetLicense(Resources.LEADTOOLSLICENSE, Resources.LeadToolsKey);
+            // RasterSupport.SetLicense(Resources.LEADTOOLSLICENSE, Resources.LeadToolsKey);
             // RasterSupport.SetLicense("D:\Codes\FS11.1\TabFusionRMS.WebCS\LEADTOOLS\LICENSE.lic", "jcwLXo5T0paqbVvDbtFCk5KRcsASLmsI5d3u3oZp7DM=")
         }
 
@@ -3350,7 +3347,6 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-        // Created by Raju (India)
         private static void UpdateOrphanUserLinkRecord(int trackableId, string tableName, string recordId, int attachmentNumber, SqlConnection conn)
         {
             string sql = Resources.UpdateOrphanUserLinkRecord;
@@ -3365,7 +3361,6 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-        // Created by Raju (India)
         private static void UpdateOrphanUserLinkAndTrackableRecord(int trackableId, string tableName, string recordId, int attachmentNumber, SqlConnection conn)
         {
             string sql = Resources.UpdateOrphanUserLinkAndTrackableRecord;
@@ -3380,7 +3375,6 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-
         private static void UpdatePointerRecordsWithNewTrackable(int oldTrackableID, int newTrackableID, int versionNumber, SqlConnection conn)
         {
             string sql = Resources.UpdatePointerRecordsWithNewTrackable;
@@ -3394,7 +3388,6 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-        // Created By Raju (India)
         public static bool LinkOrphanAttachmnet(int trackableId, string tableName, int recordId, Passport pass, int userId)
         {
             try
@@ -3568,18 +3561,18 @@ namespace MSRecordsEngine.Imaging
             }
         }
 
-        public static UploadResponse UploadStream(FileUpload message)
-        {
-            if (!Encrypt.ValidateTicket(message.Metadata.Ticket, message.Metadata.UserId, message.Metadata.DatabaseName, message.Metadata.TableName, message.Metadata.TableId))
-                throw new Exception(Permissions.ExceptionString.NotAuthorized);
+        //public static UploadResponse UploadStream(FileUpload message)
+        //{
+        //    if (!Encrypt.ValidateTicket(message.Metadata.Ticket, message.Metadata.UserId, message.Metadata.DatabaseName, message.Metadata.TableName, message.Metadata.TableId))
+        //        throw new Exception(Permissions.ExceptionString.NotAuthorized);
 
-            var response = new UploadResponse();
-            response.TempFileName = Attachments.SaveStreamToFile(message.UpStream);
-            message.UpStream.Close();
-            if (string.IsNullOrEmpty(response.TempFileName) || !File.Exists(response.TempFileName))
-                throw new Exception(Permissions.ExceptionString.StreamUploadFailed);
-            return response;
-        }
+        //    var response = new UploadResponse();
+        //    response.TempFileName = Attachments.SaveStreamToFile(message.UpStream);
+        //    message.UpStream.Close();
+        //    if (string.IsNullOrEmpty(response.TempFileName) || !File.Exists(response.TempFileName))
+        //        throw new Exception(Permissions.ExceptionString.StreamUploadFailed);
+        //    return response;
+        //}
 
         public static string SaveStreamToFile(Stream stream)
         {
@@ -3598,7 +3591,7 @@ namespace MSRecordsEngine.Imaging
             }
             catch (Exception ex)
             {
-               throw new Exception(string.Format("Error \"{0}\" in Attachments.SaveStreamToFile", ex.Message));
+                throw new Exception(string.Format("Error \"{0}\" in Attachments.SaveStreamToFile", ex.Message));
                 return string.Empty;
             }
         }
@@ -4000,6 +3993,7 @@ namespace MSRecordsEngine.Imaging
                 return 0;
             }
         }
+
 
         #endregion
     }

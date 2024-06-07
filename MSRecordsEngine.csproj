@@ -18,6 +18,13 @@
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.20.0" />
     <PackageReference Include="EntityFramework" Version="6.4.4" />
+    <PackageReference Include="Leadtools.Annotations.WinForms" Version="22.0.0.8" />
+    <PackageReference Include="Leadtools.Document.Sdk" Version="22.0.0.8" />
+    <PackageReference Include="Leadtools.Document.Viewer.WinForms" Version="22.0.0.8" />
+    <PackageReference Include="Leadtools.Formats.Raster.Common" Version="22.0.0.8" />
+    <PackageReference Include="Leadtools.Image.Processing" Version="22.0.0.8" />
+    <PackageReference Include="Leadtools.Ocr" Version="22.0.0.8" />
+    <PackageReference Include="Leadtools.Viewer.Controls.WinForms" Version="22.0.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.3.1" />
@@ -36,6 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Models\" />
     <Folder Include="Services\" />
   </ItemGroup>
 
@@ -43,41 +51,8 @@
     <Reference Include="Interop.Scripting">
       <HintPath>..\Resources\Assemblies\Interop.Scripting.dll</HintPath>
     </Reference>
-    <Reference Include="Leadtools">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.Annotations">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.Annotations.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.Codecs">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.Codecs.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.ImageProcessing.Color">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.ImageProcessing.Color.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.ImageProcessing.Core">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.ImageProcessing.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.ImageProcessing.Effects">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.ImageProcessing.Effects.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.Kernel.Annotations">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.Kernel.Annotations.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.Ocr">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.Ocr.dll</HintPath>
-    </Reference>
-    <Reference Include="Leadtools.WinForms">
-      <HintPath>..\Resources\Assemblies\LeadTools22\x64\Leadtools.WinForms.dll</HintPath>
-    </Reference>
     <Reference Include="Smead.Security">
       <HintPath>..\Resources\Assemblies\FusionAssemblies\Release\net8.0\Smead.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="System.ServiceModel">
-      <HintPath>..\Resources\Assemblies\System.ServiceModel.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Windows.Forms">
-      <HintPath>..\Resources\Assemblies\System.Windows.Forms.dll</HintPath>
     </Reference>
   </ItemGroup>
 

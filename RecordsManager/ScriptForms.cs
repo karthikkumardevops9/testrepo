@@ -15,7 +15,7 @@ namespace MSRecordsEngine.RecordsManager
         private string _currentTableName = string.Empty;
         private string _tag = string.Empty;
         private string _text = string.Empty;
-        private System.Windows.Forms.FormWindowState _windowState;
+        private Winform.FormWindowState _windowState;
         private System.Drawing.Font _font;
         private sfFormSize _size;
 
@@ -217,7 +217,7 @@ namespace MSRecordsEngine.RecordsManager
         // ------------------------------------------------------------------------------------------
         // Property: WindowState (System.Windows.Forms.FormWindowState)
         // ------------------------------------------------------------------------------------------
-        public System.Windows.Forms.FormWindowState WindowState
+        public Winform.FormWindowState WindowState
         {
             get
             {

@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using Leadtools;
 using Leadtools.Codecs;
-using Leadtools.WinForms;
 using Microsoft.VisualBasic; // Install-Package Microsoft.VisualBasic
 using MSRecordsEngine.Properties;
 
@@ -131,7 +130,9 @@ namespace MSRecordsEngine.Imaging
             if (info.BitsPerPixel > 4)
             {
                 var rc = new Rectangle(0, 0, attachment.ThumbSize.Width, attachment.ThumbSize.Height);
-                rc = RasterImageList.GetFixedAspectRatioImageRectangle(info.Width, info.Height, rc);
+                //rc = RasterImageList.GetFixedAspectRatioImageRectangle(info.Width, info.Height, rc);
+                rc.Width = info.Width;
+                rc.Height = info.Height;
                 _image = new RasterImage(codec.Load(fileName, rc.Width, rc.Height, info.BitsPerPixel, RasterSizeFlags.Resample,CodecsLoadByteOrder.RgbOrGray, pageNumber + 1, pageNumber + 1));
                 codec.Save(_image, cachedFileName, _image.OriginalFormat, _image.BitsPerPixel);
             }

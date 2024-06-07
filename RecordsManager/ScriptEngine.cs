@@ -1438,23 +1438,23 @@ namespace MSRecordsEngine.RecordsManager
                 _BCResetTree = value;
             }
         }
-        [Newtonsoft.Json.JsonIgnore]
-        public string Clipboard
-        {
-            get
-            {
-                if (System.Windows.Forms.Clipboard.GetDataObject().GetDataPresent(System.Windows.Forms.DataFormats.Text))
-                    return System.Windows.Forms.Clipboard.GetDataObject().GetData(System.Windows.Forms.DataFormats.Text).ToString();
-                return string.Empty;
-            }
-            set
-            {
-                var oData = new System.Windows.Forms.DataObject();
+        //[Newtonsoft.Json.JsonIgnore]
+        //public string Clipboard
+        //{
+        //    get
+        //    {
+        //        if (System.Windows.Forms.Clipboard.GetDataObject().GetDataPresent(System.Windows.Forms.DataFormats.Text))
+        //            return System.Windows.Forms.Clipboard.GetDataObject().GetData(System.Windows.Forms.DataFormats.Text).ToString();
+        //        return string.Empty;
+        //    }
+        //    set
+        //    {
+        //        var oData = new System.Windows.Forms.DataObject();
 
-                oData.SetData(System.Windows.Forms.DataFormats.Text, value);
-                System.Windows.Forms.Clipboard.SetDataObject(oData);
-            }
-        }
+        //        oData.SetData(System.Windows.Forms.DataFormats.Text, value);
+        //        System.Windows.Forms.Clipboard.SetDataObject(oData);
+        //    }
+        //}
 
         public string CurrentTableName
         {
@@ -5471,10 +5471,10 @@ namespace MSRecordsEngine.RecordsManager
                         break;
                     }
                 // position is already handled in Visual Linkscripts; ignored.  RVW 04/22/2015
-                case "_CLIPBOARD":
-                    {
-                        return Clipboard;
-                    }
+                //case "_CLIPBOARD":
+                //    {
+                //        return Clipboard;
+                //    }
                 case "_COLDCOLUMNDATA":
                     {
                         throw new Exception(string.Format("The \"{0}\" property is no longer available", variableProperty));
@@ -6363,11 +6363,11 @@ namespace MSRecordsEngine.RecordsManager
                         break;
                     }
                 // position is already handled in Visual Linkscripts; ignored.  RVW 04/22/2015
-                case "_CLIPBOARD":
-                    {
-                        Clipboard = vValue.ToString();
-                        break;
-                    }
+                //case "_CLIPBOARD":
+                //    {
+                //        Clipboard = vValue.ToString();
+                //        break;
+                //    }
                 case "_COLDCOLUMNDATA":
                     {
                         throw new Exception(string.Format("The \"{0}\" property is no longer available", variableProperty));
@@ -7137,12 +7137,12 @@ namespace MSRecordsEngine.RecordsManager
                         }
                     case "SIMPLE":
                         {
-                            _variable = System.Windows.Forms.ComboBoxStyle.Simple;
+                            _variable = Winform.ComboBoxStyle.Simple;
                             break;
                         }
                     case "DROPDOWN":
                         {
-                            _variable = System.Windows.Forms.ComboBoxStyle.DropDownList;
+                            _variable = Winform.ComboBoxStyle.DropDownList;
                             break;
                         }
 

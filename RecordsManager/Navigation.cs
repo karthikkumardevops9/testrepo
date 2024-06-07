@@ -250,7 +250,7 @@ namespace MSRecordsEngine.RecordsManager
         }
 
         [SecuritySafeCritical]
-        public static void GetOutputSettingValues(Models.SystemAddress oSystemAddress, Models.Volume oVolume, Models.OutputSetting oOutputSetting, Passport passport, ref bool bIsValidOutputSettings, ref bool bIsOutputSettingsActive)
+        public static void GetOutputSettingValues(Entities.SystemAddress oSystemAddress, Entities.Volume oVolume, Entities.OutputSetting oOutputSetting, Passport passport, ref bool bIsValidOutputSettings, ref bool bIsOutputSettingsActive)
         {
             if (oSystemAddress is not null && CBoolean(oVolume.Active))
             {

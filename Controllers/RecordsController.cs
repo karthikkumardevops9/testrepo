@@ -2,13 +2,13 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using MSRecordsEngine.Models;
+using MSRecordsEngine.Entities;
 using MSRecordsEngine.Repository;
 using System.Linq;
 
 namespace MSRecordsEngine.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class RecordsController : ControllerBase
     {
@@ -17,13 +17,6 @@ namespace MSRecordsEngine.Controllers
         {
             _logger = logger;
         }
-
-        public void testing()
-        {
-            
-        }
-
-
     }
 
 }
