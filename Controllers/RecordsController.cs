@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Repository;
+using MSRecordsEngine.Services;
 using System.Linq;
 
 namespace MSRecordsEngine.Controllers
@@ -12,10 +13,10 @@ namespace MSRecordsEngine.Controllers
     [ApiController]
     public class RecordsController : ControllerBase
     {
-        private ILogger<RecordsController> _logger;
-        public RecordsController(ILogger<RecordsController> logger)
+        private readonly CommonControllersService<RecordsController> _commonService;
+        public RecordsController(CommonControllersService<RecordsController> commonControllersService)
         {
-            _logger = logger;
+            _commonService = commonControllersService;
         }
     }
 

@@ -43,11 +43,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="Services\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="Interop.Scripting">
       <HintPath>..\Resources\Assemblies\Interop.Scripting.dll</HintPath>
     </Reference>

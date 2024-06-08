@@ -18,6 +18,8 @@ using NLog.Extensions.Logging;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
+using MSRecordsEngine.Services;
+
 
 namespace FusionWebApi
 {
@@ -35,6 +37,13 @@ namespace FusionWebApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            //httpclient registration;
+            services.AddHttpClient<DocumentService>();
+            //transit microservices registration;
+            services.AddTransient<Microservices>();
+
+            services.AddHttpContextAccessor();
+            services.AddScoped(typeof (CommonControllersService<>));
             services.AddCors(options =>
             {
                 //options.AddPolicy(name: "PolicyCore",
