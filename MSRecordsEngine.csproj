@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.20.0" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="EntityFramework" Version="6.4.4" />
     <PackageReference Include="Leadtools.Annotations.WinForms" Version="22.0.0.8" />
     <PackageReference Include="Leadtools.Document.Sdk" Version="22.0.0.8" />

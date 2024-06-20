@@ -1,9 +1,16 @@
 ﻿using MSRecordsEngine.Entities;
 using Smead.Security;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 
 namespace MSRecordsEngine.Models
 {
+    public class CheckChildTableExistParam
+    {
+        public string ConnectionString { get; set; }
+        public int TableId { get; set; }
+    }
     public class SetAuditPropertiesDataParam
     {
         public Passport Passport { get; set; }
@@ -146,5 +153,57 @@ namespace MSRecordsEngine.Models
     {
         public string ConnectionString { get; set; }
         public string RequestStatus { get; set; }
+    }
+
+    public class PurgeAuditDataParams
+    {
+        public string ConnectionString { get; set; }
+        public DateTime PurgeDate { get; set; }
+        public bool UpdateData { get; set; }
+        public bool ConfData { get; set; }
+        public bool SuccessLoginData { get; set; }
+        public bool FailLoginData { get; set; }
+    }
+
+    public class GetBackgroundProcessParams
+    {
+        public string ConnectionString { get; set; }
+        public string sord { get; set; }
+        public int page { get; set; }
+        public int rows { get; set; }
+    }
+
+    public class DeleteBackgroundProcessTasksParams
+    {
+        public string ConnectionString { get; set; }
+        public DateTime BGEndDate { get; set; }
+        public bool CheckkBGStatusCompleted { get; set; }
+        public bool CheckBGStatusError { get; set; }
+    }
+
+    public class RemoveBackgroundSectionParams
+    {
+        public string ConnectionString { get; set;}
+        public string SectionArrayObject { get; set; }
+    }
+
+    public class SetRequestorSystemEntityParams
+    {
+        public string ConnectionString { get; set; }
+        public bool AllowList { get; set; }
+        public bool PopupList { get; set; }
+    }
+
+    public class SetTrackingHistoryDataParams
+    {
+        public string ConnectionString { get; set; }
+        public int MaxHistoryDays { get; set; }
+        public int MaxHistoryItems { get; set;}
+    }
+
+    public class HelperTrackingHistory
+    {
+        public bool Success { get; set; }
+        public string KeysType { get; set; }
     }
 }
