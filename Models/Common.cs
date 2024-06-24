@@ -115,7 +115,6 @@ namespace MSRecordsEngine.Models
             ExportCSV,
             ExportTXT
         }
-
         public enum BackgroundTaskStatus
         {
             [Description("Pending")]
@@ -128,6 +127,49 @@ namespace MSRecordsEngine.Models
             Error,
             [Description("InQue")]
             InQue
+        }
+        public enum DataTypeEnum
+        {
+            rmArray = 8192,
+            rmBigInt = 20,
+            rmBinary = 128,
+            rmBoolean = 11,
+            rmBSTR = 8,
+            rmChapter = 136,
+            rmChar = 129,
+            rmCurrency = 6,
+            rmDate = 7,
+            rmDBDate = 133,
+            rmDBTime = 134,
+            rmDBTimeStamp = 135,
+            rmDecimal = 14,
+            rmDouble = 5,
+            rmEmpty = 0,
+            rmError =10,
+            rmFileTime = 64,
+            rmGUID = 72,
+            rmIDispatch =9,
+            rmInteger = 3,
+            rmIUnknown = 13,
+            rmLongVarBinary = 205,
+            rmLongVarChar = 201,
+            rmLongVarWChar = 203,
+            rmNumeric = 131,
+            rmPropVariant = 138,
+            rmSingle = 4,
+            rmSmallInt = 2,
+            rmTinyInt = 16,
+            rmUnsignedBigInt = 21,
+            rmUnsignedInt = 19,
+            rmUnsignedSmallInt = 18,
+            rmUnsignedTinyInt = 17,
+            rmUserDefined = 132,
+            rmVarBinary = 204,
+            rmVarChar = 200,
+            rmVariant = 12,
+            rmVarNumeric = 139,
+            rmVarWChar = 202,
+            rmWChar = 130
         }
 
     }

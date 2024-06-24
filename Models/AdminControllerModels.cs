@@ -58,7 +58,7 @@ namespace MSRecordsEngine.Models
         public int subViewId3 { get; set; }
     }
 
-    public class BarCodeListParams
+    public class BarCodeList_TrackingFieldListParams
     {
         public string ConnectionString { get; set; }
         public string sord { get; set; }
@@ -205,5 +205,133 @@ namespace MSRecordsEngine.Models
     {
         public bool Success { get; set; }
         public string KeysType { get; set; }
+    }
+
+    public class SetTrackingSystemEntityParam
+    {
+        public string ConnectionString { get; set; }
+        public bool DateDueOn {  get; set; }
+        public bool TrackingOutOn { get; set ; }
+        public string TrackingAdditionalField1Desc { get; set; }
+        public string TrackingAdditionalField2Desc { get; set; }
+        public int TrackingAdditionalField1Type { get; set; }
+        public short SystemTrackingDefaultDueBackDays { get; set; }
+        public int SystemTrackingMaxHistoryItems { get; set;}
+        public int SystemTrackingMaxHistoryDays { get; set;}
+    }
+
+    public class RemoveTrackingFieldParams
+    {
+        public string ConnectionString { get; set; }
+        public int RowId { get; set; }
+    }
+
+    public class SLTrackingSelectDataParam
+    {
+        public string ConnectionString { get; set; }
+        public int SLTrackingSelectDataId { get; set; }
+        public string Id { get; set; }
+    }
+
+    public class ResetRequestorLabelParam
+    {
+        public string ConnectionString { get; set; }
+        public string TableName { get; set; }
+    }
+
+    public class SetEmailDetailsParams
+    {
+        public string ConnectionString { get; set; }
+        public bool EMailDeliveryEnabled { get; set; }
+        public bool EMailWaitListEnabled { get; set; }
+        public bool EMailExceptionEnabled { get; set; }
+        public bool EMailBackgroundEnabled { get; set; }
+        public bool SMTPAuthentication { get; set; }
+        public string SystemEmailSMTPServer { get; set; }
+        public int SystemEmailSMTPPort { get; set; }
+        public int SystemEmailEMailConfirmationType { get; set; }
+        public string SystemEmailSMTPUserPassword { get; set; }
+        public string SystemEmailSMTPUserAddress { get; set; }
+    }
+
+    public class GetSMTPDetailsParams
+    {
+        public string ConnectionString { get; set;}
+        public bool FlagSMPT { get; set; }
+    }
+
+    public class SetWarningMessageParams
+    {
+        public string WebRootPath { get; set; }
+        public string WarningMessage { get; set; }
+        public string ShowMessage { get; set; }
+    }
+
+    public class RemoveRetentionTableFromListParam
+    {
+        public string ConnectionString { get; set;}
+        public string[] TableIds { get; set; }
+    }
+
+    public class GetRetentionPropertiesDataParams
+    {
+        public Passport Passport { get; set;}
+        public int TableId { get; set; }
+    }
+
+    public class ReturnGetRetentionPropertiesData
+    {
+        public string ErrorType { get; set; }
+        public string ErrorMessage { get; set; }
+        public bool Success { get; set; }
+        public string TableEntity { get; set; }
+        public bool Trackable { get; set; }
+        public string RetCodeFieldsObject { get; set; }
+        public string DateFields {  get; set; }
+        public string ListRetentionCode {  get; set; }
+        public string ListDateCreated { get; set;}
+        public string ListDateClosed { get; set;}
+        public string ListDateOpened { get; set;}
+        public string ListDateOther { get; set;}
+        public bool FootNote { get; set;}
+        public string RelatedTblObj { get; set;}
+        public string RetentionCodesJSON { get; set; }
+        public string ArchiveLocationField { get; set; }
+        public Dictionary<string, string> IsThereLocation { get; set ; }
+    }
+
+    public class SetRetentionParametersParam
+    {
+        public string ConnectionString { get; set; }
+        public bool IsUseCitaions { get; set; }
+        public int YearEnd { get; set; }
+        public int InactivityPeriod { get; set; }
+    }
+
+    public class SetRetentionTblPropDataParam
+    {
+        public string ConnectionString { get; set; }
+        public int TableId { get; set; }
+        public bool InActivity { get; set; }
+        public int Assignment { get; set; }
+        public int Disposition { get; set; }
+        public string DefaultRetentionId { get; set; }
+        public string RelatedTable { get; set; }
+        public string RetentionCode { get; set; }
+        public string DateOpened { get; set; }
+        public string DateClosed { get; set; }
+        public string DateCreated { get; set; }
+        public string OtherDate { get; set; }
+    }
+
+    public class SetbarCodeSearchEntityParams
+    {
+        public string ConnectionString { set; get; }
+        public int Id { get; set; }
+        public string FieldName { get; set; }
+        public int ScanOrder { get; set; }
+        public string TableName { get; set; }
+        public string IdStripChars { get; set; }
+        public string IdMask { get; set; }
     }
 }
