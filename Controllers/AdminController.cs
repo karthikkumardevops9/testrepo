@@ -1,6 +1,8 @@
 ﻿using Dapper;
+using Leadtools.Document.Unstructured.Highlevel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
@@ -24,7 +26,10 @@ using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 
 namespace MSRecordsEngine.Controllers
 {
@@ -697,7 +702,7 @@ namespace MSRecordsEngine.Controllers
 
         [Route("CheckChildTableExist")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> CheckChildTableExist(CheckChildTableExistParam checkChildTableExistParam)
+        public async Task<ReturnErrorTypeErrorMsg> CheckChildTableExist(CheckChildTableExistParam checkChildTableExistParam) //completed testing 
         {
             var model = new ReturnErrorTypeErrorMsg();
             bool bChildExist = false;
@@ -710,7 +715,7 @@ namespace MSRecordsEngine.Controllers
                     if (oTable != null)
                     {
                         if ((await GetChildTableIds(oTable.TableName.Trim(), checkChildTableExistParam.ConnectionString)).Count > 0)
-                        {   
+                        {
                             bChildExist = true;
                         }
                     }
@@ -730,105 +735,168 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
-        #region Bar Code Search Order
+        #region Requestor All Methods moved 
 
-        [Route("GetBarCodeList")]
+        [Route("RemoveRequestorEntity")]
         [HttpPost]
-        public async Task<string> GetBarCodeList(BarCodeListParams barCodeListParams) //completed testing 
-        {
-            var page = barCodeListParams.page;
-            var sord = barCodeListParams.sord;
-            var rows = barCodeListParams.rows;
-
-            var jsonData = string.Empty;
-            try
-            {
-
-                using (var context = new TABFusionRMSContext(barCodeListParams.ConnectionString))
-                {
-                    var pBarCideEntities = await context.ScanLists.ToListAsync();
-                    var pTable = await context.Tables.ToListAsync();
-                    var oBarCodeEntities = new List<ScanList>();
-
-                    foreach (ScanList scan in pBarCideEntities)
-                    {
-                        if (!string.IsNullOrEmpty(scan.TableName))
-                        {
-                            oBarCodeEntities.Add(scan);
-                        }
-                    }
-
-                    var q = (from sc in oBarCodeEntities
-                             join ta in pTable.ToList()
-                           on sc.TableName.Trim().ToLower() equals ta.TableName.Trim().ToLower()
-                             select new
-                             {
-                                 sc.Id,
-                                 sc.IdMask,
-                                 sc.IdStripChars,
-                                 sc.ScanOrder,
-                                 sc.TableName,
-                                 sc.FieldName,
-                                 sc.FieldType,
-                                 ta.UserName
-                             }
-                    ).AsQueryable();
-                    pBarCideEntities = pBarCideEntities.OrderBy(x => x.ScanOrder).ToList();
-
-                    var setting = new JsonSerializerSettings();
-                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                    jsonData = JsonConvert.SerializeObject(q.GetJsonListForGrid(sord, page, rows, "ScanOrder"), Newtonsoft.Json.Formatting.Indented, setting);
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message}");
-            }
-            return jsonData;
-        }
-
-        [Route("RemoveBarCodeSearchEntity")]
-        [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> RemoveBarCodeSearchEntity(RemoveBarCodeSearchEntityParams removeBarCodeSearchEntityParams) //completed testing
+        public async Task<ReturnErrorTypeErrorMsg> RemoveRequestorEntity(RemoveRequestorEntityParam removeRequestorEntityParam) //completed testing
         {
             var model = new ReturnErrorTypeErrorMsg();
-            var pId = removeBarCodeSearchEntityParams.pId;
-            var scan = removeBarCodeSearchEntityParams.scan;
+            var statusVar = removeRequestorEntityParam.RequestStatus;
 
             try
             {
-                using (var context = new TABFusionRMSContext(removeBarCodeSearchEntityParams.ConnectionString))
+                using (var context = new TABFusionRMSContext(removeRequestorEntityParam.ConnectionString))
                 {
-                    var pBarCodeRemovedEntity = await context.ScanLists.Where(x => x.Id == pId).FirstOrDefaultAsync();
-                    context.ScanLists.Remove(pBarCodeRemovedEntity);
-                    await context.SaveChangesAsync();
-                    var pScanListEntityGreater = await context.ScanLists.Where(x => x.ScanOrder > scan).ToListAsync();
-
-                    if (pScanListEntityGreater.Count() == 0 == false)
+                    var pSLRequestorEntity = await context.SLRequestors.Where(m => m.Status.Trim().ToLower().Equals(statusVar.Trim().ToLower())).ToListAsync();
+                    if (pSLRequestorEntity.Count() != 0)
                     {
-                        foreach (ScanList pScanList in pScanListEntityGreater.ToList())
-                        {
-                            pScanList.ScanOrder = (short?)(pScanList.ScanOrder - 1);
-
-                            context.Entry(pScanList).State = EntityState.Modified;
-                        }
+                        context.SLRequestors.RemoveRange(pSLRequestorEntity);
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Selected Citation code has been deleted successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "No Data to purge";
                     }
                     await context.SaveChangesAsync();
-                    model.ErrorType = "s";
-                    model.ErrorMessage = "Selected Barcode Search order deleted successfully";
                 }
             }
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";
-                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
 
             return model;
         }
 
-        //SetbarCodeSearchEntity uses ADO schema info 
+        [Route("ResetRequestorLabel")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> ResetRequestorLabel(ResetRequestorLabelParam resetRequestorLabelParam) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(resetRequestorLabelParam.ConnectionString))
+                {
+                    var pOneStripJob = await context.OneStripJobs.Where(m => m.TableName.Trim().ToLower().Equals(resetRequestorLabelParam.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (pOneStripJob == null)
+                    {
+                        var rStripJob = new OneStripJob();
+                        rStripJob.Name = "Requestor Default Label";
+                        rStripJob.Inprint = (short?)0;
+                        rStripJob.TableName = "SLRequestor";
+                        rStripJob.OneStripFormsId = 101;
+                        rStripJob.UserUnits = (short?)0;
+                        rStripJob.LabelWidth = 5040;
+                        rStripJob.LabelHeight = 1620;
+                        rStripJob.DrawLabels = false;
+                        rStripJob.LastCounter = 0;
+                        rStripJob.SQLString = "SELECT * FROM [SLRequestor] WHERE [Id] = %ID%";
+                        rStripJob.SQLUpdateString = "";
+                        rStripJob.LSAfterPrinting = "";
+                        context.OneStripJobs.Add(rStripJob);
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Record is added successfully";
+                    }
+                    else
+                    {
+                        pOneStripJob.Name = "Requestor Default Label";
+                        pOneStripJob.Inprint = (short?)0;
+                        pOneStripJob.TableName = "SLRequestor";
+                        pOneStripJob.OneStripFormsId = 101;
+                        pOneStripJob.UserUnits = (short?)0;
+                        pOneStripJob.LabelWidth = 5040;
+                        pOneStripJob.LabelHeight = 1620;
+                        pOneStripJob.DrawLabels = false;
+                        pOneStripJob.LastCounter = 0;
+                        pOneStripJob.SQLString = "SELECT * FROM [SLRequestor] WHERE [Id] = %ID%";
+                        pOneStripJob.SQLUpdateString = "";
+                        pOneStripJob.LSAfterPrinting = "";
+                        context.Entry(pOneStripJob).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Action made on Email Notifications are applied Successfully";
+                    }
+
+                    var pOneStripJobId = await context.OneStripJobs.Where(m => m.TableName.Trim().ToLower().Equals(resetRequestorLabelParam.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    if (pOneStripJob == null)
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "There is no record is exist for Default Requestor label";
+                    }
+                    else
+                    {
+                        var param = new DynamicParameters();
+                        param.Add("@JobsId", pOneStripJobId.Id);
+                        using (var conn = CreateConnection(resetRequestorLabelParam.ConnectionString))
+                        {
+                            await conn.ExecuteAsync("SP_RMS_AddRequestorJobFields", param, commandType: CommandType.StoredProcedure);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("SetRequestorSystemEntity")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetRequestorSystemEntity(SetRequestorSystemEntityParams setRequestorSystemEntityParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setRequestorSystemEntityParams.ConnectionString))
+                {
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    pSystemEntity.AllowWaitList = setRequestorSystemEntityParams.AllowList;
+                    pSystemEntity.PopupWaitList = setRequestorSystemEntityParams.PopupList;
+                    context.Entry(pSystemEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+                }
+                model.ErrorMessage = "Record saved successfully";                model.ErrorType = "s";
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetRequestorSystemEntity")]
+        [HttpGet]
+        public async Task<string> GetRequestorSystemEntity(string ConnectionString) //completed testing
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSystemEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+
+            return jsonObject;
+        }
 
         #endregion
 
@@ -905,13 +973,13 @@ namespace MSRecordsEngine.Controllers
         }
 
         [Route("GetBackgroundOptions")]
-        [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> GetBackgroundOptions(Passport passport) //completed testing 
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetBackgroundOptions(string ConnectionString) //completed testing 
         {
             var model = new ReturnErrorTypeErrorMsg();
             try
             {
-                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                using (var context = new TABFusionRMSContext(ConnectionString))
                 {
                     var BackgroundOptionList = await context.LookupTypes.Where(m => m.LookupTypeForCode.Trim().ToUpper().Equals("BGPCS".Trim())).ToListAsync();
                     var lstBackgroundItems = new List<KeyValuePair<string, string>>();
@@ -925,7 +993,7 @@ namespace MSRecordsEngine.Controllers
             }
             catch (Exception ex)
             {
-                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
+                _commonService.Logger.LogError($"Error:{ex.Message}");
                 model.ErrorType = "e";
             }
             return model;
@@ -974,7 +1042,7 @@ namespace MSRecordsEngine.Controllers
 
         [Route("DeleteBackgroundProcessTasks")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> DeleteBackgroundProcessTasks(DeleteBackgroundProcessTasksParams deleteBackgroundProcessTasksParams) //completed testing Delete Query not Working in both  
+        public async Task<ReturnErrorTypeErrorMsg> DeleteBackgroundProcessTasks(DeleteBackgroundProcessTasksParams deleteBackgroundProcessTasksParams) //completed testing  
         {
             var model = new ReturnErrorTypeErrorMsg();
             var pchkBGStatusCompleted = deleteBackgroundProcessTasksParams.CheckkBGStatusCompleted;
@@ -1072,124 +1140,7 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
-        #region TABQUIK
-
-        [Route("GetTabquikKey")]
-        [HttpGet]
-        public async Task<string> GetTabquikKey(string ConnectionString) //completed testing
-        {
-            var jsonObject = string.Empty;
-            try
-            {
-                using (var context = new TABFusionRMSContext(ConnectionString))
-                {
-                    var tabquikkey = await context.Settings.Where(s => s.Item.Equals("Key") & s.Section.Equals("TABQUIK")).FirstOrDefaultAsync();
-                    var Setting = new JsonSerializerSettings();
-                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                    jsonObject = JsonConvert.SerializeObject(tabquikkey, Newtonsoft.Json.Formatting.Indented, Setting);
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message}");
-            }
-            return jsonObject;
-        }
-
-        #endregion
-
-        #region Requestor All Wrking Methods moved
-
-        [Route("RemoveRequestorEntity")]
-        [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> RemoveRequestorEntity(RemoveRequestorEntityParam removeRequestorEntityParam) //completed testing
-        {
-            var model = new ReturnErrorTypeErrorMsg();
-            var statusVar = removeRequestorEntityParam.RequestStatus;
-
-            try
-            {
-                using (var context = new TABFusionRMSContext(removeRequestorEntityParam.ConnectionString))
-                {
-                    var pSLRequestorEntity = await context.SLRequestors.Where(m => m.Status.Trim().ToLower().Equals(statusVar.Trim().ToLower())).ToListAsync();
-                    if (pSLRequestorEntity.Count() != 0)
-                    {
-                        context.SLRequestors.RemoveRange(pSLRequestorEntity);
-                        model.ErrorType = "s";
-                        model.ErrorMessage = "Selected Citation code has been deleted successfully";
-                    }
-                    else
-                    {
-                        model.ErrorType = "w";
-                        model.ErrorMessage = "No Data to purge";
-                    }
-                    await context.SaveChangesAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
-            }
-
-            return model;
-        }
-
-        //ResetRequestorLabel Remaining not able to call this api to test
-
-        [Route("SetRequestorSystemEntity")]
-        [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> SetRequestorSystemEntity(SetRequestorSystemEntityParams setRequestorSystemEntityParams) //completed testing 
-        {
-            var model = new ReturnErrorTypeErrorMsg();
-
-            try
-            {
-                using (var context = new TABFusionRMSContext(setRequestorSystemEntityParams.ConnectionString))
-                {
-                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
-                    pSystemEntity.AllowWaitList = setRequestorSystemEntityParams.AllowList;
-                    pSystemEntity.PopupWaitList = setRequestorSystemEntityParams.PopupList;
-                    context.Entry(pSystemEntity).State = EntityState.Modified;
-                    await context.SaveChangesAsync();
-                }
-                model.ErrorMessage = "Record saved successfully";                model.ErrorType = "s";
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
-            }
-
-            return model;
-        }
-
-        [Route("GetRequestorSystemEntity")]
-        [HttpGet]
-        public async Task<string> GetRequestorSystemEntity(string ConnectionString) //completed testing
-        {
-            var jsonObject = string.Empty;
-            try
-            {
-                using (var context = new TABFusionRMSContext(ConnectionString))
-                {
-                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
-                    var Setting = new JsonSerializerSettings();
-                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                    jsonObject = JsonConvert.SerializeObject(pSystemEntity, Newtonsoft.Json.Formatting.Indented, Setting);
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message}");
-            }
-
-            return jsonObject;
-        }
-
-        #endregion
-
-        #region Tracking
+        #region Tracking All Methods moved
 
         [Route("GetTrackingSystemEntity")]
         [HttpGet]
@@ -1216,7 +1167,7 @@ namespace MSRecordsEngine.Controllers
 
         [Route("SetTrackingHistoryData")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> SetTrackingHistoryData(SetTrackingHistoryDataParams setTrackingHistoryDataParams)
+        public async Task<ReturnErrorTypeErrorMsg> SetTrackingHistoryData(SetTrackingHistoryDataParams setTrackingHistoryDataParams)  //completed testing
         {
             var model = new ReturnErrorTypeErrorMsg();
 
@@ -1281,9 +1232,685 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
+        [Route("SetTrackingSystemEntity")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetTrackingSystemEntity(SetTrackingSystemEntityParam setTrackingSystemEntityParams)  //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(setTrackingSystemEntityParams.ConnectionString))
+                {
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    pSystemEntity.TrackingOutOn = setTrackingSystemEntityParams.TrackingOutOn;
+                    pSystemEntity.DateDueOn = setTrackingSystemEntityParams.DateDueOn;
+                    pSystemEntity.TrackingAdditionalField1Desc = setTrackingSystemEntityParams.TrackingAdditionalField1Desc;
+                    pSystemEntity.TrackingAdditionalField2Desc = setTrackingSystemEntityParams.TrackingAdditionalField2Desc;
+                    pSystemEntity.TrackingAdditionalField1Type = setTrackingSystemEntityParams.TrackingAdditionalField1Type;
+
+                    if (setTrackingSystemEntityParams.SystemTrackingMaxHistoryDays <= 0)
+                    {
+                        pSystemEntity.MaxHistoryDays = 0;
+                    }
+                    else
+                    {
+                        pSystemEntity.MaxHistoryDays = setTrackingSystemEntityParams.SystemTrackingMaxHistoryDays;
+                    }
+                    if (setTrackingSystemEntityParams.SystemTrackingMaxHistoryItems <= 0)
+                    {
+                        pSystemEntity.MaxHistoryItems = 0;
+                    }
+                    else
+                    {
+                        pSystemEntity.MaxHistoryItems = setTrackingSystemEntityParams.SystemTrackingMaxHistoryItems;
+                    }
+                    if (setTrackingSystemEntityParams.SystemTrackingDefaultDueBackDays == 0)
+                    {
+                        pSystemEntity.DefaultDueBackDays = (short?)1;
+                    }
+                    else
+                    {
+                        pSystemEntity.DefaultDueBackDays = setTrackingSystemEntityParams.SystemTrackingDefaultDueBackDays;
+                    }
+                    context.Entry(pSystemEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Properties relating to the Tracking are applied successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("GetTrackingFieldList")]
+        [HttpPost]
+        public string GetTrackingFieldList(BarCodeList_TrackingFieldListParams trackingFieldListParams) //completed testing
+        {
+            var page = trackingFieldListParams.page;
+            var sord = trackingFieldListParams.sord;
+            var rows = trackingFieldListParams.rows;
+
+            var jsonData = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(trackingFieldListParams.ConnectionString))
+                {
+                    var pTrackingEntity = context.SLTrackingSelectDatas;
+                    if (pTrackingEntity == null)
+                    {
+                        return jsonData;
+                    }
+                    else
+                    {
+                        var setting = new JsonSerializerSettings();
+                        setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                        jsonData = JsonConvert.SerializeObject(pTrackingEntity.GetJsonListForGrid(sord, page, rows, "Id"), Newtonsoft.Json.Formatting.Indented, setting);
+                        return jsonData;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return jsonData;
+        }
+
+        [Route("RemoveTrackingField")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveTrackingField(RemoveTrackingFieldParams removeTrackingFieldParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                var pTrackingFieldId = removeTrackingFieldParams.RowId;
+                using (var context = new TABFusionRMSContext(removeTrackingFieldParams.ConnectionString))
+                {
+                    var pTrackingFieldEntity = await context.SLTrackingSelectDatas.Where(x => x.SLTrackingSelectDataId == pTrackingFieldId).FirstOrDefaultAsync();
+                    if (pTrackingFieldEntity != null)
+                    {
+                        context.SLTrackingSelectDatas.Remove(pTrackingFieldEntity);
+                        model.ErrorMessage = "Selected Additional Tracking field removed successfully"; // Keys.DeleteSuccessMessage()
+                        model.ErrorType = "s";
+                    }
+                    else
+                    {
+                        model.ErrorMessage = "There is no record found in system";
+                        model.ErrorType = "e";
+                    }
+                    await context.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetTrackingField")]
+        [HttpPost]
+        public async Task<string> GetTrackingField(RemoveTrackingFieldParams getTrackingFieldParam) //completed testing 
+        {
+            var jsonObject = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(getTrackingFieldParam.ConnectionString))
+                {
+                    var pTrackingFieldId = getTrackingFieldParam.RowId;
+                    var pTrackingFieldEntity = await context.SLTrackingSelectDatas.Where(x => x.SLTrackingSelectDataId == pTrackingFieldId).FirstOrDefaultAsync();
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pTrackingFieldEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+
+            return jsonObject;
+        }
+
+        [Route("SetTrackingField")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetTrackingField(SLTrackingSelectDataParam slTrackingSelectDataParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pSLTrackingData = new SLTrackingSelectData();
+            try
+            {
+                using (var context = new TABFusionRMSContext(slTrackingSelectDataParam.ConnectionString))
+                {
+                    if (slTrackingSelectDataParam.SLTrackingSelectDataId > 0)
+                    {
+                        if (await context.SLTrackingSelectDatas.AnyAsync(x => x.Id.Trim().ToLower() == slTrackingSelectDataParam.Id.Trim().ToLower() && x.SLTrackingSelectDataId != slTrackingSelectDataParam.SLTrackingSelectDataId) == false)
+                        {
+                            pSLTrackingData.SLTrackingSelectDataId = slTrackingSelectDataParam.SLTrackingSelectDataId;
+                            pSLTrackingData.Id = slTrackingSelectDataParam.Id;
+                            context.Entry(pSLTrackingData).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Selected Additional Tracking field updated successfully";
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "The record for Additional Tracking Field already exists";
+                        }
+                    }
+                    else if (await context.SLTrackingSelectDatas.AnyAsync(x => (x.Id.Trim().ToLower()) == (slTrackingSelectDataParam.Id.Trim().ToLower())) == false)
+                    {
+                        pSLTrackingData.Id = slTrackingSelectDataParam.Id;
+                        context.SLTrackingSelectDatas.Add(pSLTrackingData);
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Additional Tracking field added successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "The record for Additional Tracking Field already exists";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetReconciliation")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetReconciliation(string ConnectionString)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pAssetNumber = await context.AssetStatus.OrderBy(m => m.Id).ToListAsync();
+                    int totalRecord = pAssetNumber.Count();
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(totalRecord, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
         #endregion
 
-        #region Retention
+        #region Email Notification All Methods moved
+
+        private enum EmailType        {            etDelivery = 0x1,            etWaitList = 0x2,            etException = 0x4,            etCheckedOut = 0x8,            etRequest = 0x10,            etPastDue = 0x20,            etSimple = 0x40,            etBackground = 0x80        }
+
+        [Route("SetEmailDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetEmailDetails(SetEmailDetailsParams setEmailDetailsParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setEmailDetailsParams.ConnectionString))
+                {
+                    EmailType eNotificationEnabled = default;
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    pSystemEntity.EMailDeliveryEnabled = setEmailDetailsParams.EMailDeliveryEnabled;
+                    pSystemEntity.EMailWaitListEnabled = setEmailDetailsParams.EMailWaitListEnabled;
+                    pSystemEntity.EMailExceptionEnabled = setEmailDetailsParams.EMailExceptionEnabled;
+
+                    if (setEmailDetailsParams.EMailDeliveryEnabled)
+                        eNotificationEnabled = (EmailType)(eNotificationEnabled += (int)EmailType.etDelivery);
+                    if (setEmailDetailsParams.EMailWaitListEnabled)
+                        eNotificationEnabled = (EmailType)(eNotificationEnabled + (int)EmailType.etWaitList);
+                    if (setEmailDetailsParams.EMailExceptionEnabled)
+                        eNotificationEnabled = (EmailType)(eNotificationEnabled + (int)EmailType.etException);
+                    if (setEmailDetailsParams.EMailBackgroundEnabled)
+                        eNotificationEnabled = (EmailType)(eNotificationEnabled + (int)EmailType.etBackground);
+                    pSystemEntity.NotificationEnabled = Convert.ToInt32(eNotificationEnabled);
+
+                    pSystemEntity.SMTPServer = setEmailDetailsParams.SystemEmailSMTPServer;
+                    if (setEmailDetailsParams.SystemEmailSMTPServer != null)
+                    {
+                        pSystemEntity.SMTPPort = setEmailDetailsParams.SystemEmailSMTPPort;
+                    }
+                    else
+                    {
+                        pSystemEntity.SMTPPort = 25;
+                    }
+                    if (setEmailDetailsParams.SystemEmailEMailConfirmationType <= 0)
+                    {
+                        pSystemEntity.EMailConfirmationType = setEmailDetailsParams.SystemEmailEMailConfirmationType;
+                    }
+                    else
+                    {
+                        pSystemEntity.EMailConfirmationType = 0;
+                    }
+                    if (setEmailDetailsParams.SystemEmailSMTPUserAddress == null || setEmailDetailsParams.SystemEmailSMTPUserPassword == null)
+                    {
+                        pSystemEntity.SMTPUserPassword = pSystemEntity.SMTPUserPassword;
+                        pSystemEntity.SMTPUserAddress = pSystemEntity.SMTPUserAddress;
+                    }
+                    else
+                    {
+                        pSystemEntity.SMTPUserAddress = setEmailDetailsParams.SystemEmailSMTPUserAddress;
+                        string encrypted = GenerateKey(Convert.ToBoolean(1), setEmailDetailsParams.SystemEmailSMTPUserPassword, null);
+                        pSystemEntity.SMTPUserPassword = encrypted;
+                    }
+                    pSystemEntity.SMTPAuthentication = setEmailDetailsParams.SMTPAuthentication;
+                    context.Entry(pSystemEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Action made on Email Notifications are applied Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("GetSMTPDetails")]
+        [HttpPost]
+        public async Task<string> GetSMTPDetails(GetSMTPDetailsParams getSMTPDetailsParams) //completed testing 
+        {
+            var res = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(getSMTPDetailsParams.ConnectionString))
+                {
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    if (getSMTPDetailsParams.FlagSMPT)
+                    {
+                        if (pSystemEntity.SMTPUserPassword is not null)
+                        {
+                            var byteArray = Encoding.Default.GetBytes(pSystemEntity.SMTPUserPassword);
+                            string encrypted = GenerateKey(Convert.ToBoolean(0), null, byteArray);
+                            pSystemEntity.SMTPUserPassword = encrypted;
+                        }
+                    }
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    res = JsonConvert.SerializeObject(pSystemEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+
+            return res;
+        }
+
+        #endregion
+
+        #region Before Login warning message All Methods Moved
+
+        [Route("GetWarningMessage")]
+        [HttpGet]
+        public string GetWarningMessage(string webRootPath) //completed testing
+        {
+            string showMessage = string.Empty;
+            string warningMessage = string.Empty;
+            string path = System.IO.Path.Combine(Convert.ToString(webRootPath), @"ImportFiles\WarningMessageXML.xml");
+
+            if (System.IO.File.Exists(path))
+            {
+                XmlReader document = new XmlTextReader(path);
+                while (document.Read())
+                {
+                    var type = document.NodeType;
+                    if (type == XmlNodeType.Element)
+                    {
+                        if (document.Name == "ShowMessage")
+                            showMessage = document.ReadInnerXml().ToString();
+                        if (document.Name == "WarningMessage")
+                            warningMessage = document.ReadInnerXml().ToString();
+                    }
+                }
+                document.Close();
+            }
+
+            warningMessage = warningMessage.Remove(0, 1);
+            warningMessage = warningMessage.Remove(warningMessage.Length - 1);
+            string data = showMessage + "||" + warningMessage;
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            var jsonObject = JsonConvert.SerializeObject(data, Newtonsoft.Json.Formatting.Indented, Setting);
+
+            return jsonObject;
+        }
+
+        [Route("SetWarningMessage")]
+        [HttpPost]
+        public ReturnErrorTypeErrorMsg SetWarningMessage(SetWarningMessageParams setWarningMessageParams) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pWarningMessage = setWarningMessageParams.WarningMessage;
+            var pShowMessage = setWarningMessageParams.ShowMessage;
+            try
+            {
+                if (pShowMessage.Trim().ToLower() == "yes" && string.IsNullOrEmpty(pWarningMessage))
+                {
+                    model.ErrorType = "w";
+                    model.ErrorMessage = "Please enter value in message textbox";
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(pWarningMessage))
+                    {
+                        if (Convert.ToString(pWarningMessage.TrimStart()[0]) != "\"")
+                            pWarningMessage = "\"" + pWarningMessage; // firstLetter
+                        if (Convert.ToString(pWarningMessage.Last()) != "\"")
+                            pWarningMessage = pWarningMessage + "\""; // lastLetter
+                    }
+
+                    var settings = new XmlWriterSettings();
+                    settings.Indent = true;
+                    string path = System.IO.Path.Combine(Convert.ToString(setWarningMessageParams.WebRootPath), @"ImportFiles\WarningMessageXML.xml");
+                    var XmlWrt = XmlWriter.Create(path, settings);
+                    // Write the Xml declaration.
+                    XmlWrt.WriteStartDocument();
+                    // Write a comment.
+                    XmlWrt.WriteComment("Before login Warning Message Data.");
+                    // Write the root element.
+                    XmlWrt.WriteStartElement("Data");
+                    // Write element.
+                    XmlWrt.WriteStartElement("ShowMessage");
+                    XmlWrt.WriteString(pShowMessage);
+                    XmlWrt.WriteEndElement();
+                    XmlWrt.WriteStartElement("WarningMessage");
+                    XmlWrt.WriteString(pWarningMessage);
+                    XmlWrt.WriteEndElement();
+                    // Close the XmlTextWriter.
+                    XmlWrt.WriteEndDocument();
+                    XmlWrt.Close();
+                    model.ErrorType = "s";
+                    if (pShowMessage.Trim().ToLower() == "no")
+                    {
+                        model.ErrorMessage = "Sign In message not applied successfully";
+                    }
+                    else
+                    {
+                        model.ErrorMessage = "Sign In message has been applied successfully";
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        #endregion
+
+        #region Bar Code Search Order All Methods Moved
+
+        [Route("GetBarCodeList")]
+        [HttpPost]
+        public async Task<string> GetBarCodeList(BarCodeList_TrackingFieldListParams barCodeListParams) //completed testing 
+        {
+            var page = barCodeListParams.page;
+            var sord = barCodeListParams.sord;
+            var rows = barCodeListParams.rows;
+
+            var jsonData = string.Empty;
+            try
+            {
+
+                using (var context = new TABFusionRMSContext(barCodeListParams.ConnectionString))
+                {
+                    var pBarCideEntities = await context.ScanLists.ToListAsync();
+                    var pTable = await context.Tables.ToListAsync();
+                    var oBarCodeEntities = new List<ScanList>();
+
+                    foreach (ScanList scan in pBarCideEntities)
+                    {
+                        if (!string.IsNullOrEmpty(scan.TableName))
+                        {
+                            oBarCodeEntities.Add(scan);
+                        }
+                    }
+
+                    var q = (from sc in oBarCodeEntities
+                             join ta in pTable.ToList()
+                           on sc.TableName.Trim().ToLower() equals ta.TableName.Trim().ToLower()
+                             select new
+                             {
+                                 sc.Id,
+                                 sc.IdMask,
+                                 sc.IdStripChars,
+                                 sc.ScanOrder,
+                                 sc.TableName,
+                                 sc.FieldName,
+                                 sc.FieldType,
+                                 ta.UserName
+                             }
+                    ).AsQueryable();
+                    pBarCideEntities = pBarCideEntities.OrderBy(x => x.ScanOrder).ToList();
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonData = JsonConvert.SerializeObject(q.GetJsonListForGrid(sord, page, rows, "ScanOrder"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return jsonData;
+        }
+
+        [Route("RemoveBarCodeSearchEntity")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveBarCodeSearchEntity(RemoveBarCodeSearchEntityParams removeBarCodeSearchEntityParams) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pId = removeBarCodeSearchEntityParams.pId;
+            var scan = removeBarCodeSearchEntityParams.scan;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(removeBarCodeSearchEntityParams.ConnectionString))
+                {
+                    var pBarCodeRemovedEntity = await context.ScanLists.Where(x => x.Id == pId).FirstOrDefaultAsync();
+                    context.ScanLists.Remove(pBarCodeRemovedEntity);
+                    await context.SaveChangesAsync();
+                    var pScanListEntityGreater = await context.ScanLists.Where(x => x.ScanOrder > scan).ToListAsync();
+
+                    if (pScanListEntityGreater.Count() == 0 == false)
+                    {
+                        foreach (ScanList pScanList in pScanListEntityGreater.ToList())
+                        {
+                            pScanList.ScanOrder = (short?)(pScanList.ScanOrder - 1);
+
+                            context.Entry(pScanList).State = EntityState.Modified;
+                        }
+                    }
+                    await context.SaveChangesAsync();
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected Barcode Search order deleted successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetbarCodeSearchEntity")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetbarCodeSearchEntity(SetbarCodeSearchEntityParams setbarCodeSearchEntityParams) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var Id = setbarCodeSearchEntityParams.Id;
+            var TableName = setbarCodeSearchEntityParams.TableName;
+            var scanOrder = setbarCodeSearchEntityParams.ScanOrder;
+            var FieldName = setbarCodeSearchEntityParams.FieldName;
+            var IdStripChars = setbarCodeSearchEntityParams.IdStripChars;
+            var IdMask = setbarCodeSearchEntityParams.IdMask;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setbarCodeSearchEntityParams.ConnectionString))
+                {
+                    var pBarCodeSearchEntity = new ScanList()
+                    {
+                        Id = Id,
+                        FieldName = FieldName,
+                        TableName = TableName,
+                        IdStripChars = IdStripChars,
+                        IdMask = IdMask
+                    };
+
+                    var oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pBarCodeSearchEntity.TableName, setbarCodeSearchEntityParams.ConnectionString, pBarCodeSearchEntity.FieldName);
+
+                    if (oSchemaColumns.Count == 0)
+                    {
+                        var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pBarCodeSearchEntity.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                        oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pBarCodeSearchEntity.TableName, setbarCodeSearchEntityParams.ConnectionString, pBarCodeSearchEntity.FieldName);
+                    }
+
+                    if (pBarCodeSearchEntity.Id > 0)
+                    {
+                        if (await context.ScanLists.AnyAsync(x => (x.TableName) == (pBarCodeSearchEntity.TableName) && (x.FieldName) == (pBarCodeSearchEntity.FieldName) && x.Id != pBarCodeSearchEntity.Id))
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The record for '{0}' already exists", pBarCodeSearchEntity.TableName.ToUpper());
+                        }
+                        else
+                        {
+                            var pScanList = await context.ScanLists.Where(x => x.Id == pBarCodeSearchEntity.Id).FirstOrDefaultAsync();
+                            pScanList.TableName = pBarCodeSearchEntity.TableName;
+                            pScanList.FieldName = pBarCodeSearchEntity.FieldName;
+                            pScanList.FieldType = Convert.ToInt16(oSchemaColumns[0].DataType);
+                            pScanList.IdStripChars = pBarCodeSearchEntity.IdStripChars;
+                            pScanList.IdMask = pBarCodeSearchEntity.IdMask;
+                            context.Entry(pScanList).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Selected Barcode Search order updated successfully";
+                        }  
+                    }
+                    else if (await context.ScanLists.AnyAsync(x => (x.TableName) == (pBarCodeSearchEntity.TableName) && (x.FieldName) == (pBarCodeSearchEntity.FieldName)))
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The record for '{0}' already exists", pBarCodeSearchEntity.TableName.ToUpper());
+                    }
+                    else
+                    {
+                        pBarCodeSearchEntity.ScanOrder = (short?)(scanOrder + 1);
+                        pBarCodeSearchEntity.FieldType = Convert.ToInt16(oSchemaColumns[0].DataType);
+                        context.ScanLists.Add(pBarCodeSearchEntity);
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "New Table entry has been added to Barcode Search Order";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        #endregion
+
+        #region TABQUIK
+
+        [Route("GetTabquikKey")]
+        [HttpGet]
+        public async Task<string> GetTabquikKey(string ConnectionString) //completed testing
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tabquikkey = await context.Settings.Where(s => s.Item.Equals("Key") & s.Section.Equals("TABQUIK")).FirstOrDefaultAsync();
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(tabquikkey, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return jsonObject;
+        }
+
+        #endregion
+
+        #region TABQUIK -> Field Mapping
+
+        [Route("LoadTABQUIKFieldMappingPartial")]
+        [HttpGet]
+        public async Task<string> LoadTABQUIKFieldMappingPartial(string ConnectionString, int pTabquikId)
+        {
+            var jsonObject = string.Empty;
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                if (pTabquikId != 0)
+                {
+                    var oOneStripJob = await context.OneStripJobs.Where(x => x.Id == pTabquikId && x.Inprint == 5).FirstOrDefaultAsync();
+                    var Setting = new JsonSerializerSettings();
+                    var result = new
+                    {
+                        oOneStripJob.TableName,
+                        oOneStripJob.SQLUpdateString
+                    };
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            return jsonObject;
+        }
+
+        #endregion
+
+        #region Retention All Methods Moved
 
         [Route("GetRetentionPeriodTablesList")]
         [HttpGet]
@@ -1315,6 +1942,268 @@ namespace MSRecordsEngine.Controllers
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
             }
+            return model;
+        }
+
+        [Route("RemoveRetentionTableFromList")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveRetentionTableFromList(RemoveRetentionTableFromListParam removeRetentionTableFromListParam) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(removeRetentionTableFromListParam.ConnectionString))
+                {
+                    foreach (string item in removeRetentionTableFromListParam.TableIds)
+                    {
+                        if (!string.IsNullOrEmpty(item))
+                        {
+                            int pTableId = Convert.ToInt32(item);
+                            var pTableEntity = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();
+                            pTableEntity.RetentionPeriodActive = false;
+                            pTableEntity.RetentionInactivityActive = false;
+
+                            context.Entry(pTableEntity).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                        }
+                    }
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Table moved successfully.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("GetRetentionPropertiesData")]
+        [HttpPost]
+        public async Task<ReturnGetRetentionPropertiesData> GetRetentionPropertiesData(GetRetentionPropertiesDataParams getRetentionPropertiesDataParams) //completed testing 
+        {
+            var model = new ReturnGetRetentionPropertiesData();
+            var passport = getRetentionPropertiesDataParams.Passport;
+            var pTableId = getRetentionPropertiesDataParams.TableId;
+            var lstRetCodeFields = new List<string>();            var lstDateFields = new List<string>();            var lstRelatedTable = new List<string>();            var bFootNote = default(bool);            string lstRetentionCode = "";            string lstDateClosed = "";            string lstDateCreated = "";            string lstDateOpened = "";            string lstDateOther = "";
+
+            bool bTrackable = false;
+
+
+            using (var context = new TABFusionRMSContext(passport.ConnectionString))
+            {
+                var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();                model.ErrorType = "s";                model.ErrorMessage = "Record saved successfully";                bTrackable = passport.CheckPermission(pTableEntites.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);                if (pTableEntites == null)                {                    return new ReturnGetRetentionPropertiesData
+                    {
+                        Success = false,
+                        ErrorType= "e",
+                        ErrorMessage = "Record not found."
+                    };                }                var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntites.TableName.Trim().ToLower())).FirstOrDefaultAsync();                var dbRecordSet = SchemaInfoDetails.GetTableSchemaInfo(pTableEntites.TableName, passport.ConnectionString);                if (!dbRecordSet.Exists(x => x.ColumnName == "RetentionCodesId"))                {                    lstRetentionCode = "* RetentionCodesId";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOpened"))                {                    lstDateOpened = "* DateOpened";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateClosed"))                {                    lstDateClosed = "* DateClosed";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateCreated"))                {                    lstDateCreated = "* DateCreated";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOther"))                {                    lstDateOther = "* DateOther";                    bFootNote = true;                }                foreach (var oSchemaColumn in dbRecordSet)                {                    if (!SchemaInfoDetails.IsSystemField(oSchemaColumn.ColumnName))                    {                        if (oSchemaColumn.IsADate)                        {                            lstDateFields.Add(oSchemaColumn.ColumnName);                        }                        else if (oSchemaColumn.IsString && oSchemaColumn.CharacterMaxLength == 20)                        {                            lstRetCodeFields.Add(oSchemaColumn.ColumnName);                        }                    }                }                var Setting = new JsonSerializerSettings();                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;                lstRetCodeFields.Sort();                lstDateFields.Sort();
+
+                model.RetCodeFieldsObject = JsonConvert.SerializeObject(lstRetCodeFields, Newtonsoft.Json.Formatting.Indented, Setting);                model.DateFields = JsonConvert.SerializeObject(lstDateFields, Newtonsoft.Json.Formatting.Indented, Setting);                var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableEntites.TableName)).ToListAsync();                foreach (RelationShip item in lstRelatedTables)                    lstRelatedTable.Add(item.UpperTableName);                var lstTables = await (context.Tables.Where(x => x.RetentionPeriodActive == true && x.RetentionFinalDisposition != 0 && lstRelatedTable.Contains(x.TableName))).ToListAsync();                var pRetentionCodes = await context.SLRetentionCodes.OrderBy(x => x.Id).ToListAsync();                model.RelatedTblObj = JsonConvert.SerializeObject(lstTables, Newtonsoft.Json.Formatting.Indented, Setting);                model.TableEntity = JsonConvert.SerializeObject(pTableEntites, Newtonsoft.Json.Formatting.Indented, Setting);                model.RetentionCodesJSON = JsonConvert.SerializeObject(pRetentionCodes, Newtonsoft.Json.Formatting.Indented, Setting);                model.IsThereLocation = Tracking.GetArchiveLocations(passport);
+
+
+                model.ListRetentionCode = lstRetentionCode;
+                model.ListDateCreated = lstDateCreated;
+                model.ListDateClosed = lstDateClosed;
+                model.ListDateOpened = lstDateOpened;
+                model.ListDateOther = lstDateOther;
+                model.FootNote = bFootNote;
+                model.ArchiveLocationField = pTableEntites.ArchiveLocationField;
+                model.Trackable = bTrackable;
+            }
+
+            return model;
+        }
+
+        [Route("SetRetentionParameters")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetRetentionParameters(SetRetentionParametersParam setRetentionParametersParam) //Js Issue completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setRetentionParametersParam.ConnectionString))
+                {
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+
+                    pSystemEntity.RetentionTurnOffCitations = setRetentionParametersParam.IsUseCitaions;
+                    pSystemEntity.RetentionYearEnd = setRetentionParametersParam.YearEnd;
+                    context.Entry(pSystemEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();    
+
+                    var pServiceTasks = await context.SLServiceTasks.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    pServiceTasks.Interval = setRetentionParametersParam.InactivityPeriod;
+
+                    context.Entry(pServiceTasks).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Properties relating to Retention are applied Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetRetentionTblPropData")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetRetentionTblPropData(SetRetentionTblPropDataParam setRetentionTblPropDataParam) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pTableId = setRetentionTblPropDataParam.TableId;
+            var pInActivity = setRetentionTblPropDataParam.InActivity;
+            var pAssignment = setRetentionTblPropDataParam.Assignment;
+            var pDisposition = setRetentionTblPropDataParam.Disposition;
+            var pDefaultRetentionId = setRetentionTblPropDataParam.DefaultRetentionId;
+            var pRelatedTable = setRetentionTblPropDataParam.RelatedTable;
+            var pRetentionCode = setRetentionTblPropDataParam.RetentionCode;
+            var pDateOpened = setRetentionTblPropDataParam.DateOpened;
+            var pDateClosed = setRetentionTblPropDataParam.DateClosed;
+            var pDateCreated = setRetentionTblPropDataParam.DateCreated;
+            var pOtherDate = setRetentionTblPropDataParam.OtherDate;
+
+            string msgVerifyRetDisposition = "";            string sSQL = "";
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setRetentionTblPropDataParam.ConnectionString))
+                {
+                    var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntites.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    var allArchiveLocation = await context.Locations.Where(loc => loc.ArchiveStorage == true).ToListAsync();
+                    if (!string.IsNullOrEmpty(pTableEntites.DefaultTrackingId))
+                    {
+                        var tableArchiveLocation = await context.Locations.Where(loc => loc.Id.ToString() == pTableEntites.DefaultTrackingId).FirstOrDefaultAsync();
+                        if (Convert.ToBoolean(tableArchiveLocation.ArchiveStorage) && pDisposition == 1 && allArchiveLocation.Count == 1)
+                        {
+                            model.ErrorMessage = "The Archival location is already set up as the Initial Tracking Destination";
+                            throw new Exception(model.ErrorMessage);
+                        }
+                    }
+                    var oViews = await context.Views.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntites.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (pDisposition != 0 || pInActivity)
+                    {
+                        pTableEntites.RetentionAssignmentMethod = pAssignment;
+                        pTableEntites.DefaultRetentionId = pDefaultRetentionId;
+                        pTableEntites.RetentionRelatedTable = pRelatedTable;
+                    }
+
+                    pTableEntites.RetentionPeriodActive = pDisposition != 0;
+                    pTableEntites.RetentionInactivityActive = pInActivity;
+                    pTableEntites.RetentionFinalDisposition = pDisposition;
+
+                    if (!string.IsNullOrEmpty(pRetentionCode))
+                    {
+                        if (pRetentionCode.Substring(0, 1) == "*")
+                        {
+                            SaveNewFieldToTable(pTableEntites.TableName, pRetentionCode.Substring(1).Trim(), Enums.DataTypeEnum.rmVarWChar, oViews.Id, setRetentionTblPropDataParam.ConnectionString);
+
+                            pTableEntites.RetentionFieldName = pRetentionCode.Substring(1).Trim();
+                        }
+                        else
+                        {
+                            pTableEntites.RetentionFieldName = pRetentionCode;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(pDateOpened))
+                    {
+                        if (pDateOpened.Substring(0, 1) == "*")
+                        {
+                            SaveNewFieldToTable(pTableEntites.TableName, pDateOpened.Substring(1).Trim(), Enums.DataTypeEnum.rmDate, oViews.Id, setRetentionTblPropDataParam.ConnectionString);
+
+                            pTableEntites.RetentionDateOpenedField = pDateOpened.Substring(1).Trim();
+                        }
+                        else
+                        {
+                            pTableEntites.RetentionDateOpenedField = pDateOpened;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(pDateClosed))
+                    {
+                        if (pDateClosed.Substring(0, 1) == "*")
+                        {
+                            SaveNewFieldToTable(pTableEntites.TableName, pDateClosed.Substring(1).Trim(), Enums.DataTypeEnum.rmDate, oViews.Id, setRetentionTblPropDataParam.ConnectionString);
+
+                            pTableEntites.RetentionDateClosedField = pDateClosed.Substring(1).Trim();
+                        }
+                        else
+                        {
+                            pTableEntites.RetentionDateClosedField = pDateClosed;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(pDateCreated))
+                    {
+                        if (pDateCreated.Substring(0, 1) == "*")
+                        {
+                            SaveNewFieldToTable(pTableEntites.TableName, pDateCreated.Substring(1).Trim(), Enums.DataTypeEnum.rmDate, oViews.Id, setRetentionTblPropDataParam.ConnectionString);
+
+                            pTableEntites.RetentionDateCreateField = pDateCreated.Substring(1).Trim();
+                        }
+                        else
+                        {
+                            pTableEntites.RetentionDateCreateField = pDateCreated;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(pOtherDate))
+                    {
+                        if (pOtherDate.Substring(0, 1) == "*")
+                        {
+                            SaveNewFieldToTable(pTableEntites.TableName, pOtherDate.Substring(1).Trim(), Enums.DataTypeEnum.rmDate, oViews.Id, setRetentionTblPropDataParam.ConnectionString);
+
+                            pTableEntites.RetentionDateOtherField = pOtherDate.Substring(1).Trim();
+                        }
+                        else
+                        {
+                            pTableEntites.RetentionDateOtherField = pOtherDate;
+                        }
+                    }
+                    
+                    context.Entry(pTableEntites).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+                    msgVerifyRetDisposition = await VerifyRetentionDispositionTypesForParentAndChildren(setRetentionTblPropDataParam.ConnectionString, pTableEntites.TableId);
+
+                    sSQL = "ALTER TABLE [" + pTableEntites.TableName + "]";
+                    sSQL = sSQL + " ADD [%slRetentionInactive] BIT DEFAULT 0";
+                    ExecuteSqlCommand(setRetentionTblPropDataParam.ConnectionString, sSQL, false);
+                    sSQL = "";
+
+                    sSQL = "ALTER TABLE [" + pTableEntites.TableName + "]";
+                    sSQL = sSQL + " ADD [%slRetentionInactiveFinal] BIT DEFAULT 0";
+                    ExecuteSqlCommand(setRetentionTblPropDataParam.ConnectionString, sSQL, false);
+                    sSQL = "";
+
+                    sSQL = "ALTER TABLE [" + pTableEntites.TableName + "]";
+                    sSQL = sSQL + " ADD [%slRetentionDispositionStatus] INT DEFAULT 0";
+                    ExecuteSqlCommand(setRetentionTblPropDataParam.ConnectionString, sSQL, false);
+                    sSQL = "";
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Record saved successfully";
+                    model.stringValue1 = msgVerifyRetDisposition;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";                if (string.IsNullOrEmpty(model.ErrorMessage))                {
+                    model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";                }
+            }
+
             return model;
         }
 
@@ -1504,9 +2393,9 @@ namespace MSRecordsEngine.Controllers
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
 
-                    lstTblNamesList = JsonConvert.SerializeObject(lstTblNames, Formatting.Indented, Setting);
-                    lstReportStylesList = JsonConvert.SerializeObject(lstReportStyles, Formatting.Indented, Setting);
-                    lstChildTablesObjStr = JsonConvert.SerializeObject(lstChildTables, Formatting.Indented, Setting);
+                    lstTblNamesList = JsonConvert.SerializeObject(lstTblNames, Newtonsoft.Json.Formatting.Indented, Setting);
+                    lstReportStylesList = JsonConvert.SerializeObject(lstReportStyles, Newtonsoft.Json.Formatting.Indented, Setting);
+                    lstChildTablesObjStr = JsonConvert.SerializeObject(lstChildTables, Newtonsoft.Json.Formatting.Indented, Setting);
 
                 }
                 catch (Exception ex)
@@ -1862,6 +2751,258 @@ namespace MSRecordsEngine.Controllers
             }
         }
 
+        private static string  GenerateKey(bool boolFlag, string pwdString = null, byte[] pwdByteArray = null)
+        {
+            string transformPwd;
+            try
+            {
+                using (var myRijndael = new RijndaelManaged())
+                {
+                    var pdb = new Rfc2898DeriveBytes("RandomKey", Encoding.ASCII.GetBytes("SaltValueMustBeUnique"));
+                    myRijndael.Key = pdb.GetBytes(32);
+                    myRijndael.IV = pdb.GetBytes(16);
+                    if (boolFlag)
+                    {
+                        transformPwd = EncryptString(pwdString, myRijndael.Key, myRijndael.IV);
+                    }
+                    else
+                    {
+                        transformPwd = DecryptString(pwdByteArray, myRijndael.Key, myRijndael.IV);
+                    }
+                    return transformPwd;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return Convert.ToString(false);
+            }
+        }
+
+        public static string EncryptString(string plainText, byte[] Key, byte[] IV)
+        {
+            if (plainText is null || plainText.Length <= 0)
+            {
+                throw new ArgumentNullException("plainText");
+            }
+            if (Key is null || Key.Length <= 0)
+            {
+                throw new ArgumentNullException("Key");
+            }
+            if (IV is null || IV.Length <= 0)
+            {
+                throw new ArgumentNullException("IV");
+            }
+            try
+            {
+                using (var rijAlg = new RijndaelManaged())
+                {
+                    rijAlg.Key = Key;
+                    rijAlg.IV = IV;
+                    var encryptor = rijAlg.CreateEncryptor(rijAlg.Key, rijAlg.IV);
+                    var msEncrypt = new System.IO.MemoryStream();
+                    // Using msEncrypt As New IO.MemoryStream()
+                    var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write);
+                    // Using csEncrypt As New CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write)
+                    using (var swEncrypt = new System.IO.StreamWriter(csEncrypt))
+                    {
+                        swEncrypt.Write(plainText);
+                    }
+                    return Encoding.Default.GetString(msEncrypt.ToArray());
+                    // End Using
+                    // End Using
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return Convert.ToString(false);
+            }
+
+        }
+
+        private static string DecryptString(byte[] cipherText, byte[] Key, byte[] IV)
+        {
+            if (cipherText is null || cipherText.Length <= 0)
+            {
+                throw new ArgumentNullException("cipherText");
+            }
+            if (Key is null || Key.Length <= 0)
+            {
+                throw new ArgumentNullException("Key");
+            }
+            if (IV is null || IV.Length <= 0)
+            {
+                throw new ArgumentNullException("IV");
+            }
+            try
+            {
+                string plaintext = null;
+                using (var rijAlg = new RijndaelManaged())
+                {
+                    rijAlg.Key = Key;
+                    rijAlg.IV = IV;
+                    var decryptor = rijAlg.CreateDecryptor(rijAlg.Key, rijAlg.IV);
+                    var msDecrypt = new System.IO.MemoryStream(cipherText);
+                    // Using msDecrypt As New IO.MemoryStream(cipherText)
+                    var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
+                    // Using csDecrypt As New CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read)
+                    using (var srDecrypt = new System.IO.StreamReader(csDecrypt))
+                    {
+                        plaintext = srDecrypt.ReadToEnd();
+                    }
+                    // End Using
+                    // End Using
+                }
+                return plaintext;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return Convert.ToString(false);
+            }
+
+        }
+
+        private async Task<string> VerifyRetentionDispositionTypesForParentAndChildren(string ConnectionString, int pTableId)
+        {
+            string sMessage = string.Empty;            Table oTable;            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();
+                    var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableEntites.TableName)).ToListAsync();
+                    var lstRelatedChildTable = await context.RelationShips.Where(x => (x.UpperTableName) == (pTableEntites.TableName)).ToListAsync();
+
+                    if (pTableEntites.RetentionFinalDisposition != 0)
+                    {
+
+                        foreach (var lTableName in lstRelatedTables)
+                        {
+
+                            oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.UpperTableName)).FirstOrDefaultAsync();
+
+                            if (oTable is not null)
+                            {
+                                if (((oTable.RetentionPeriodActive == true) || (oTable.RetentionInactivityActive == true)) && (oTable.RetentionFinalDisposition != 0))
+                                {
+                                    if (oTable.RetentionFinalDisposition != pTableEntites.RetentionFinalDisposition)
+                                        sMessage = Constants.vbTab + Constants.vbTab + oTable.UserName + Constants.vbCrLf;
+                                }
+                                oTable = null;
+                            }
+
+                        }
+
+                        foreach (var lTableName in lstRelatedChildTable)
+                        {
+
+                            oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.LowerTableName)).FirstOrDefaultAsync();
+
+                            if (oTable is not null)
+                            {
+                                if (((oTable.RetentionPeriodActive == true) || (oTable.RetentionInactivityActive == true)) && (oTable.RetentionFinalDisposition != 0))
+                                {
+                                    if ((oTable.RetentionFinalDisposition != pTableEntites.RetentionFinalDisposition))
+                                        sMessage = Constants.vbTab + Constants.vbTab + oTable.UserName + Constants.vbCrLf;
+                                }
+                                oTable = null;
+                            }
+
+                        }
+
+                        if (!string.IsNullOrEmpty(sMessage))
+                        {
+                            sMessage = string.Format("<b>WARNING:</b>;  The following related tables have a retention disposition set differently than this table: <b>{1}</b>; {0} This could give different results than expected. {0};Please correct the appropriate table if this is not what is intended.", Environment.NewLine, sMessage);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return sMessage;
+        }
+
+        private bool SaveNewFieldToTable(string sTableName, string sFieldName, Enums.DataTypeEnum FieldType, int iViewsId, string ConnectionString)
+        {
+            string sSQL;
+
+            sFieldName = Strings.Replace(sFieldName, "* ", "");
+            sSQL = "ALTER TABLE [" + sTableName + "]";
+
+            switch (FieldType)
+            {
+                case Enums.DataTypeEnum.rmDate:
+                case Enums.DataTypeEnum.rmDBDate:
+                case Enums.DataTypeEnum.rmDBTime:
+                    {
+                        sSQL = sSQL + " ADD [" + Strings.Trim(sFieldName) + "] DATETIME NULL";
+                        break;
+                    }
+                case Enums.DataTypeEnum.rmBoolean:
+                    {
+                        sSQL = sSQL + " ADD [" + Strings.Trim(sFieldName) + "] BIT";
+                        break;
+                    }
+
+                default:
+                    {
+                        sSQL = sSQL + " ADD [" + Strings.Trim(sFieldName) + "] VARCHAR(20) NULL";
+                        break;
+                    }
+            }
+
+            SQLViewDelete(iViewsId, ConnectionString);
+
+            try
+            {
+                return Convert.ToInt32(ExecuteSqlCommand(ConnectionString, sSQL, false)) > -1;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private async void SQLViewDelete(int Id, string ConnectionString)
+        {
+            string sql = string.Format("IF OBJECT_ID('view__{0}', 'V') IS NOT NULL DROP VIEW [view__{0}]", Id.ToString());
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    await conn.ExecuteAsync(sql, commandType: CommandType.Text);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+        }
+
+        private bool ExecuteSqlCommand(string ConnectionString ,string sSQL, bool bDoNoCount = false)
+        {
+            int recordaffected = default;
+
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    if (bDoNoCount)
+                    {
+                        sSQL = "SET NOCOUNT OFF;" + sSQL + ";SET NOCOUNT ON";
+                    }
+                    recordaffected = conn.Execute(sSQL, commandType: CommandType.Text);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
         #endregion
     }
 }
