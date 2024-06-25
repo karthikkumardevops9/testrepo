@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MSRecordsEngine.Entities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -206,5 +208,247 @@ namespace MSRecordsEngine.Services
 
             return context.Connection.RemoteIpAddress?.ToString() ?? "Unable to determine client IP address.";
         }
+
+        public string GetConnectionString(Databas DBToOpen, bool includeProvider)
+        {
+            string sConnect = string.Empty;
+            if (includeProvider)
+                sConnect = string.Format("Provider={0}; ", DBToOpen.DBProvider);
+
+            sConnect += string.Format("Data Source={0}; Initial Catalog={1}; ", DBToOpen.DBServer, DBToOpen.DBDatabase);
+
+            if (!string.IsNullOrEmpty(DBToOpen.DBUserId))
+            {
+                sConnect += string.Format("User Id={0}; Password={1};", DBToOpen.DBUserId, DBToOpen.DBPassword);
+            }
+            else
+            {
+                sConnect += "Persist Security Info=True;Integrated Security=SSPI;";
+                // sConnect = Keys.DefaultConnectionString(True, DBToOpen.DBDatabase)
+            }
+
+            return sConnect;
+        }
+
+        public string GetConvertCultureDate(string strDate, string cShortDatePattern, string timeOffSetVal, bool bWithTime = false, bool bConvertToLocalTimeZone = true, bool bDetectTime = false)
+        {
+            DateTime dtPreFormat;
+            if (string.IsNullOrWhiteSpace(strDate))
+                return strDate;
+
+            try
+            {
+                dtPreFormat = DateTime.Parse(strDate);
+            }
+            catch (Exception)
+            {
+                dtPreFormat = DateTime.ParseExact(strDate, cShortDatePattern + " hh:mm:ss tt", CultureInfo.InvariantCulture);
+            }
+
+            return GetConvertCultureDate(dtPreFormat, cShortDatePattern, timeOffSetVal, bWithTime, bConvertToLocalTimeZone, bDetectTime);
+        }
+
+        public string InjectWhereIntoSQL(string sSQL, string sNewWhere, string sOperator = "AND")
+        {
+            string sInitWhere = string.Empty;
+            string sInitOrderBy = string.Empty;
+            string sInitSelect = string.Empty;
+            string sRetVal = sSQL;
+
+            sSQL = NormalizeString(sSQL);
+            int iPos = sSQL.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+
+            if (iPos > 0)
+            {
+                sInitSelect = sSQL.Substring(0, iPos).Trim();
+                sInitWhere = sSQL.Substring(iPos + " WHERE ".Length).Trim();
+
+                iPos = sInitWhere.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
+                if (iPos > 0)
+                {
+                    sInitOrderBy = sInitWhere.Substring(iPos + " ORDER BY ".Length).Trim();
+                    sInitWhere = sInitWhere.Substring(0, iPos).Trim();
+                }
+            }
+            else
+            {
+                iPos = sSQL.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
+                if (iPos > 0)
+                {
+                    sInitOrderBy = sSQL.Substring(iPos + " ORDER BY ".Length).Trim();
+                    sInitSelect = sSQL.Substring(0, iPos).Trim();
+                }
+                else
+                {
+                    sInitSelect = sSQL.Trim();
+                }
+            }
+
+            sRetVal = sInitSelect;
+
+            if (!string.IsNullOrEmpty(sInitWhere))
+            {
+                if (!string.IsNullOrEmpty(sNewWhere.Trim()))
+                {
+                    sRetVal += " WHERE (" + ParenEncloseStatement(sInitWhere) + " " + sOperator + " " + ParenEncloseStatement(sNewWhere) + ")";
+                }
+                else
+                {
+                    sRetVal += " WHERE " + ParenEncloseStatement(sInitWhere);
+                }
+            }
+            else if (!string.IsNullOrEmpty(sNewWhere.Trim()))
+            {
+                sRetVal += " WHERE " + ParenEncloseStatement(sNewWhere);
+            }
+
+            if (!string.IsNullOrEmpty(sInitOrderBy))
+                sRetVal += " ORDER BY " + sInitOrderBy;
+
+            return sRetVal;
+        }
+
+        private string NormalizeString(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return string.Empty;
+
+            s = s.Replace("\t", " ");
+            s = s.Replace("\r", " ");
+            s = s.Replace("\n", " ");
+
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+
+            return s;
+        }
+
+        private string ParenEncloseStatement(string sSQL)
+        {
+            if (string.IsNullOrEmpty(sSQL))
+                return sSQL;
+
+            bool bInString = false;
+            int iParenCount = 0;
+            int iMaxParenCount = 0;
+            bool bDoEnclose = false;
+
+            for (int iIndex = 0; iIndex < sSQL.Length; iIndex++)
+            {
+                char sCurChar = sSQL[iIndex];
+
+                if (sCurChar == '"')
+                {
+                    bInString = !bInString;
+                }
+
+                if (!bInString)
+                {
+                    if (sCurChar == '(')
+                    {
+                        iParenCount++;
+                    }
+                    else if (sCurChar == ')')
+                    {
+                        iParenCount--;
+                    }
+                }
+
+                if (iParenCount > iMaxParenCount)
+                {
+                    iMaxParenCount = iParenCount;
+                }
+
+                if (iParenCount == 0 && iIndex > 0 && iIndex < sSQL.Length - 1 && iMaxParenCount > 0)
+                {
+                    bDoEnclose = true;
+                    break;
+                }
+            }
+
+            if (iMaxParenCount == 0)
+            {
+                bDoEnclose = true;
+            }
+
+            if (bDoEnclose)
+            {
+                return "(" + sSQL + ")";
+            }
+            else
+            {
+                return sSQL;
+            }
+        }
+
+        private string GetConvertCultureDate(DateTime dtPreFormat, string cShortDatePattern, string timeOffSetVal, bool bWithTime = false, bool bConvertToLocalTimeZone = true, bool bDetectTime = false)
+        {
+            string dtCultureFormat = string.Empty;
+            if (dtPreFormat == default)
+                return dtCultureFormat;
+            if (bDetectTime)
+                bWithTime = IncludesTime(dtPreFormat);
+
+            if (bWithTime)
+            {
+                try
+                {
+                    if (bConvertToLocalTimeZone)
+                        dtPreFormat = ToClientTimeDate(dtPreFormat.ToUniversalTime(), timeOffSetVal);
+                    dtCultureFormat = dtPreFormat.ToString(cShortDatePattern + " hh:mm:ss tt", CultureInfo.InvariantCulture);
+                }
+                // dtCultureFormat = Date.Parse(strDate, New CultureInfo("en-US")).ToString(Keys.GetCultureCookies().DateTimeFormat.ShortDatePattern, CultureInfo.InvariantCulture)
+                catch (Exception)
+                {
+                    if (bConvertToLocalTimeZone)
+                    {
+                        dtCultureFormat = ToClientTimeDate(dtPreFormat.ToUniversalTime(), timeOffSetVal).ToShortDateString();
+                    }
+                    else
+                    {
+                        dtCultureFormat = dtPreFormat.ToShortDateString();
+                    }
+                }
+            }
+            else
+            {
+                try
+                {
+                    dtCultureFormat = dtPreFormat.ToString(cShortDatePattern, CultureInfo.InvariantCulture);
+                }
+                // dtCultureFormat = Date.Parse(strDate, New CultureInfo("en-US")).ToString(Keys.GetCultureCookies().DateTimeFormat.ShortDatePattern, CultureInfo.InvariantCulture)
+                catch (Exception)
+                {
+                    dtCultureFormat = dtPreFormat.ToShortDateString();
+                }
+            }
+
+            return dtCultureFormat;
+        }
+
+        private bool IncludesTime(DateTime dt)
+        {
+            var standartTime = new TimeSpan(0, 0, 0, 0, 0);
+            int intval = dt.TimeOfDay.CompareTo(standartTime);
+            return intval != 0;
+        }
+
+        private DateTime ToClientTimeDate(DateTime dt, string timeOffSetVal)
+        {
+            if (!string.IsNullOrEmpty(timeOffSetVal))
+            {
+                // read the value from session
+                if (timeOffSetVal is not null)
+                {
+                    int offset = int.Parse(timeOffSetVal.ToString());
+                    dt = dt.AddMinutes(-1 * offset);
+
+                    return dt;
+                }
+            }
+            // if there is no offset in session return the datetime in server timezone
+            return dt.ToLocalTime();
+        }
+
     }
 }
