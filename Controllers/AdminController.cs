@@ -22,9 +22,7 @@ using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.Entity.Validation;
 using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
 using System.Linq;
-using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -1678,7 +1676,7 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
-        #region Bar Code Search Order All Methods Moved
+        #region Bar Code Search Order All Methods Moved 
 
         [Route("GetBarCodeList")]
         [HttpPost]
@@ -1828,7 +1826,7 @@ namespace MSRecordsEngine.Controllers
                             await context.SaveChangesAsync();
                             model.ErrorType = "s";
                             model.ErrorMessage = "Selected Barcode Search order updated successfully";
-                        }  
+                        }
                     }
                     else if (await context.ScanLists.AnyAsync(x => (x.TableName) == (pBarCodeSearchEntity.TableName) && (x.FieldName) == (pBarCodeSearchEntity.FieldName)))
                     {
@@ -1997,7 +1995,7 @@ namespace MSRecordsEngine.Controllers
                 var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();                model.ErrorType = "s";                model.ErrorMessage = "Record saved successfully";                bTrackable = passport.CheckPermission(pTableEntites.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);                if (pTableEntites == null)                {                    return new ReturnGetRetentionPropertiesData
                     {
                         Success = false,
-                        ErrorType= "e",
+                        ErrorType = "e",
                         ErrorMessage = "Record not found."
                     };                }                var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntites.TableName.Trim().ToLower())).FirstOrDefaultAsync();                var dbRecordSet = SchemaInfoDetails.GetTableSchemaInfo(pTableEntites.TableName, passport.ConnectionString);                if (!dbRecordSet.Exists(x => x.ColumnName == "RetentionCodesId"))                {                    lstRetentionCode = "* RetentionCodesId";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOpened"))                {                    lstDateOpened = "* DateOpened";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateClosed"))                {                    lstDateClosed = "* DateClosed";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateCreated"))                {                    lstDateCreated = "* DateCreated";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOther"))                {                    lstDateOther = "* DateOther";                    bFootNote = true;                }                foreach (var oSchemaColumn in dbRecordSet)                {                    if (!SchemaInfoDetails.IsSystemField(oSchemaColumn.ColumnName))                    {                        if (oSchemaColumn.IsADate)                        {                            lstDateFields.Add(oSchemaColumn.ColumnName);                        }                        else if (oSchemaColumn.IsString && oSchemaColumn.CharacterMaxLength == 20)                        {                            lstRetCodeFields.Add(oSchemaColumn.ColumnName);                        }                    }                }                var Setting = new JsonSerializerSettings();                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;                lstRetCodeFields.Sort();                lstDateFields.Sort();
 
@@ -2032,7 +2030,7 @@ namespace MSRecordsEngine.Controllers
                     pSystemEntity.RetentionTurnOffCitations = setRetentionParametersParam.IsUseCitaions;
                     pSystemEntity.RetentionYearEnd = setRetentionParametersParam.YearEnd;
                     context.Entry(pSystemEntity).State = EntityState.Modified;
-                    await context.SaveChangesAsync();    
+                    await context.SaveChangesAsync();
 
                     var pServiceTasks = await context.SLServiceTasks.OrderBy(x => x.Id).FirstOrDefaultAsync();
                     pServiceTasks.Interval = setRetentionParametersParam.InactivityPeriod;
@@ -2172,7 +2170,7 @@ namespace MSRecordsEngine.Controllers
                             pTableEntites.RetentionDateOtherField = pOtherDate;
                         }
                     }
-                    
+
                     context.Entry(pTableEntites).State = EntityState.Modified;
                     await context.SaveChangesAsync();
                     msgVerifyRetDisposition = await VerifyRetentionDispositionTypesForParentAndChildren(setRetentionTblPropDataParam.ConnectionString, pTableEntites.TableId);
@@ -2209,6 +2207,1226 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
+        #region Security All Methods Moved
+
+        [Route("CheckModuleLevelAccess")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> CheckModuleLevelAccess(CheckModuleLevelAccessParams checkModuleLevelAccessParams) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var passport = checkModuleLevelAccessParams.passport;
+            var TablePermission = checkModuleLevelAccessParams.TablePermission;
+            var iCntRpt = checkModuleLevelAccessParams.iCntRpt;
+            var ViewPermission = checkModuleLevelAccessParams.ViewPermission;
+            try
+            {
+                var mdlAccessDictionary = new Dictionary<string, bool>();
+                bool bAddTabApplication = false;
+                bool bAddTabDatabase = false;
+                bool bAddTabDirectories = false;
+                bool bAddTabData = false;
+                bool bAddTabTables = false;
+                bool bAddTabViews = false;
+                bool bAddTabReports = false;
+                bool bAddTabSecuirty = false;
+
+                bool mbSecuriyGroup = false;
+                bool mbMgrGroup = false;
+                bool bAtLeastOneTablePermission = false;
+                bool bAtLeastOneViewPermission = false;
+                bool bAdminPermission = false;
+                int iCntRpts = 0;
+
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var lViewEntities = await context.Views.ToListAsync();
+
+                    mbSecuriyGroup = passport.CheckPermission(Common.SECURE_SECURITY, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Application, (Permissions.Permission)Enums.PassportPermissions.Access) | passport.CheckPermission(Common.SECURE_SECURITY_USER, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Application, (Permissions.Permission)Enums.PassportPermissions.Access);
+                    mbMgrGroup = passport.CheckAdminPermission(Permissions.Permission.Access);
+
+                    if (mbMgrGroup)
+                    {
+                        bAddTabApplication = true;
+                        bAddTabDatabase = true;
+                        bAddTabData = true;
+                    }
+                    bAddTabDirectories = passport.CheckPermission(Common.SECURE_STORAGE, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Application, (Permissions.Permission)Enums.PassportPermissions.Access);
+
+                    iCntRpts = CollectionsClass.CheckReportsPermission(await context.Tables.ToListAsync(), await context.Views.ToListAsync(), passport, iCntRpt);
+                    bAddTabReports = mbMgrGroup | iCntRpts > 0 | passport.CheckPermission(Common.SECURE_REPORT_STYLES, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Application, (Permissions.Permission)Enums.PassportPermissions.Access);
+
+                    if (mbSecuriyGroup)
+                    {
+                        bAddTabSecuirty = true;
+                    }
+                    bAtLeastOneTablePermission = CollectionsClass.CheckTablesPermission(lTableEntities, mbMgrGroup, passport, TablePermission);
+                    bAtLeastOneViewPermission = CollectionsClass.CheckViewsPermission(lViewEntities, mbMgrGroup, passport, TablePermission, ViewPermission);
+                    bAdminPermission = passport.CheckAdminPermission(Permissions.Permission.Access);
+
+                    bAddTabTables = mbMgrGroup | bAtLeastOneTablePermission;
+                    bAddTabViews = mbMgrGroup | bAtLeastOneViewPermission;
+
+                    mdlAccessDictionary.Add("Application", bAddTabApplication);
+                    mdlAccessDictionary.Add("Database", bAddTabDatabase);
+                    mdlAccessDictionary.Add("Directories", bAddTabDirectories);
+                    mdlAccessDictionary.Add("Data", bAddTabData);
+                    mdlAccessDictionary.Add("Tables", bAddTabTables);
+                    mdlAccessDictionary.Add("Views", bAddTabViews);
+                    mdlAccessDictionary.Add("Reports", bAddTabReports);
+                    mdlAccessDictionary.Add("Security", bAddTabSecuirty);
+                    mdlAccessDictionary.Add("AdminPermission", bAdminPermission);
+
+                    model.DictionaryResult = mdlAccessDictionary;
+                    model.AtLeastOneViewPermissionSessionValue = bAtLeastOneViewPermission;
+                    model.AtLeastOneTablePermissionSessionValue = bAtLeastOneTablePermission;
+                    model.intValue = iCntRpts;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
+            }
+
+            return model;
+        }
+
+        [Route("ValidateApplicationLink")]
+        [HttpPost]
+        public async Task<int> ValidateApplicationLink(ValidateApplicationLinkReq req) //completed testing 
+        {
+            var passport = req.passport;
+            using (var context = new TABFusionRMSContext(passport.ConnectionString))
+            {
+                var oTables = await context.Tables.ToListAsync();
+                bool bHaveRights = false;
+
+                if (passport.CheckPermission(req.pModuleNameStr, Smead.Security.SecureObject.SecureObjectType.Application, Permissions.Permission.Access))
+                {
+                    if (req.pModuleNameStr == "Import Setup")
+                    {
+                        foreach (var oTable in oTables)
+                        {
+                            if (!CollectionsClass.IsEngineTable(oTable.TableName) | CollectionsClass.IsEngineTableOkayToImport(oTable.TableName))
+                            {
+                                if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Import))
+                                {
+                                    bHaveRights = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!bHaveRights)
+                        {
+                            if (passport.CheckPermission(Common.SECURE_TRACKING, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Application, (Permissions.Permission)Enums.PassportPermissions.Access))
+                            {
+                                bHaveRights = true;
+                            }
+                        }
+
+                        if (bHaveRights)
+                        {
+                            return 1;
+                        }
+                        else
+                        {
+                            return 2;
+                        } // Here 2 indicates permission issues for importing table.
+                    }
+                    else
+                    {
+                        return 1;
+                    }
+                }
+                else
+                {
+                    return 0;
+                }
+
+            }
+        }
+
+        #region Users All Methods moved
+
+        [Route("LoadSecurityUserGridData")]
+        [HttpPost]
+        public string LoadSecurityUserGridData(LoadSecurityUserGridDataParams loadSecurityUserGridDataParams) //completed testing 
+        {
+            var jsonObject = string.Empty;
+            var page = loadSecurityUserGridDataParams.page;
+            var sord = loadSecurityUserGridDataParams.sord;
+            var rows = loadSecurityUserGridDataParams.rows;
+            try
+            {
+                using (var context = new TABFusionRMSContext(loadSecurityUserGridDataParams.ConnectionString))
+                {
+                    var pSecureUserEntities = from t in context.SecureUsers
+                                              where t.UserID != -1 & (t.AccountType.ToLower() == "s" | t.AccountType.ToLower() == "z")
+                                              select new { t.UserID, t.UserName, t.Email, t.FullName, t.AccountDisabled, t.MustChangePassword };
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSecureUserEntities.GetJsonListForGrid(sord, page, rows, "UserName"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return jsonObject;
+        }
+
+        [Route("SetUserDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetUserDetails(SetUserDetailsParams pUserEntity) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(pUserEntity.ConnectionString))
+                {
+                    int pNextUserID = 0;
+                    if (pUserEntity.UserID > 0)
+                    {
+                        if (await context.SecureUsers.AnyAsync(x => (x.UserName.Trim().ToLower()) == (pUserEntity.UserName.Trim().ToLower()) && x.UserID != pUserEntity.UserID) == false)
+                        {
+                            var pUserProfileEntity = await context.SecureUsers.Where(x => x.UserID == pUserEntity.UserID).FirstOrDefaultAsync();
+                            {
+                                pUserProfileEntity.UserName = Convert.ToString(Interaction.IIf(pUserEntity.UserName is null, "", pUserEntity.UserName));
+                                pUserProfileEntity.FullName = Convert.ToString(Interaction.IIf(pUserEntity.FullName is null, "", pUserEntity.FullName));
+                                pUserProfileEntity.Email = Convert.ToString(Interaction.IIf(pUserEntity.Email is null, "", pUserEntity.Email));
+                                pUserProfileEntity.Misc1 = pUserEntity.Misc1;
+                                pUserProfileEntity.Misc2 = pUserEntity.Misc2;
+                                pUserProfileEntity.AccountDisabled = pUserEntity.AccountDisabled;
+                            }
+
+                            context.Entry(pUserProfileEntity).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Changes made on selected user are updated successfully"; // Fixed FUS-6054
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The User Name {0} is already in use. Please use different User Name", pUserEntity.UserName);
+                        }
+                    }
+                    else if (await context.SecureUsers.AnyAsync(x => (x.UserName.Trim().ToLower()) == (pUserEntity.UserName.Trim().ToLower())) == false)
+                    {
+                        var newUserEntity = new SecureUser();
+                        newUserEntity.PasswordHash = "";
+                        newUserEntity.AccountType = "S";
+                        newUserEntity.PasswordUpdate = DateTime.Now;
+                        newUserEntity.MustChangePassword = true;
+                        newUserEntity.FullName = Convert.ToString(Interaction.IIf(pUserEntity.FullName is null, "", pUserEntity.FullName));
+                        newUserEntity.Email = Convert.ToString(Interaction.IIf(pUserEntity.Email is null, "", pUserEntity.Email));
+                        newUserEntity.AccountDisabled = pUserEntity.AccountDisabled;
+                        newUserEntity.DisplayName = pUserEntity.UserName;
+                        newUserEntity.UserName = pUserEntity.UserName;
+
+                        context.SecureUsers.Add(newUserEntity);
+                        await context.SaveChangesAsync();
+
+                        //pNextUserID = pUserEntity.UserID; --need to debuge the value 
+                        newUserEntity.PasswordHash = Smead.Security.Encrypt.HashPassword(pNextUserID, "password$");
+
+                        context.Entry(newUserEntity).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "New User has been added into list of Users successfully"; // Fixed FUS-6057
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The User Name {0} is already in use. Please use different User Name", pUserEntity.UserName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        // Get the user details for EDIT purpose.
+        [Route("EditUserProfile")]
+        [HttpGet]
+        public async Task<string> EditUserProfile(string ConnectionString, int UserId) //completed testing
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pUserProfileEntity = await context.SecureUsers.Where(x => x.UserID == UserId).FirstOrDefaultAsync();
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pUserProfileEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return jsonObject;
+        }
+
+        [Route("DeleteUserProfile")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteUserProfile(string ConnectionString, int UserId) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pUserProfileEntity = await context.SecureUsers.Where(x => x.UserID == UserId).FirstOrDefaultAsync();
+                    var pUserGroupEntities = await context.SecureUserGroups.Where(x => x.UserID == UserId).ToListAsync();
+
+                    context.SecureUsers.Remove(pUserProfileEntity);
+                    await context.SaveChangesAsync();
+                    context.SecureUserGroups.RemoveRange(pUserGroupEntities);
+                    await context.SaveChangesAsync();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected User has been deleted from the list of Users successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetUserPassword")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetUserPassword(SetUserPasswordParams setUserPasswordParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setUserPasswordParams.ConnectionString))
+                {
+                    var pUserEntity = await context.SecureUsers.Where(x => x.UserID == setUserPasswordParams.UserId).FirstOrDefaultAsync();
+                    pUserEntity.PasswordHash = Smead.Security.Encrypt.HashPassword(setUserPasswordParams.UserId, setUserPasswordParams.UserPassword);
+                    pUserEntity.MustChangePassword = setUserPasswordParams.CheckedState;
+
+                    context.Entry(pUserEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Password has been changed successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetGroupsAgainstUser")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetGroupsAgainstUser(SetGroupsAgainstUserParams setGroupsAgainstUserParams) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(setGroupsAgainstUserParams.ConnectionString))
+                {
+                    var pSecureUserGroup = new SecureUserGroup();
+                    var pUserGrpEntities = await context.SecureUserGroups.Where(x => x.UserID == setGroupsAgainstUserParams.UserID).ToListAsync();
+                    context.SecureUserGroups.RemoveRange(pUserGrpEntities);
+                    await context.SaveChangesAsync();
+                    if (!setGroupsAgainstUserParams.GroupList.GetValue(0).ToString().Equals("None"))
+                    {
+                        if (setGroupsAgainstUserParams.GroupList.Length > 0)
+                        {
+                            foreach (var gid in setGroupsAgainstUserParams.GroupList)
+                            {
+                                pSecureUserGroup.UserID = setGroupsAgainstUserParams.UserID;
+                                pSecureUserGroup.GroupID = Convert.ToInt32(gid);
+
+                                context.SecureUserGroups.Add(pSecureUserGroup);
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Selected Group has been assigned to the User Successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "Please select at least one group";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetAssignedGroupsForUser")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetAssignedGroupsForUser(string ConnectionString, int UserId) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var lstGroups = new List<string>();
+            List<SecureUserGroup> pSecureGroupUserEntities;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    pSecureGroupUserEntities = await context.SecureUserGroups.Where(x => x.UserID == UserId).ToListAsync();
+
+                    foreach (SecureUserGroup item in pSecureGroupUserEntities)
+                        lstGroups.Add(item.GroupID.ToString());
+
+                    var pSecureGroupEntities = await (from t in context.SecureGroups
+                                                  where lstGroups.Contains(t.GroupID.ToString())
+                                                  orderby t.GroupName ascending
+                                                  select t).ToListAsync();
+                    foreach (var item in pSecureGroupEntities)
+                    {
+                        item.SecureUserGroups.Clear();
+                        item.SecureObjectPermissions.Clear();
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(pSecureGroupEntities, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data Retrieved.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetAllGroupsList")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetAllGroupsList(string ConnectionString) //completed testing  
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            List<SecureGroup> lstAllGroups;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    lstAllGroups = await context.SecureGroups.Where(x => x.GroupID != -1).OrderBy(x => x.GroupName).ToListAsync();
+
+                    foreach (var item in lstAllGroups)
+                    {
+                        item.SecureObjectPermissions.Clear();
+                        item.SecureUserGroups.Clear();
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(lstAllGroups, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data Retrieved.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("UnlockUserAccount")]
+        [HttpPost]
+        public ReturnErrorTypeErrorMsg UnlockUserAccount(UnlockUserAccountParams unlockUserAccountParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                unlockUserAccountParams.passport.LogFailedLogs("Unlock", unlockUserAccountParams.OperatorId);
+
+                model.ErrorType = "s";
+                model.ErrorMessage = string.Format("'{0}' user account unlocked successfully", unlockUserAccountParams.OperatorId);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Groups All Methods moved 
+
+        [Route("LoadSecurityGroupGridData")]
+        [HttpGet]
+        public string LoadSecurityGroupGridData(string sord, int page, int rows, string ConnectionString) //completed testing
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSecureGroupEntities = from t in context.SecureGroups
+                                               select new { t.GroupID, t.GroupName, t.Description, t.ActiveDirectoryGroup, AutoLockSeconds = t.AutoLockSeconds / 60d, AutoLogOffSeconds = t.AutoLogOffSeconds / 60d };
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSecureGroupEntities.GetJsonListForGrid(sord, page, rows, "GroupName"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+
+            return jsonObject;
+        }
+
+        [Route("SetGroupDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetGroupDetails(SetGroupDetailsParams pGroupEntity) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var newGroupEntity = new SecureGroup();
+            try
+            {
+                using (var context = new TABFusionRMSContext(pGroupEntity.ConnectionString))
+                {
+                    if (pGroupEntity.GroupID > -2)
+                    {
+                        var pGroupProfileEntity = await context.SecureGroups.Where(x => x.GroupID == pGroupEntity.GroupID).FirstOrDefaultAsync();
+
+                        pGroupProfileEntity.GroupName = pGroupEntity.GroupName;
+                        pGroupProfileEntity.Description = string.IsNullOrEmpty(pGroupEntity.Description) ? "" : pGroupEntity.Description;
+                        pGroupProfileEntity.ActiveDirectoryGroup = string.IsNullOrEmpty(pGroupEntity.ActiveDirectoryGroup) ? "" : pGroupEntity.ActiveDirectoryGroup;
+                        pGroupProfileEntity.AutoLockSeconds = Convert.ToInt32(Interaction.IIf(Convert.ToBoolean(pGroupEntity.AutoLockSeconds), pGroupEntity.AutoLockSeconds * 60, 0));
+                        pGroupProfileEntity.AutoLogOffSeconds = Convert.ToInt32(Interaction.IIf(Convert.ToBoolean(pGroupEntity.AutoLogOffSeconds), pGroupEntity.AutoLogOffSeconds * 60, 0));
+
+                        context.Entry(pGroupProfileEntity).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Changes made on selected group are updated successfully"; 
+                    }
+                    else if (await context.SecureGroups.AnyAsync(x => (x.GroupName.Trim().ToLower()) == (pGroupEntity.GroupName.Trim().ToLower())) == false)
+                    {
+                        newGroupEntity.GroupName = Convert.ToString(Interaction.IIf(pGroupEntity.GroupName is null, "", pGroupEntity.GroupName));
+                        newGroupEntity.Description = Convert.ToString(Interaction.IIf(pGroupEntity.Description is null, "", pGroupEntity.Description));
+                        newGroupEntity.ActiveDirectoryGroup = string.IsNullOrEmpty(pGroupEntity.ActiveDirectoryGroup) ? "" : pGroupEntity.ActiveDirectoryGroup;
+                        newGroupEntity.AutoLockSeconds = Convert.ToInt32(Interaction.IIf(Convert.ToBoolean(pGroupEntity.AutoLockSeconds), pGroupEntity.AutoLockSeconds * 60, 0));
+                        newGroupEntity.AutoLogOffSeconds = Convert.ToInt32(Interaction.IIf(Convert.ToBoolean(pGroupEntity.AutoLogOffSeconds), pGroupEntity.AutoLogOffSeconds * 60, 0));
+                        newGroupEntity.GroupType = "USERGROUP";
+
+                        context.SecureGroups.Add(newGroupEntity);
+                        await context.SaveChangesAsync();
+
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "New Group has been added into list of Groups successfully"; 
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "This Group name has been already defined";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("EditGroupProfile")]
+        [HttpGet]
+        public async Task<string> EditGroupProfile(string ConnectionString, int GroupId) //completed testing
+        {
+            var jsonObject = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pGroupProfileEntity = await context.SecureGroups.Where(x => x.GroupID == GroupId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pGroupProfileEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+
+            return jsonObject;
+        }
+
+        [Route("DeleteGroupProfile")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteGroupProfile(string ConnectionString, int GroupId) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pGroupProfileEntity = await context.SecureGroups.Where(x => x.GroupID == GroupId).FirstOrDefaultAsync();
+                    var pUserGroupEntities = await context.SecureUserGroups.Where(x => x.GroupID == GroupId).ToListAsync();
+
+                    context.SecureGroups.Remove(pGroupProfileEntity);
+                    context.SecureUserGroups.RemoveRange(pUserGroupEntities);
+                    await context.SaveChangesAsync();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected Group has been deleted from the list of Groups successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetAssignedUsersForGroup")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetAssignedUsersForGroup(string ConnectionString, int GroupId) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var lstUsers = new List<string>();
+            List<SecureUserGroup> pSecureGroupUserEntities;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    pSecureGroupUserEntities = await context.SecureUserGroups.Where(x => x.GroupID == GroupId).ToListAsync();
+
+                    foreach (SecureUserGroup item in pSecureGroupUserEntities)
+                        lstUsers.Add(item.UserID.ToString());
+
+                    var pSecureUserEntities = await (from t in context.SecureUsers
+                                                 where lstUsers.Contains(t.UserID.ToString())
+                                                 orderby t.UserName ascending
+                                                 select t).ToListAsync();
+
+                    foreach (var item in pSecureUserEntities)
+                    {
+                        item.SecureUserGroups.Clear();
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(pSecureUserEntities, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "msgAdminCtrlDataSavedSuccessfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetAllUsersList")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetAllUsersList(string ConnectionString) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            List<SecureUser> lstAllUsers;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    lstAllUsers = await context.SecureUsers.Where(x => x.UserID != -1).OrderBy(x => x.UserName).ToListAsync();
+
+                    foreach (var item in lstAllUsers)
+                    {
+                        item.SecureUserGroups.Clear();
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(lstAllUsers, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data Retrieved.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetUsersAgainstGroup")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetUsersAgainstGroup(SetUsersAgainstGroupParams setUsersAgainstGroupParams) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pSecureUserGroup = new SecureUserGroup();
+            try
+            {
+                using (var context = new TABFusionRMSContext(setUsersAgainstGroupParams.ConnectionString))
+                {
+                    var pUserGrpEntities = await context.SecureUserGroups.Where(x => x.GroupID == setUsersAgainstGroupParams.GroupId).ToListAsync();
+                    context.SecureUserGroups.RemoveRange(pUserGrpEntities);
+                    await context.SaveChangesAsync();
+                    if (setUsersAgainstGroupParams.UserList != null)
+                    {
+                        if (setUsersAgainstGroupParams.UserList.Length > 0)
+                        {
+                            foreach (var uid in setUsersAgainstGroupParams.UserList)
+                            {
+                                pSecureUserGroup.GroupID = setUsersAgainstGroupParams.GroupId;
+                                pSecureUserGroup.UserID = Convert.ToInt32(uid);
+
+                                context.SecureUserGroups.Add(pSecureUserGroup);
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Selected user/s are assigned to the Group successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Please select at least one group";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Securables All Methods moved
+
+        [Route("GetListOfSecurablesType")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetListOfSecurablesType(string ConnectionString) //Completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSecureObjectEntity = await context.SecureObjects.Where(x => x.BaseID == 0 & x.SecureObjectID > 0 & x.Name.Substring(0, 1) != " ").OrderBy(x => x.Name).ToListAsync();
+
+                    var secureObjectsList = new List<SecureObjectsReturn>();
+                    foreach (var item in pSecureObjectEntity)
+                    {
+                        var secureObjectReturn = new SecureObjectsReturn
+                        {
+                            SecureObjectID = item.SecureObjectID,
+                            Name = item.Name,
+                            SecureObjectTypeID = item.SecureObjectTypeID,
+                            BaseID = item.BaseID
+                        };
+
+                        secureObjectsList.Add(secureObjectReturn);
+                    }
+                    
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(secureObjectsList, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data retrieved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetListOfSecurableObjects")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetListOfSecurableObjects(string ConnectionString, int SecurableTypeID) //Completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    List<SecureObjectPermission> sopData = null;
+                    sopData = await context.SecureObjectPermissions.ToListAsync();
+                    var pSecureObjectEntity = await (from o in context.SecureObjects
+                                          join v in context.SecureObjects on o.BaseID equals v.SecureObjectID into ov
+                                          let ParentName = ov.FirstOrDefault().Name
+                                          where o.BaseID != 0 & o.SecureObjectTypeID == SecurableTypeID & !o.Name.StartsWith("slRetention") & !o.Name.StartsWith("security")
+                                          orderby o.Name
+                                          select new { o.SecureObjectID, o.Name, o.SecureObjectTypeID, o.BaseID, ParentName }).ToListAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(pSecureObjectEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data retrieved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetPermissionsForSecurableObject")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetPermissionsForSecurableObject(string ConnectionString, int SecurableObjID) //Completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var dtPermissions = new DataTable();
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    var sql = "SP_RMS_GetPermissionInfoForSecurableObj";
+                    var param = new DynamicParameters();
+                    param.Add("@SecurableObjID", SecurableObjID);
+                    var res = await conn.ExecuteReaderAsync(sql, param, commandType: CommandType.StoredProcedure);
+                    if (res != null) 
+                        dtPermissions.Load(res);
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(dtPermissions, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data retrieved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetPermissionsToSecurableObject")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetPermissionsToSecurableObject(SetPermissionsToSecurableObjectParams setPermissionsToSecurableObjectParams) //Completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pSecurableObjIds = setPermissionsToSecurableObjectParams.SecurableObjIds;
+            var pPermisionIds = setPermissionsToSecurableObjectParams.PermisionIds;
+            var pPermissionRvmed = setPermissionsToSecurableObjectParams.PermissionRvmed;
+
+            var pTempPermissionIds = new List<int>();
+            var pPermissionEntity = new SecureObjectPermission();
+            var pSecurableIdsForView = new List<Entities.SecureObject>();
+            var connectionString = setPermissionsToSecurableObjectParams.Passport.ConnectionString;
+            try
+            {
+                using (var context = new TABFusionRMSContext(connectionString))
+                {
+                    if (pSecurableObjIds.Length > 0)
+                    {
+                        foreach (int pSecurableID in pSecurableObjIds)
+                        {
+                            // Add all permission Id's which are new.
+                            if (!(pPermisionIds == null))
+                            {
+                                if (pPermisionIds.Count > 0)
+                                {
+                                    foreach (var pPermissionId in pPermisionIds)
+                                    {
+                                        if (!(await context.SecureObjectPermissions.AnyAsync(x => (x.GroupID == 0 && x.SecureObjectID == pSecurableID) & x.PermissionID == pPermissionId)))
+                                        {
+                                            // 'Assigned new permission
+                                            AddNewSecureObjectPermission(pSecurableID, pPermissionId, connectionString);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Remove permission ids
+                            if (!(pPermissionRvmed == null))
+                            {
+                                if (pPermissionRvmed.Count > 0)
+                                {
+                                    // Remove all associated secure object permission for Views
+                                    pSecurableIdsForView = await context.SecureObjects.Where(x => x.BaseID == pSecurableID & x.SecureObjectTypeID == (int)Enums.SecureObjectType.View).ToListAsync();
+                                    if (pSecurableIdsForView.Count > 0)
+                                    {
+                                        foreach (var SecureObj in pSecurableIdsForView)
+                                        {
+                                            int SecureObjID = SecureObj.SecureObjectID;
+                                            foreach (var pPermissionId in pPermissionRvmed)
+                                            {
+                                                if (!(pPermissionId == (int)Enums.PassportPermissions.Configure))
+                                                {
+                                                    if (await context.SecureObjectPermissions.AnyAsync(x => x.SecureObjectID == SecureObj.SecureObjectID & x.PermissionID == pPermissionId))
+                                                    {
+                                                        var SecureObjectPerEntities = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == SecureObj.SecureObjectID & x.PermissionID == pPermissionId).ToListAsync();
+                                                        context.SecureObjectPermissions.RemoveRange(SecureObjectPerEntities);
+                                                        await context.SaveChangesAsync();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Remove all associated secure object permission for Annotation and Attachments - added by Ganesh 12/01/2016.
+                                    var selectedSecureObj = await context.SecureObjects.Where(x => x.SecureObjectID == pSecurableID).FirstOrDefaultAsync();
+                                    // Execute this code if current selected Secure Object is from TABLE.
+                                    if (selectedSecureObj.SecureObjectTypeID == (int)Enums.SecureObjectType.Table)
+                                    {
+                                        var relatedAnnotationObj = await context.SecureObjects.Where(x => (x.Name) == (selectedSecureObj.Name) & (x.SecureObjectTypeID == (int)Enums.SecureObjectType.Annotations | x.SecureObjectTypeID == (int)Enums.SecureObjectType.Attachments)).ToListAsync();
+
+                                        if (relatedAnnotationObj.Count > 0)
+                                        {
+                                            foreach (var relatedObj in relatedAnnotationObj)
+                                            {
+                                                foreach (var pPermissionId in pPermissionRvmed)
+                                                {
+                                                    if (await context.SecureObjectPermissions.AnyAsync(x => x.SecureObjectID == relatedObj.SecureObjectID & x.PermissionID == pPermissionId))
+                                                    {
+                                                        var SecureObjectPerEntities = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == relatedObj.SecureObjectID & x.PermissionID == pPermissionId).ToListAsync();
+                                                        context.SecureObjectPermissions.RemoveRange(SecureObjectPerEntities);
+                                                        await context.SaveChangesAsync();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    foreach (var pPermissionId in pPermissionRvmed)
+                                    {
+                                        if (await context.SecureObjectPermissions.AnyAsync(x => x.SecureObjectID == pSecurableID & x.PermissionID == pPermissionId))
+                                        {
+                                            var SecureObjectPerEntities = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == pSecurableID & x.PermissionID == pPermissionId).ToListAsync();
+                                            context.SecureObjectPermissions.RemoveRange(SecureObjectPerEntities);
+                                            await context.SaveChangesAsync();
+
+                                            // 'Keep sync Tables -> Tracking tab Tracking Object and Allow Requiresting checkboxs and Security Securables tab
+                                            // 'Removed permission updates in Tables table
+                                            if (pPermissionId == 8 | pPermissionId == 9)
+                                            {
+                                                await UpdateTablesTrackingObject("D", pSecurableID, pPermissionId, connectionString);
+                                            }
+                                        }
+
+                                        // START: Delete entries for My query and My Fav
+                                        var SecureObject = await context.SecureObjects.Where(x => x.SecureObjectID == pSecurableID).FirstOrDefaultAsync();
+                                        if (SecureObject.Name.Equals(Common.SECURE_MYQUERY))
+                                        {
+                                            RemovePreviousDataForMyQueryOrFavoriate(Common.SECURE_MYQUERY, connectionString);
+                                        }
+                                        else if (SecureObject.Name.Equals(Common.SECURE_MYFAVORITE))
+                                        {
+                                            RemovePreviousDataForMyQueryOrFavoriate(Common.SECURE_MYFAVORITE, connectionString);
+                                        }
+                                        // END: Delete entries for My query and My Fav
+                                    }
+                                }
+                            }
+                        }
+                        setPermissionsToSecurableObjectParams.Passport.FillSecurePermissions();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Permissions saved successully";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Permissions All Methods moved 
+
+        [Route("GetPermisionsGroupList")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetPermisionsGroupList(string ConnectionString) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSecureGroupEntity = await context.SecureGroups.Where(x => x.GroupID != 0).OrderBy(x => x.GroupName).ToListAsync();
+
+                    foreach (var item in pSecureGroupEntity)
+                    {
+                        item.SecureObjectPermissions.Clear();
+                        item.SecureUserGroups.Clear();
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(pSecureGroupEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data retrieved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetListOfSecurableObjForPermissions")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetListOfSecurableObjForPermissions(string ConnectionString, int SecurableTypeID) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    var dtSecurables = new DataTable();
+                    var query = "SP_RMS_GetListOfSecurablesById";
+                    var param = new DynamicParameters();
+                    param.Add("@GroupID", 0);
+                    param.Add("@SecurableTypeID", SecurableTypeID);
+
+                    var res = await conn.ExecuteReaderAsync(query, param, commandType: CommandType.StoredProcedure);
+                    if (res != null)
+                        dtSecurables.Load(res);
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(dtSecurables, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data retrieved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            
+            return model;
+        }
+
+        [Route("GetPermissionsBasedOnGroupId")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetPermissionsBasedOnGroupId(string ConnectionString, int GroupID, int SecurableObjID) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    var dt = new DataTable();
+                    var query = "SP_RMS_GetPermissionInfoObjBasedOnGroup";
+                    var param = new DynamicParameters();
+                    param.Add("@GroupID", GroupID);
+                    param.Add("@SecurableObjID", SecurableObjID);
+
+                    var res = await conn.ExecuteReaderAsync(query, param, commandType: CommandType.StoredProcedure);
+                    if(res != null)
+                        dt.Load(res);
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue1 = JsonConvert.SerializeObject(dt, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Data retrieved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetGroupPermissions")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetGroupPermissions(SetGroupPermissionsParams setGroupPermissionsParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var connectionString = setGroupPermissionsParams.Passport.ConnectionString;
+            var pGroupIds = setGroupPermissionsParams.GroupIds;
+            var pSecurableObjIds = setGroupPermissionsParams.SecurableObjIds;
+            var pPermisionIds = setGroupPermissionsParams.PermisionIds;
+
+            try
+            {
+                List<SecureObjectPermission> pSecurableObjectList = new List<SecureObjectPermission>();
+                var pTempPermissionIds = new List<int>();
+                var pPermissionEntity = new SecureObjectPermission();
+
+                using (var context = new TABFusionRMSContext(connectionString))
+                {
+                    if (pSecurableObjIds.Length > 0)
+                    {
+                        foreach (int pGroupId in pGroupIds)
+                        {
+                            foreach (int pSecurableID in pSecurableObjIds)
+                            {
+
+                                pSecurableObjectList =  await context.SecureObjectPermissions.Where(x => x.SecureObjectID == pSecurableID & x.GroupID == pGroupId).ToListAsync();
+                                if (!(pPermisionIds == null))
+                                {
+                                    pTempPermissionIds.Clear();
+                                    pTempPermissionIds.AddRange(pPermisionIds);
+                                }
+
+                                // Check for new permission ids and remove from list if exists system already.
+                                foreach (var pSecurableObject in pSecurableObjectList)
+                                {
+                                    if (pTempPermissionIds.Count > 0)
+                                    {
+                                        var resfind = pTempPermissionIds.Find((x) => Convert.ToInt32(x) == pSecurableObject.PermissionID);
+                                        if (resfind > 0)
+                                        {
+                                            pTempPermissionIds.Remove(resfind);
+                                            await context.SaveChangesAsync();
+                                        }
+                                        else
+                                        {
+                                            context.SecureObjectPermissions.Remove(pSecurableObject);
+                                            await context.SaveChangesAsync();
+                                        }
+                                    }
+                                    else if (pTempPermissionIds.Count == 0)
+                                    {
+                                        context.SecureObjectPermissions.Remove(pSecurableObject);
+                                        await context.SaveChangesAsync();
+                                    }
+
+                                    // START: Delete entries for My query and My Fav
+                                    var SecureObject = await context.SecureObjects.Where(x => x.SecureObjectID == pSecurableID).FirstOrDefaultAsync();
+                                    if (SecureObject.Name.Equals(Common.SECURE_MYQUERY))
+                                    {
+                                        RemovePreviousDataForMyQueryOrFavoriate(Common.SECURE_MYQUERY, connectionString, pGroupId);
+                                    }
+                                    else if (SecureObject.Name.Equals(Common.SECURE_MYFAVORITE))
+                                    {
+                                        RemovePreviousDataForMyQueryOrFavoriate(Common.SECURE_MYFAVORITE, connectionString, pGroupId);
+                                    }
+                                    // END: Delete entries for My query and My Fav
+                                }
+                                // Get the new permissions ids and Insert those into system.
+                                foreach (var pPermissionId in pTempPermissionIds)
+                                {
+                                    pPermissionEntity.GroupID = pGroupId;
+                                    pPermissionEntity.SecureObjectID = pSecurableID;
+                                    pPermissionEntity.PermissionID = pPermissionId;
+
+                                    context.SecureObjectPermissions.Add(pPermissionEntity);
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+                        }
+
+                        // Reload the permissions dataset after updation of permissions.
+                        setGroupPermissionsParams.Passport.FillSecurePermissions();
+
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Permissions saved successully";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #endregion
 
         [Route("BindAccordian")]
         [HttpPost]
@@ -2475,7 +3693,7 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
-        
+
 
         #endregion
 
@@ -2670,14 +3888,14 @@ namespace MSRecordsEngine.Controllers
                         }
                         else
                         {
-                            var res = await DeleteExtraTrackingHistory(ConnectionString ,sTableName, sId);
+                            var res = await DeleteExtraTrackingHistory(ConnectionString, sTableName, sId);
                             returnData.Success = res.Success;
                             returnData.KeysType = res.KeysType;
                         }
                     }
                 }
 
-                
+
                 return returnData;
             }
             catch (Exception)
@@ -2742,7 +3960,7 @@ namespace MSRecordsEngine.Controllers
                     return returnData;
                 }
 
-                
+
             }
             catch (Exception)
             {
@@ -2751,7 +3969,7 @@ namespace MSRecordsEngine.Controllers
             }
         }
 
-        private static string  GenerateKey(bool boolFlag, string pwdString = null, byte[] pwdByteArray = null)
+        private static string GenerateKey(bool boolFlag, string pwdString = null, byte[] pwdByteArray = null)
         {
             string transformPwd;
             try
@@ -2982,7 +4200,7 @@ namespace MSRecordsEngine.Controllers
             }
         }
 
-        private bool ExecuteSqlCommand(string ConnectionString ,string sSQL, bool bDoNoCount = false)
+        private bool ExecuteSqlCommand(string ConnectionString, string sSQL, bool bDoNoCount = false)
         {
             int recordaffected = default;
 
@@ -3003,6 +4221,231 @@ namespace MSRecordsEngine.Controllers
                 return false;
             }
         }
+
+        private async Task AddNewSecureObjectPermission(int secureObjectId, int securePermissionId, string ConnectionString)
+        {
+            var secoreObjPermissionObj = new SecureObjectPermission();
+            
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                secoreObjPermissionObj.GroupID = 0;
+                secoreObjPermissionObj.SecureObjectID = secureObjectId;
+                secoreObjPermissionObj.PermissionID = securePermissionId;
+                
+                context.SecureObjectPermissions.Add(secoreObjPermissionObj);
+                await context.SaveChangesAsync();
+                
+                if (securePermissionId == 8 | securePermissionId == 9)
+                {
+                    await UpdateTablesTrackingObject("A", secureObjectId, securePermissionId, ConnectionString);
+                }
+            }
+        }
+
+        private async Task UpdateTablesTrackingObject(string action, int secureObjectId, int securePermissionId, string ConnectionString)
+        {
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var SecureObject = await context.SecureObjects.Where(m => m.SecureObjectID == secureObjectId).FirstOrDefaultAsync();
+                if (SecureObject != null)
+                {
+                    var Tables = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(SecureObject.Name.Trim().ToLower())).FirstOrDefaultAsync();
+                    if (Tables != null)
+                    {
+                        if (securePermissionId == 8)
+                        {
+                            Tables.Trackable = (bool?)Interaction.IIf(action == "A", true, false);
+                        }
+                        if (securePermissionId == 9)
+                        {
+                            Tables.AllowBatchRequesting = (bool?)Interaction.IIf(action == "A", true, false);
+                        }
+                        context.Entry(Tables).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+        }
+
+        private async void RemovePreviousDataForMyQueryOrFavoriate(string typeOfFunctionality, string connectionString, int pGroupId = 0)
+        {
+            using (var context = new TABFusionRMSContext(connectionString))
+            {
+                if (pGroupId == 0)
+                {
+                    // Handle removing data if action performed on "Securable" section.
+                    if (typeOfFunctionality.Equals(Common.SECURE_MYQUERY))
+                    {
+                        var allSavedCritriaForMyQuery = await context.s_SavedCriteria.Where(x => x.SavedType == 0).ToListAsync();
+
+                        foreach (var savedCritria in allSavedCritriaForMyQuery)
+                        {
+                            var savedChildrenQuery = await context.s_SavedChildrenQuery.Where(q => q.SavedCriteriaId == savedCritria.Id).ToListAsync();
+                            context.s_SavedChildrenQuery.RemoveRange(savedChildrenQuery);
+                            await context.SaveChangesAsync();
+                        }
+                        context.s_SavedCriteria.RemoveRange(allSavedCritriaForMyQuery);
+                        await context.SaveChangesAsync();
+                    }
+                    else if (typeOfFunctionality.Equals(Common.SECURE_MYFAVORITE))
+                    {
+                        var allSavedCritriaForMyFav = await context.s_SavedCriteria.Where(x => x.SavedType == 1).ToListAsync();
+
+                        foreach (var savedCritria in allSavedCritriaForMyFav)
+                        {
+                            var savedChildrenFav = await context.s_SavedChildrenQuery.Where(q => q.SavedCriteriaId == savedCritria.Id).ToListAsync();
+                            context.s_SavedChildrenQuery.RemoveRange(savedChildrenFav);
+                            await context.SaveChangesAsync();
+                        }
+                        context.s_SavedCriteria.RemoveRange(allSavedCritriaForMyFav);
+                        await context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+
+                    // 'Handle remove data if action performed on "Permissions" section.
+                    var lstUsersUnderGrpBeingDel = await context.SecureUserGroups.Where(x => x.GroupID == pGroupId).Select(y => y.UserID).ToListAsync();
+                    var allSavedCriteria = await context.s_SavedCriteria.Select(x => x.UserId).Distinct().ToListAsync();
+                    int secureObjectIdForMyQuery = await context.SecureObjects.Where(x => (x.Name) == Common.SECURE_MYQUERY).Select(y => y.SecureObjectID).FirstOrDefaultAsync();
+                    int secureObjectIdForMyFav = await context.SecureObjects.Where(x => (x.Name) == Common.SECURE_MYFAVORITE).Select(y => y.SecureObjectID).FirstOrDefaultAsync();
+                    bool IsMyQueryForEveryone = await context.SecureObjectPermissions.AnyAsync(x => x.GroupID == -1 & x.SecureObjectID == secureObjectIdForMyQuery);
+                    bool IsMyFavForEveryone = await context.SecureObjectPermissions.AnyAsync(x => x.GroupID == -1 & x.SecureObjectID == secureObjectIdForMyFav);
+                    int cntOfGrpUserPartOf = 0;
+                    string SQLQuery;
+
+                    using (var conn = CreateConnection(connectionString))
+                    {
+                        foreach (var userid in lstUsersUnderGrpBeingDel)
+                        {
+                            if (allSavedCriteria.Contains(userid))
+                            {
+                                if (typeOfFunctionality.Equals(Common.SECURE_MYQUERY))
+                                {
+                                    SQLQuery = string.Format(@"SELECT COUNT(SUG.GroupId) as cntGroups FROM SecureUser SU                                                                INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                                                INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID                                                                WHERE SU.UserID = {0} AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{1}')", userid, Common.SECURE_MYQUERY);
+
+                                    cntOfGrpUserPartOf = Convert.ToInt32(await conn.ExecuteScalarAsync(SQLQuery, commandType: CommandType.Text));
+
+                                    if (!IsMyQueryForEveryone)
+                                    {
+                                        // If user is not part of other group with 'My Queries' permission, then DELETE "Saved Queries" for that user.
+                                        if (cntOfGrpUserPartOf == 0)
+                                        {
+                                            // Delete entries of my query for user under current group
+                                            var allSavedCritriaForMyQuery = await context.s_SavedCriteria.Where(x => x.SavedType == 0 && x.UserId == userid).ToListAsync();
+
+                                            foreach (var savedCritria in allSavedCritriaForMyQuery)
+                                            {
+                                                var savedChildrenQuery = await context.s_SavedChildrenQuery.Where(q => q.SavedCriteriaId == savedCritria.Id).ToListAsync();
+                                                context.s_SavedChildrenQuery.RemoveRange(savedChildrenQuery);
+                                                await context.SaveChangesAsync();
+                                            }
+                                            context.s_SavedCriteria.RemoveRange(allSavedCritriaForMyQuery);
+                                            await context.SaveChangesAsync();
+                                        }
+                                    }
+                                }
+                                else if (typeOfFunctionality.Equals(Common.SECURE_MYFAVORITE))
+                                {
+                                    try
+                                    {
+                                        SQLQuery = string.Format(@"SELECT COUNT(SUG.GroupId) as cntGroups FROM SecureUser SU                                                                INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                                                INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID                                                                WHERE SU.UserID = {0} AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{1}')", userid, Common.SECURE_MYFAVORITE);
+
+                                        cntOfGrpUserPartOf = Convert.ToInt32(await conn.ExecuteScalarAsync(SQLQuery, commandType: CommandType.Text));
+                                        if (!IsMyFavForEveryone)
+                                        {
+                                            // If user is not part of other group with 'My Favorites' permission, then DELETE "Saved Favorites" for that user.
+                                            if (cntOfGrpUserPartOf == 0)
+                                            {
+                                                // Delete entries of my favorites for user under current group
+                                                var allSavedCritriaForMyFav = await context.s_SavedCriteria.Where(x => x.SavedType == 1 && x.UserId == userid).ToListAsync();
+                                                foreach (var savedCritria in allSavedCritriaForMyFav)
+                                                {
+                                                    var savedChildrenFav = await context.s_SavedChildrenFavorite.Where(q => q.SavedCriteriaId == savedCritria.Id).ToListAsync();
+                                                    context.s_SavedChildrenFavorite.RemoveRange(savedChildrenFav);
+                                                    await context.SaveChangesAsync();
+                                                }
+                                                context.s_SavedCriteria.RemoveRange(allSavedCritriaForMyFav);
+                                                await context.SaveChangesAsync();
+                                            }
+                                        }
+                                    }
+                                    catch (Exception)
+                                    {
+                                        //Keys.ErrorType = "e";
+                                        //Keys.ErrorMessage = Keys.ErrorMessageJS();
+                                    }
+                                }
+                            }
+                            cntOfGrpUserPartOf = 0;
+                            SQLQuery = "";
+                        }
+                        // 'Handle Scenario where users don't have My Query/My Fav permission with assigned group(s), but everyone group had permission.
+                        if (typeOfFunctionality.Equals(Common.SECURE_MYQUERY))
+                        {
+                            if (!IsMyQueryForEveryone & pGroupId == -1)
+                            {
+                                var dtUserIds = new DataTable();
+
+                                SQLQuery = string.Format(@"                                SELECT Distinct UserId FROM s_SavedCriteria                                 WHERE UserId NOT IN (                                        SELECT SU.UserID FROM SecureUser SU                                        INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                        INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID        	                            INNER JOIN SecureGroup SG ON SUG.GroupID = SG.GroupID            	                            AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{0}')                                )", Common.SECURE_MYQUERY);
+
+                                var res = await conn.ExecuteReaderAsync(SQLQuery, commandType: CommandType.Text);
+                                if (res != null)
+                                    dtUserIds.Load(res);
+
+                                foreach (DataRow useridRow in dtUserIds.Rows)
+                                {
+                                    int userid = Convert.ToInt32(useridRow["UserId"]);
+                                    var allSavedCritriaForMyQuery = await context.s_SavedCriteria.Where(x => x.SavedType == 1 && x.UserId == userid).ToListAsync();
+
+                                    foreach (var savedCritria in allSavedCritriaForMyQuery)
+                                    {
+                                        var savedChildrenQuery = await context.s_SavedChildrenQuery.Where(q => q.SavedCriteriaId == savedCritria.Id).ToListAsync();
+                                        context.s_SavedChildrenQuery.RemoveRange(savedChildrenQuery);
+                                        await context.SaveChangesAsync();
+                                    }
+                                    context.s_SavedCriteria.RemoveRange(allSavedCritriaForMyQuery);
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+                        }
+                        else if (typeOfFunctionality.Equals(Common.SECURE_MYFAVORITE))
+                        {
+
+                            if (!IsMyFavForEveryone & pGroupId == -1)
+                            {
+                                var dsUserIds = new DataSet();
+                                var dtUserIds = new DataTable();
+
+                                SQLQuery = string.Format(@"                                SELECT Distinct UserId FROM s_SavedCriteria                                 WHERE UserId NOT IN (                                        SELECT SU.UserID FROM SecureUser SU                                        INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                        INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID        	                            INNER JOIN SecureGroup SG ON SUG.GroupID = SG.GroupID            	                            AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{0}')                                )", Common.SECURE_MYFAVORITE);
+
+                                var res = await conn.ExecuteReaderAsync(SQLQuery, commandType: CommandType.Text);
+                                if (res != null)
+                                    dtUserIds.Load(res);
+
+                                foreach (DataRow useridRow in dtUserIds.Rows)
+                                {
+                                    int userid = Convert.ToInt32(useridRow["UserId"]);
+                                    var allSavedCritriaForMyFav = await context.s_SavedCriteria.Where(x => x.SavedType == 1 && x.UserId == userid).ToListAsync();
+
+                                    foreach (var savedCritria in allSavedCritriaForMyFav)
+                                    {
+                                        var savedChildrenFav = await context.s_SavedChildrenFavorite.Where(q => q.SavedCriteriaId == savedCritria.Id).ToListAsync();
+                                        context.s_SavedChildrenFavorite.RemoveRange(savedChildrenFav);
+                                        await context.SaveChangesAsync();
+                                    }
+                                    context.s_SavedCriteria.RemoveRange(allSavedCritriaForMyFav);
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
         #endregion
     }
 }
