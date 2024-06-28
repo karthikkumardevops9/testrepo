@@ -1,5 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using MSRecordsEngine.Entities;
+using Smead.Security;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 namespace MSRecordsEngine.Models
 {
@@ -171,6 +175,22 @@ namespace MSRecordsEngine.Models
             rmVarWChar = 202,
             rmWChar = 130
         }
+        public enum SecureObjectType
+        {
+            Application = 1,
+            Table = 2,
+            View = 3,
+            Annotations = 4,
+            WorkGroup = 5,
+            Attachments = 6,
+            Reports = 7,
+            Retention = 8,
+            LinkScript = 9,
+            ScanRules = 10,
+            Volumes = 11,
+            OutputSettings = 12,
+            Orphans = 13
+        }
 
     }
 
@@ -179,6 +199,27 @@ namespace MSRecordsEngine.Models
         public static List<string> mcEngineTablesList;
         public static List<string> mcEngineTablesOkayToImportList;
         public static List<string> mcEngineTablesNotNeededList;
+
+        public static List<string> EngineTablesOkayToImportList
+        {
+            get
+            {
+                if (mcEngineTablesOkayToImportList is null)
+                {
+                    mcEngineTablesOkayToImportList = new List<string>();
+                }
+
+                if (mcEngineTablesOkayToImportList.Count == 0)
+                {
+                    mcEngineTablesOkayToImportList.Add("slretentioncodes");
+                    mcEngineTablesOkayToImportList.Add("slretentioncitations");
+                    mcEngineTablesOkayToImportList.Add("slretentioncitacodes");
+                }
+
+                return mcEngineTablesOkayToImportList;
+            }
+
+        }
 
         public static bool IsEngineTable(string sTableName)
         {
@@ -189,6 +230,20 @@ namespace MSRecordsEngine.Models
             for (iIndex = 0; iIndex <= loopTo; iIndex++)
             {
                 if (EngineTablesList[iIndex].Trim().ToLower().Equals(sTableName.Trim().ToLower()))
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool IsEngineTableOkayToImport(string sTableName)
+        {
+            int iIndex;
+            int iCount = EngineTablesOkayToImportList.Count - 1;
+
+            var loopTo = iCount;
+            for (iIndex = 0; iIndex <= loopTo; iIndex++)
+            {
+                if (EngineTablesOkayToImportList[iIndex].Trim().ToLower().Equals(sTableName.Trim().ToLower()))
                     return true;
             }
             return false;
@@ -370,6 +425,158 @@ namespace MSRecordsEngine.Models
 
                 return mcEngineTablesList;
             }
+        }
+
+        public static bool CheckTablesPermission(List<Table> lTableEntities, bool mbMgrGroup, Passport passport, string TablePermission)
+        {
+            bool bAtLeastOneTablePermission = false;
+            //http.Session.Remove("TablesPermission");
+            try
+            {
+                if (!string.IsNullOrEmpty(TablePermission))
+                {
+                    if (!mbMgrGroup)
+                    {
+                        foreach (var oTable in lTableEntities)
+                        {
+                            if (!IsEngineTable(oTable.TableName))
+                            {
+                                if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Smead.Security.Permissions.Permission)Enums.PassportPermissions.Configure))
+                                {
+                                    bAtLeastOneTablePermission = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    //http.Session.SetString("TablesPermission", bAtLeastOneTablePermission.ToString());
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(TablePermission))
+                    {
+                        bAtLeastOneTablePermission = false;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+
+            return bAtLeastOneTablePermission;
+        }
+
+        public static int CheckReportsPermission(List<Table> lTableEntities, List<View> lViewEntities, Passport passport, string iCntRpt)
+        {
+            int iCntRpts = 0;
+            //httpContext.Session.Remove("iCntRpts");
+            //var iCntRpt = httpContext.Session.GetString("iCntRpts");
+            if (!string.IsNullOrEmpty(iCntRpt))
+            {
+                foreach (var oTable in lTableEntities)
+                {
+                    if (!IsEngineTable(oTable.TableName))
+                    {
+                        if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Smead.Security.Permissions.Permission)Enums.PassportPermissions.View))
+                        {
+                            var lTableViewList = lViewEntities.Where(x => (x.TableName.Trim().ToLower() ?? "") == (oTable.TableName.Trim().ToLower() ?? ""));
+                            foreach (var oView in lTableViewList)
+                            {
+                                if ((bool)oView.Printable)
+                                {
+                                    if (passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Reports, (Smead.Security.Permissions.Permission)Enums.PassportPermissions.Configure))
+                                    {
+                                        if (passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Reports, (Smead.Security.Permissions.Permission)Enums.PassportPermissions.View))
+                                        {
+                                            if (NotSubReport(lTableEntities, lViewEntities, oView, oTable.TableName))
+                                            {
+                                                iCntRpts = iCntRpts + 1;
+                                                //httpContext.Session.SetString("iCntRpts", iCntRpts.ToString());
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (iCntRpts > 0)
+                                break;
+                        }
+                    }
+                }
+            }
+            return Convert.ToInt32(iCntRpts);
+            //return Convert.ToInt32(httpContext.Session.GetString("iCntRpts"));
+        }
+
+        public static bool CheckViewsPermission(List<View> lViewEntities, bool mbMgrGroup, Passport passport, string TablesPermission, string ViewPermission)
+        {
+            bool bAtLeastOneViewPermission = false;
+            //httpContext.Session.Remove("ViewPermission");
+            try
+            {
+                if (!string.IsNullOrEmpty(ViewPermission))
+                {
+                    if (!mbMgrGroup)
+                    {
+                        foreach (var oView in lViewEntities)
+                        {
+                            if (passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.View, (Smead.Security.Permissions.Permission)Enums.PassportPermissions.Configure))
+                            {
+                                bAtLeastOneViewPermission = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    //httpContext.Session.SetString("TablesPermission", bAtLeastOneViewPermission.ToString());
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(TablesPermission))
+                    {
+                        bAtLeastOneViewPermission = false;
+                    }
+                    else
+                    {
+                        bAtLeastOneViewPermission = Convert.ToBoolean(TablesPermission); 
+                    }
+
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+
+            return bAtLeastOneViewPermission;
+        }
+
+        public static bool NotSubReport(List<Table> lTableEntities, List<View> IqViewEntities, View oView, string pTableName)
+        {
+            bool NotSubReportRet = default;
+            var tableEntity = lTableEntities;
+            View oTempView;
+            var lViewEntities = IqViewEntities;
+            var lLoopViewEntities = lViewEntities.Where(x => x.TableName.Trim().ToLower() == pTableName);
+
+            NotSubReportRet = true;
+
+            foreach (var oTable in tableEntity.ToList())
+            {
+                foreach (var currentOTempView in lLoopViewEntities)
+                {
+                    oTempView = currentOTempView;
+                    if (oTempView.SubViewId == oView.Id)
+                    {
+                        NotSubReportRet = false;
+                        break;
+                    }
+                }
+            }
+
+            oTempView = null;
+            return NotSubReportRet;
         }
     }
 

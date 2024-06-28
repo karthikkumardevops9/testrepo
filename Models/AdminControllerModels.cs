@@ -109,7 +109,11 @@ namespace MSRecordsEngine.Models
         public string stringValue1 { get; set; }
         public string stringValue2 { get; set; }
         public bool boolValue { get; set; }
+        public int intValue { get; set; }
         public List<int> intLst { get; set; }
+        public Dictionary<string, bool> DictionaryResult { get; set; }
+        public bool AtLeastOneTablePermissionSessionValue { get; set; }
+        public bool AtLeastOneViewPermissionSessionValue { get; set; }
     }
 
     public class EditRemoveOutputSettingsEntityParams
@@ -334,4 +338,100 @@ namespace MSRecordsEngine.Models
         public string IdStripChars { get; set; }
         public string IdMask { get; set; }
     }
+
+    public class CheckModuleLevelAccessParams
+    {
+        public Passport passport { get; set; }
+        public string TablePermission { get; set; }
+        public string iCntRpt { get; set; }
+        public string ViewPermission { get; set; }
+    }
+
+    public class LoadSecurityUserGridDataParams
+    {
+        public string ConnectionString { get; set; }
+        public string sord { get; set; }
+        public int page { get; set; }
+        public int rows { get; set; }
+    }
+
+    public class SetUserDetailsParams
+    {
+        public string ConnectionString { get; set; }
+        public int UserID { get; set; }
+        public string UserName { get; set; }
+        public string FullName { get; set; }
+        public string Email { get; set; }
+        public string Misc1 { get; set; }
+        public string Misc2 { get; set;}
+        public bool AccountDisabled { get; set; }
+    }
+
+    public class SetUserPasswordParams
+    {
+        public string ConnectionString { get; set; }
+        public int UserId { get; set; }
+        public string UserPassword { get; set; }
+        public bool CheckedState { get; set; }
+    }
+    public class SetGroupsAgainstUserParams
+    {
+        public string ConnectionString { get; set; }
+        public int UserID { get; set; }
+        public string[] GroupList { get; set; }
+    }
+
+    public class UnlockUserAccountParams
+    {
+        public Passport passport { get; set; }
+        public string OperatorId { get; set; }
+    }
+
+    public class SetGroupDetailsParams
+    {
+        public string ConnectionString { get; set; }
+        public int GroupID { get; set; }
+        public string GroupName { get; set; }
+        public string Description { get; set; }
+        public string ActiveDirectoryGroup { get; set; }
+        public int AutoLockSeconds { get; set; }
+        public int AutoLogOffSeconds { get; set; }
+    }
+
+    public class SetUsersAgainstGroupParams
+    {
+        public string ConnectionString { get; set; }
+        public int GroupId { get; set; }
+        public string[] UserList { get; set; }
+    }
+
+    public class SetPermissionsToSecurableObjectParams
+    {
+        public Passport Passport { get; set; }
+        public int[] SecurableObjIds { get; set; }
+        public List<int> PermisionIds { get; set; }
+        public List<int> PermissionRvmed { get; set; }
+    }
+    public class SetGroupPermissionsParams
+    {
+        public Passport Passport { get; set; }
+        public int[] GroupIds { get; set; }
+        public int[] SecurableObjIds { get; set; }
+        public List <int> PermisionIds { get; set; }
+    }
+
+    public class SecureObjectsReturn
+    {
+        public int SecureObjectID { get; set; }
+        public string Name { get; set; }
+        public int SecureObjectTypeID { get; set; }
+        public int BaseID { get; set; }
+    }
+
+    public class ValidateApplicationLinkReq
+    {
+        public Passport passport { get; set; }
+        public string pModuleNameStr { get; set; }
+    }
+
 }
