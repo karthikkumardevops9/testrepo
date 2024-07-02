@@ -7,6 +7,7 @@ using MSRecordsEngine.Entities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -307,7 +308,58 @@ namespace MSRecordsEngine.Services
 
             return sRetVal;
         }
+        public bool ShowColumn(DataColumn col, int crumblevel, string parentField)
+        {
+            switch (Convert.ToInt32(col.ExtendedProperties["columnvisible"]))
+            {
+                case 3:  // Not visible
+                    {
+                        return false;
+                    }
+                case 1:  // Visible on level 1 only
+                    {
+                        if (crumblevel != 0)
+                            return false;
+                        break;
+                    }
+                case 2:  // Visible on level 2 and below only
+                    {
+                        if (crumblevel < 1)
+                            return false;
+                        break;
+                    }
+                case 4:  // Smart column- not visible in a drill down when it's the parent.
+                    {
+                        if (crumblevel > 0 & (parentField.ToLower() ?? "") == (col.ColumnName.ToLower() ?? ""))
+                        {
+                            return false;
+                        }
 
+                        break;
+                    }
+            }
+
+            if (col.ColumnName.ToLower() == "formattedid")
+                return false;
+            // If col.ColumnName.ToLower = "id" Then Return False
+            if (col.ColumnName.ToLower() == "attachments")
+                return false;
+            if (col.ColumnName.ToLower() == "slrequestable")
+                return false;
+            if (col.ColumnName.ToLower() == "itemname")
+                return false;
+            if (col.ColumnName.ToLower() == "pkey")
+                return false;
+            if (col.ColumnName.ToLower() == "dispositionstatus")
+                return false;
+            if (col.ColumnName.ToLower() == "processeddescfieldnameone")
+                return false;
+            if (col.ColumnName.ToLower() == "processeddescfieldnametwo")
+                return false;
+            if (col.ColumnName.ToLower() == "rownum")
+                return false;
+            return true;
+        }
         private string NormalizeString(string s)
         {
             if (string.IsNullOrEmpty(s))
