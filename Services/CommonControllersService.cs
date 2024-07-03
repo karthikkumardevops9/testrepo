@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
 using MSRecordsEngine.Entities;
 using System;
 using System.Collections.Generic;
@@ -306,6 +307,34 @@ namespace MSRecordsEngine.Services
                 sRetVal += " ORDER BY " + sInitOrderBy;
 
             return sRetVal;
+        }
+
+        public string RemoveFieldNameFromField(string sFieldName)
+        {
+            string RemoveFieldNameFromFieldRet = default;
+            int i;
+            RemoveFieldNameFromFieldRet = sFieldName;
+            i = Strings.InStr(sFieldName, ".");
+            if (i > 1)
+            {
+                RemoveFieldNameFromFieldRet = Strings.Trim(Strings.Left(sFieldName, i - 1));
+            }
+            return RemoveFieldNameFromFieldRet;
+        }
+
+        public static string RemoveTableNameFromField(string sFieldName)
+        {
+            string RemoveTableNameFromFieldRet = default;
+            int i;
+            RemoveTableNameFromFieldRet = sFieldName;
+            i = Strings.InStr(sFieldName, ".");
+            if (i > 1)
+            {
+                RemoveTableNameFromFieldRet = Strings.Mid(sFieldName, i + 1);
+            }
+            RemoveTableNameFromFieldRet = Strings.Trim(RemoveTableNameFromFieldRet);
+            return RemoveTableNameFromFieldRet;
+
         }
 
         private string NormalizeString(string s)

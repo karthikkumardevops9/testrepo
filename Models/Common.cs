@@ -191,7 +191,73 @@ namespace MSRecordsEngine.Models
             OutputSettings = 12,
             Orphans = 13
         }
-
+        public enum geViewColumnsLookupType
+        {
+            ltUndefined = -1,
+            ltDirect,
+            ltLookup,
+            ltImageFlag,
+            ltFaxFlag,
+            ltCOLDFlag,
+            ltPCFilesFlag,
+            ltReserved,
+            ltChildrenFlag,
+            ltRowNumber,
+            ltAnyFlag,
+            ltTrackingStatus,
+            ltTrackingLocation,
+            ltChildLookdownCommaDisplayDups,
+            ltChildLookdownLFDisplayDups,
+            ltChildLookdownCommaHideDups,
+            ltChildLookdownLFHideDups,
+            ltChildrenCounts,
+            ltChildLookdownTotals,
+            ltTableUserName,
+            ltTableGetUserNameLookup,
+            ltRetentionFlag,
+            ltAltTableAnyFlag,
+            ltCurrentlyAtDisplay,
+            ltCurrentlyAtTableName,
+            ltSignature,
+            ltUserDisplayNameLookup
+        }
+        public enum meRetentionCodeAssignment
+        {
+            rcaManual = 0,
+            rcaCurrentTable = 1,
+            rcaRelatedTable = 2
+        }
+        public enum geViewColumnDisplayType
+        {
+            cvAlways,
+            cvBaseTab,
+            cvPopupTab,
+            cvNotVisible,
+            cvSmartColumns,
+            cvTrackingSmartColumns,
+            cvBasedOnProperty,
+            cvNeverVisible
+        }
+        public enum FieldAttributeEnum
+        {
+            rmFldCacheDeferred = 4096,
+            rmFldFixed = 16,
+            rmFldIsChapter = 8192,
+            rmFldIsCollection = 262144,
+            rmFldIsDefaultStream = 131072,
+            rmFldIsNullable = 32,
+            rmFldIsRowURL = 65536,
+            rmFldKeyColumn = 32768,
+            rmFldLong = 128,
+            rmFldMayBeNull = 64,
+            rmFldMayDefer = 2,
+            rmFldNegativeScale = 16384,
+            rmFldRowID = 256,
+            rmFldRowVersion = 512,
+            rmFldUnknownUpdatable = 8,
+            rmFldUnspecified = -1,
+            rmFldUpdatable = 4
+        }
     }
 
     public class CollectionsClass
@@ -580,7 +646,129 @@ namespace MSRecordsEngine.Models
         }
     }
 
-    
+    public class GridColumns
+    {
+        public int ColumnSrNo
+        {
+            get
+            {
+                return _ColumnSrNo;
+            }
+            set
+            {
+                _ColumnSrNo = value;
+            }
+        }
+        private int _ColumnSrNo;
+        public int ColumnId
+        {
+            get
+            {
+                return _ColumnId;
+            }
+            set
+            {
+                _ColumnId = value;
+            }
+        }
+        private int _ColumnId = 0;
+        public string ColumnName
+        {
+            get
+            {
+                return _ColumnName;
+            }
+            set
+            {
+                _ColumnName = value;
+            }
+        }
+        private string _ColumnName;
+        public string ColumnDisplayName
+        {
+            get
+            {
+                return _ColumnDisplayName;
+            }
+            set
+            {
+                _ColumnDisplayName = value;
+            }
+        }
+        private string _ColumnDisplayName;
+        public string ColumnDataType
+        {
+            get
+            {
+                return _ColumnDataType;
+            }
+            set
+            {
+                _ColumnDataType = value;
+            }
+        }
+        private string _ColumnDataType;
+        public string ColumnMaxLength
+        {
+            get
+            {
+                return _ColumnMaxLength;
+            }
+            set
+            {
+                _ColumnMaxLength = value;
+            }
+        }
+        private string _ColumnMaxLength;
+        public bool IsPk
+        {
+            get
+            {
+                return _IsPk;
+            }
+            set
+            {
+                _IsPk = value;
+            }
+        }
+        private bool _IsPk;
+        public bool AutoInc
+        {
+            get
+            {
+                return _AutoInc;
+            }
+            set
+            {
+                _AutoInc = value;
+            }
+        }
+        private bool _AutoInc;
+        public bool IsNull
+        {
+            get
+            {
+                return _IsNull;
+            }
+            set
+            {
+                _IsNull = value;
+            }
+        }
+        private bool _IsNull;
+        public bool ReadOnlye
+        {
+            get
+            {
+                return _ReadOnlye;
+            }
+            set
+            {
+                _ReadOnlye = value;
+            }
+        }
+        private bool _ReadOnlye;
+    }
 
-    
+
 }
