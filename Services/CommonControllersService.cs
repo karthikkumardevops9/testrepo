@@ -8,6 +8,7 @@ using MSRecordsEngine.Entities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -308,19 +309,36 @@ namespace MSRecordsEngine.Services
 
             return sRetVal;
         }
-
-        public string RemoveFieldNameFromField(string sFieldName)
+        public bool ShowColumn(DataColumn col, int crumblevel, string parentField)
         {
-            string RemoveFieldNameFromFieldRet = default;
-            int i;
-            RemoveFieldNameFromFieldRet = sFieldName;
-            i = Strings.InStr(sFieldName, ".");
-            if (i > 1)
+            switch (Convert.ToInt32(col.ExtendedProperties["columnvisible"]))
             {
-                RemoveFieldNameFromFieldRet = Strings.Trim(Strings.Left(sFieldName, i - 1));
+                case 3:  // Not visible
+                    {
+                        return false;
+                    }
+                case 1:  // Visible on level 1 only
+                    {
+                        if (crumblevel != 0)
+                            return false;
+                        break;
+                    }
+                case 2:  // Visible on level 2 and below only
+                    {
+                        if (crumblevel < 1)
+                            return false;
+                        break;
+                    }
+                case 4:  // Smart column- not visible in a drill down when it's the parent.
+                    {
+                        if (crumblevel > 0 & (parentField.ToLower() ?? "") == (col.ColumnName.ToLower() ?? ""))
+                        {
+                            return false;
+                        }
+
+                        break;
+                    }
             }
-            return RemoveFieldNameFromFieldRet;
-        }
 
         public static string RemoveTableNameFromField(string sFieldName)
         {
