@@ -339,6 +339,27 @@ namespace MSRecordsEngine.Services
                         break;
                     }
             }
+            if (col.ColumnName.ToLower() == "formattedid")
+                return false;
+            // If col.ColumnName.ToLower = "id" Then Return False
+            if (col.ColumnName.ToLower() == "attachments")
+                return false;
+            if (col.ColumnName.ToLower() == "slrequestable")
+                return false;
+            if (col.ColumnName.ToLower() == "itemname")
+                return false;
+            if (col.ColumnName.ToLower() == "pkey")
+                return false;
+            if (col.ColumnName.ToLower() == "dispositionstatus")
+                return false;
+            if (col.ColumnName.ToLower() == "processeddescfieldnameone")
+                return false;
+            if (col.ColumnName.ToLower() == "processeddescfieldnametwo")
+                return false;
+            if (col.ColumnName.ToLower() == "rownum")
+                return false;
+            return true;
+        }
 
         public static string RemoveTableNameFromField(string sFieldName)
         {
