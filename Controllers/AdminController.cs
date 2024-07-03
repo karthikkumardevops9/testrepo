@@ -1,8 +1,5 @@
 ﻿using Dapper;
-using Leadtools.Document.Unstructured.Highlevel;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
@@ -2605,9 +2602,9 @@ namespace MSRecordsEngine.Controllers
                         lstGroups.Add(item.GroupID.ToString());
 
                     var pSecureGroupEntities = await (from t in context.SecureGroups
-                                                  where lstGroups.Contains(t.GroupID.ToString())
-                                                  orderby t.GroupName ascending
-                                                  select t).ToListAsync();
+                                                      where lstGroups.Contains(t.GroupID.ToString())
+                                                      orderby t.GroupName ascending
+                                                      select t).ToListAsync();
                     foreach (var item in pSecureGroupEntities)
                     {
                         item.SecureUserGroups.Clear();
@@ -2745,7 +2742,7 @@ namespace MSRecordsEngine.Controllers
                         await context.SaveChangesAsync();
 
                         model.ErrorType = "s";
-                        model.ErrorMessage = "Changes made on selected group are updated successfully"; 
+                        model.ErrorMessage = "Changes made on selected group are updated successfully";
                     }
                     else if (await context.SecureGroups.AnyAsync(x => (x.GroupName.Trim().ToLower()) == (pGroupEntity.GroupName.Trim().ToLower())) == false)
                     {
@@ -2760,7 +2757,7 @@ namespace MSRecordsEngine.Controllers
                         await context.SaveChangesAsync();
 
                         model.ErrorType = "s";
-                        model.ErrorMessage = "New Group has been added into list of Groups successfully"; 
+                        model.ErrorMessage = "New Group has been added into list of Groups successfully";
                     }
                     else
                     {
@@ -2852,9 +2849,9 @@ namespace MSRecordsEngine.Controllers
                         lstUsers.Add(item.UserID.ToString());
 
                     var pSecureUserEntities = await (from t in context.SecureUsers
-                                                 where lstUsers.Contains(t.UserID.ToString())
-                                                 orderby t.UserName ascending
-                                                 select t).ToListAsync();
+                                                     where lstUsers.Contains(t.UserID.ToString())
+                                                     orderby t.UserName ascending
+                                                     select t).ToListAsync();
 
                     foreach (var item in pSecureUserEntities)
                     {
@@ -2988,7 +2985,7 @@ namespace MSRecordsEngine.Controllers
 
                         secureObjectsList.Add(secureObjectReturn);
                     }
-                    
+
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
                     model.stringValue1 = JsonConvert.SerializeObject(secureObjectsList, Newtonsoft.Json.Formatting.Indented, Setting);
@@ -3019,11 +3016,11 @@ namespace MSRecordsEngine.Controllers
                     List<SecureObjectPermission> sopData = null;
                     sopData = await context.SecureObjectPermissions.ToListAsync();
                     var pSecureObjectEntity = await (from o in context.SecureObjects
-                                          join v in context.SecureObjects on o.BaseID equals v.SecureObjectID into ov
-                                          let ParentName = ov.FirstOrDefault().Name
-                                          where o.BaseID != 0 & o.SecureObjectTypeID == SecurableTypeID & !o.Name.StartsWith("slRetention") & !o.Name.StartsWith("security")
-                                          orderby o.Name
-                                          select new { o.SecureObjectID, o.Name, o.SecureObjectTypeID, o.BaseID, ParentName }).ToListAsync();
+                                                     join v in context.SecureObjects on o.BaseID equals v.SecureObjectID into ov
+                                                     let ParentName = ov.FirstOrDefault().Name
+                                                     where o.BaseID != 0 & o.SecureObjectTypeID == SecurableTypeID & !o.Name.StartsWith("slRetention") & !o.Name.StartsWith("security")
+                                                     orderby o.Name
+                                                     select new { o.SecureObjectID, o.Name, o.SecureObjectTypeID, o.BaseID, ParentName }).ToListAsync();
 
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
@@ -3057,7 +3054,7 @@ namespace MSRecordsEngine.Controllers
                     var param = new DynamicParameters();
                     param.Add("@SecurableObjID", SecurableObjID);
                     var res = await conn.ExecuteReaderAsync(sql, param, commandType: CommandType.StoredProcedure);
-                    if (res != null) 
+                    if (res != null)
                         dtPermissions.Load(res);
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
@@ -3284,7 +3281,7 @@ namespace MSRecordsEngine.Controllers
                 model.ErrorType = "e";
                 model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
-            
+
             return model;
         }
 
@@ -3305,7 +3302,7 @@ namespace MSRecordsEngine.Controllers
                     param.Add("@SecurableObjID", SecurableObjID);
 
                     var res = await conn.ExecuteReaderAsync(query, param, commandType: CommandType.StoredProcedure);
-                    if(res != null)
+                    if (res != null)
                         dt.Load(res);
 
                     var Setting = new JsonSerializerSettings();
@@ -3351,7 +3348,7 @@ namespace MSRecordsEngine.Controllers
                             foreach (int pSecurableID in pSecurableObjIds)
                             {
 
-                                pSecurableObjectList =  await context.SecureObjectPermissions.Where(x => x.SecureObjectID == pSecurableID & x.GroupID == pGroupId).ToListAsync();
+                                pSecurableObjectList = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == pSecurableID & x.GroupID == pGroupId).ToListAsync();
                                 if (!(pPermisionIds == null))
                                 {
                                     pTempPermissionIds.Clear();
@@ -3426,6 +3423,274 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
+        #endregion
+
+        #region Report Style All Methods Moved 
+
+        [Route("GetReportStyles")]
+        [HttpGet]
+        public string GetReportStyles(string ConnectionString, string sord, int page, int rows) //completed testing
+        {
+            var jsonObject = string.Empty;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var reportEntity = context.ReportStyles.OrderBy(m => m.ReportStylesId);
+
+                if (reportEntity == null)
+                {
+                    return null;
+                }
+                else
+                {
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(reportEntity.GetJsonListForGrid(sord, page, rows, "Id"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            return jsonObject;
+        }
+
+        [Route("GetReportStylesData")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> GetReportStylesData(string ConnectionString, string reportStyleVar, int selectedRowsVar = 0, bool cloneFlag = false) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    object reportStyleEntity;
+                    object allReportStyle = null;
+                    if (selectedRowsVar != 0)
+                    {
+                        reportStyleEntity = await context.ReportStyles.Where(m => m.Id.Equals(reportStyleVar.Trim()) & m.ReportStylesId.Equals(selectedRowsVar)).FirstOrDefaultAsync();
+                    }
+                    else
+                    {
+                        reportStyleEntity = await context.ReportStyles.Where(m => m.Id.Equals(reportStyleVar.Trim())).FirstOrDefaultAsync();
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.stringValue2 = JsonConvert.SerializeObject(reportStyleEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                    if (cloneFlag)
+                    {
+                        allReportStyle = await context.ReportStyles.OrderBy(m => m.Id).ToListAsync();
+                        bool bFound = false;
+                        int iNextReport = 0;
+                        string sReportStyleName = "New Report Style";
+                        do
+                        {
+                            bFound = false;
+                            if (iNextReport == 0)
+                            {
+                                sReportStyleName = "New Report Style";
+                            }
+                            else
+                            {
+                                sReportStyleName = "New Report Style " + iNextReport;
+                            }
+
+                            foreach (ReportStyle oReportStyle in (IEnumerable)allReportStyle)
+                            {
+                                if (Strings.StrComp(oReportStyle.Id.Trim().ToLower(), sReportStyleName.Trim().ToLower(), Constants.vbTextCompare) == 0)
+                                {
+                                    iNextReport = iNextReport + 1;
+                                    sReportStyleName = oReportStyle.Id;
+                                    bFound = true;
+                                    break;
+                                }
+                            }
+                            if (!bFound)
+                            {
+                                break;
+                            }
+                        }
+                        while (true);
+
+                        model.stringValue1 = JsonConvert.SerializeObject(sReportStyleName, Newtonsoft.Json.Formatting.Indented, Setting);
+                        return model;
+                    }
+                    else
+                    {
+                        return model;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return model;
+        }
+
+        [Route("RemoveReportStyle")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveReportStyle(string ConnectionString, int selectedRowsVar, string reportStyleVar) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var reportStyleEntity = await context.ReportStyles.Where(m => m.Id.Trim().ToLower().Equals(reportStyleVar.Trim().ToLower()) & m.ReportStylesId == selectedRowsVar).FirstOrDefaultAsync();
+                    if (reportStyleEntity != null)
+                    {
+                        context.ReportStyles.Remove(reportStyleEntity);
+                        await context.SaveChangesAsync();
+                    }
+
+                    model.ErrorMessage = "Selected Reported Style has been deleted Successfully";
+                    model.ErrorType = "s";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetReportStylesData")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetReportStylesData(ReportStyle formEntity, string ConnectionString, bool pFixedLines, bool pAltRowShading, bool pReportCentered) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    formEntity.FixedLines = pFixedLines;
+                    formEntity.AltRowShading = pAltRowShading;
+                    formEntity.ReportCentered = pReportCentered;
+                    if (formEntity.ReportStylesId > 0)
+                    {
+                        var reportStyleEntity = await context.ReportStyles.Where(m => m.ReportStylesId == formEntity.ReportStylesId).FirstOrDefaultAsync();
+                        if (!string.IsNullOrEmpty(reportStyleEntity.Id))
+                        {
+                            if (!reportStyleEntity.Id.Trim().ToLower().Equals(formEntity.Id.Trim().ToLower()))
+                            {
+                                var reportStyleAll = await context.ReportStyles.OrderBy(m => m.ReportStylesId).ToListAsync();
+                                foreach (ReportStyle reportObj in reportStyleAll)
+                                {
+                                    if (reportObj.Id.Trim().ToLower().Equals(formEntity.Id.Trim().ToLower()) & reportObj.ReportStylesId != formEntity.ReportStylesId)
+                                    {
+                                        model.ErrorType = "w";
+                                        model.ErrorMessage = string.Format("A Report Style already exists with the name {0}. Please select a different name.", reportObj.Id);
+                                        return model;
+                                    }
+                                }
+                            }
+                        }
+
+                        reportStyleEntity = AddReportStyle(reportStyleEntity, formEntity);
+                        context.Entry(reportStyleEntity).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Selected Reported Style properties has been updated Successfully";
+                    }
+                    else
+                    {
+                        context.ReportStyles.Add(formEntity);
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Record saved successfully";
+                    }
+                    var reportBack = await context.ReportStyles.Where(m => m.Id.Trim().ToLower().Equals(formEntity.Id.Trim().ToLower())).FirstOrDefaultAsync();
+                    model.stringValue1 = JsonConvert.SerializeObject(reportBack, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        private ReportStyle AddReportStyle(ReportStyle reportStyleEntity, ReportStyle formEntity)
+        {
+            reportStyleEntity.ReportStylesId = formEntity.ReportStylesId;
+            reportStyleEntity.Id = formEntity.Id;
+            reportStyleEntity.Description = formEntity.Description;
+            reportStyleEntity.Heading1Left = formEntity.Heading1Left;
+            reportStyleEntity.Heading1Center = formEntity.Heading1Center;
+            reportStyleEntity.Heading1Right = formEntity.Heading1Right;
+            reportStyleEntity.Heading2Center = formEntity.Heading2Center;
+            reportStyleEntity.FooterLeft = formEntity.FooterLeft;
+            reportStyleEntity.FooterCenter = formEntity.FooterCenter;
+            reportStyleEntity.FooterRight = formEntity.FooterRight;
+            reportStyleEntity.Orientation = formEntity.Orientation;
+            reportStyleEntity.HeaderSize = formEntity.HeaderSize;
+            reportStyleEntity.ShadowSize = formEntity.ShadowSize;
+            reportStyleEntity.MinColumnWidth = formEntity.MinColumnWidth;
+            reportStyleEntity.BlankLineSpacing = formEntity.BlankLineSpacing;
+            reportStyleEntity.ColumnSpacing = formEntity.ColumnSpacing;
+            reportStyleEntity.BoxWidth = formEntity.BoxWidth;
+            reportStyleEntity.MaxLines = formEntity.MaxLines;
+            reportStyleEntity.FixedLines = formEntity.FixedLines;
+            reportStyleEntity.AltRowShading = formEntity.AltRowShading;
+            reportStyleEntity.ReportCentered = formEntity.ReportCentered;
+            reportStyleEntity.TextForeColor = formEntity.TextForeColor;
+            reportStyleEntity.LineColor = formEntity.LineColor;
+            reportStyleEntity.ShadeBoxColor = formEntity.ShadeBoxColor;
+            reportStyleEntity.ShadowColor = formEntity.ShadowColor;
+            reportStyleEntity.ShadedLineColor = formEntity.ShadedLineColor;
+            reportStyleEntity.LeftMargin = formEntity.LeftMargin;
+            reportStyleEntity.RightMargin = formEntity.RightMargin;
+            reportStyleEntity.TopMargin = formEntity.TopMargin;
+            reportStyleEntity.BottomMargin = formEntity.BottomMargin;
+            reportStyleEntity.HeadingL1FontBold = formEntity.HeadingL1FontBold;
+            reportStyleEntity.HeadingL1FontItalic = formEntity.HeadingL1FontItalic;
+            reportStyleEntity.HeadingL1FontUnderlined = formEntity.HeadingL1FontUnderlined;
+            reportStyleEntity.HeadingL1FontSize = formEntity.HeadingL1FontSize;
+            reportStyleEntity.HeadingL1FontName = formEntity.HeadingL1FontName;
+
+            reportStyleEntity.HeadingL2FontBold = formEntity.HeadingL2FontBold;
+            reportStyleEntity.HeadingL2FontItalic = formEntity.HeadingL2FontItalic;
+            reportStyleEntity.HeadingL2FontUnderlined = formEntity.HeadingL2FontUnderlined;
+            reportStyleEntity.HeadingL2FontSize = formEntity.HeadingL2FontSize;
+            reportStyleEntity.HeadingL2FontName = formEntity.HeadingL2FontName;
+
+
+            reportStyleEntity.SubHeadingFontBold = formEntity.SubHeadingFontBold;
+            reportStyleEntity.SubHeadingFontItalic = formEntity.SubHeadingFontItalic;
+            reportStyleEntity.SubHeadingFontUnderlined = formEntity.SubHeadingFontUnderlined;
+            reportStyleEntity.SubHeadingFontName = formEntity.SubHeadingFontName;
+            reportStyleEntity.SubHeadingFontSize = formEntity.SubHeadingFontSize;
+
+            reportStyleEntity.ColumnHeadingFontBold = formEntity.ColumnHeadingFontBold;
+            reportStyleEntity.ColumnHeadingFontItalic = formEntity.ColumnHeadingFontItalic;
+            reportStyleEntity.ColumnHeadingFontUnderlined = formEntity.ColumnHeadingFontUnderlined;
+            reportStyleEntity.ColumnHeadingFontName = formEntity.ColumnHeadingFontName;
+            reportStyleEntity.ColumnHeadingFontSize = formEntity.ColumnHeadingFontSize;
+
+            reportStyleEntity.ColumnFontBold = formEntity.ColumnFontBold;
+            reportStyleEntity.ColumnFontItalic = formEntity.ColumnFontItalic;
+            reportStyleEntity.ColumnFontUnderlined = formEntity.ColumnFontUnderlined;
+            reportStyleEntity.ColumnFontName = formEntity.ColumnFontName;
+            reportStyleEntity.ColumnFontSize = formEntity.ColumnFontSize;
+
+            reportStyleEntity.FooterFontBold = formEntity.FooterFontBold;
+            reportStyleEntity.FooterFontItalic = formEntity.FooterFontItalic;
+            reportStyleEntity.FooterFontUnderlined = formEntity.FooterFontUnderlined;
+            reportStyleEntity.FooterFontName = formEntity.FooterFontName;
+            reportStyleEntity.FooterFontSize = formEntity.FooterFontSize;
+
+            return reportStyleEntity;
+        }
         #endregion
 
         [Route("BindAccordian")]

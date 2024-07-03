@@ -37,11 +37,11 @@ namespace FusionWebApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.RegisterServices();
             //httpclient registration;
             services.AddHttpClient<DocumentService>();
             //transit microservices registration;
             services.AddTransient<Microservices>();
-
             services.AddHttpContextAccessor();
             services.AddScoped(typeof (CommonControllersService<>));
             services.AddCors(options =>

@@ -108,6 +108,7 @@ namespace MSRecordsEngine.Models
         public string ErrorType { get; set; }
         public string stringValue1 { get; set; }
         public string stringValue2 { get; set; }
+        public string stringValue3 { get; set; }
         public bool boolValue { get; set; }
         public int intValue { get; set; }
         public List<int> intLst { get; set; }
@@ -432,6 +433,188 @@ namespace MSRecordsEngine.Models
     {
         public Passport passport { get; set; }
         public string pModuleNameStr { get; set; }
+    }
+
+    public class ViewColumnEntity
+    {
+        public int Id { get; set; }
+        public int ViewsId { get; set; }
+        public int ColumnNum { get; set; }
+        public string FieldName { get; set; }
+        public string Heading { get; set; }
+        public int LookupType { get; set; }
+        public int ColumnWidth { get; set; }
+        public bool ColumnVisible { get; set; }
+        public int ColumnOrder { get; set; }
+        public int ColumnStyle { get; set; }
+        public string EditMask { get; set; }
+        public string Picture { get; set; }
+        public int LookupIdCol { get; set; }
+        public int SortField { get; set; }
+        public bool SortableField { get; set; }
+        public bool FilterField { get; set; }
+        public bool CountColumn { get; set; }
+        public bool SubtotalColumn { get; set; }
+        public bool PrintColumnAsSubheader { get; set; }
+        public bool RestartPageNumber { get; set; }
+        public bool UseAsPrintId { get; set; }
+        public bool DropDownSuggestionOnly { get; set; }
+        public bool SuppressPrinting { get; set; }
+        public bool ValueCount { get; set; }
+        public string AlternateFieldName { get; set; }
+        public string DefaultLookupValue { get; set; }
+        public string DropDownFilterIdField { get; set; }
+        public string DropDownFilterMatchField { get; set; }
+        public int DropDownFlag { get; set; }
+        public int DropDownReferenceColNum { get; set; }
+        public string DropDownReferenceValue { get; set; }
+        public string DropDownTargetField { get; set; }
+        public bool EditAllowed { get; set; }
+        public int FormColWidth { get; set; }
+        public int FreezeOrder { get; set; }
+        public string InputMask { get; set; }
+        public bool MaskClipMode { get; set; }
+        public bool MaskInclude { get; set; }
+        public string MaskPromptChar { get; set; }
+        public int MaxPrintLines { get; set; }
+        public bool PageBreakField { get; set; }
+        public int PrinterColWidth { get; set; }
+        public int SortOrder { get; set; }
+        public bool SortOrderDesc { get; set; }
+        public bool SuppressDuplicates { get; set; }
+        public bool VisibleOnForm { get; set; }
+        public bool VisibleOnPrint { get; set; }
+        public int AlternateSortColumn { get; set; }
+        public int LabelLeft { get; set; }
+        public int LabelTop { get; set; }
+        public int LabelWidth { get; set; }
+        public int LabelHeight { get; set; }
+        public int ControlLeft { get; set; }
+        public int ControlTop { get; set; }
+        public int ControlWidth { get; set; }
+        public int ControlHeight { get; set; }
+        public int TabOrder { get; set; }
+        public int LabelJustify { get; set; }
+    }
+
+    public class ViewEntity
+    {
+        public int Id { get; set; }
+        public string TableName { get; set; }
+        public string ViewName { get; set; }
+        public string SQLStatement { get; set; }
+        public int MaxRecsPerFetch { get; set; }
+        public string Picture { get; set; }
+        public string ReportStylesId { get; set; }
+        public int ViewOrder { get; set; }
+        public string WorkFlow1 { get; set; }
+        public string WorkFlow1Pic { get; set; }
+        public string WorkFlowDesc1 { get; set; }
+        public string WorkFlowToolTip1 { get; set; }
+        public string WorkFlowHotKey1 { get; set; }
+        public string WorkFlow2 { get; set; }
+        public string WorkFlow2Pic { get; set; }
+        public string WorkFlowDesc2 { get; set; }
+        public string WorkFlowToolTip2 { get; set; }
+        public string WorkFlowHotKey2 { get; set; }
+        public string WorkFlow3 { get; set; }
+        public string WorkFlow3Pic { get; set; }
+        public string WorkFlowDesc3 { get; set; }
+        public string WorkFlowToolTip3 { get; set; }
+        public string WorkFlowHotKey3 { get; set; }
+        public string WorkFlow4 { get; set; }
+        public string WorkFlow4Pic { get; set; }
+        public string WorkFlowDesc4 { get; set; }
+        public string WorkFlowToolTip4 { get; set; }
+        public string WorkFlowHotKey4 { get; set; }
+        public string WorkFlow5 { get; set; }
+        public string WorkFlow5Pic { get; set; }
+        public string WorkFlowDesc5 { get; set; }
+        public string WorkFlowToolTip5 { get; set; }
+        public string WorkFlowHotKey5 { get; set; }
+        public int TablesId { get; set; }
+        public int ViewGroup { get; set; }
+        public bool Visible { get; set; }
+        public bool VariableColWidth { get; set; }
+        public bool VariableRowHeight { get; set; }
+        public bool VariableFixedCols { get; set; }
+        public int RowHeight { get; set; }
+        public bool AddAllowed { get; set; }
+        public int ViewType { get; set; }
+        public bool UseExactRowCount { get; set; }
+        public string TablesDown { get; set; }
+        public bool Printable { get; set; }
+        public bool GrandTotal { get; set; }
+        public int LeftIndent { get; set; }
+        public int RightIndent { get; set; }
+        public string SubTableName { get; set; }
+        public int SubViewId { get; set; }
+        public bool PrintWithoutChildren { get; set; }
+        public bool SuppressHeader { get; set; }
+        public bool SuppressFooter { get; set; }
+        public bool PrintFrozenOnly { get; set; }
+        public bool TrackingEverContained { get; set; }
+        public bool PrintImages { get; set; }
+        public bool PrintImageFullPage { get; set; }
+        public bool PrintImageFirstPageOnly { get; set; }
+        public bool PrintImageRedlining { get; set; }
+        public int PrintImageLeftMargin { get; set; }
+        public int PrintImageRightMargin { get; set; }
+        public bool PrintImageAllVersions { get; set; }
+        public int ChildColumnHeaders { get; set; }
+        public bool SuppressImageDataRow { get; set; }
+        public bool SuppressImageFooter { get; set; }
+        public int DisplayMode { get; set; }
+        public bool AutoRotateImage { get; set; }
+        public bool GrandTotalOnSepPage { get; set; }
+        public string UserName { get; set; }
+        public bool IncludeFileRoomOrder { get; set; }
+        public int AltViewId { get; set; }
+        public bool DeleteGridAvail { get; set; }
+        public bool FiltersActive { get; set; }
+        public bool IncludeTrackingLocation { get; set; }
+        public bool InTaskList { get; set; }
+        public string TaskListDisplayString { get; set; }
+        public int PrintAttachments { get; set; }
+        public bool MultiParent { get; set; }
+        public bool SearchableView { get; set; }
+        public bool CustomFormView { get; set; }
+        public int MaxRecsPerFetchDesktop { get; set; }
+    }
+
+    public class ViewFilterEntity
+    {
+        public int Id { get; set; }
+        public int Sequence { get; set; }
+        public int ViewsId { get; set; }
+        public int ColumnNum { get; set; }
+        public string OpenParen { get; set; }
+        public string Operator { get; set; }
+        public string FilterData { get; set; }
+        public string CloseParen { get; set; }
+        public string JoinOperator { get; set; }
+        public bool Active { get; set; }
+        public int DisplayColumnNum { get; set; }
+        public bool PartOfView { get; set; }
+    }
+
+    public class GetDataFromViewColumnParams
+    {
+        public string ConnectionString { get; set; }
+        public Dictionary<string, bool> EditSettingList { get; set; }
+        public ViewColumn ViewColumnEntity { get; set; }
+        public List<ViewColumn> CurrentViewColumn { get; set; }
+        public string TableName { get; set; }
+        public View View { get; set; }
+    }
+
+    public class ReturnFillFieldTypeAndSize
+    {
+        public string ErrorType { get; set; }
+        public string FiledType { get; set; }
+        public string FieldSize { get; set; }
+        public string EditMaskLength { get; set; }
+        public string InputMaskLength { get; set; }
     }
 
 }

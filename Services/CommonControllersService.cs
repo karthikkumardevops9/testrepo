@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
 using MSRecordsEngine.Entities;
 using System;
 using System.Collections.Generic;
@@ -339,27 +340,21 @@ namespace MSRecordsEngine.Services
                     }
             }
 
-            if (col.ColumnName.ToLower() == "formattedid")
-                return false;
-            // If col.ColumnName.ToLower = "id" Then Return False
-            if (col.ColumnName.ToLower() == "attachments")
-                return false;
-            if (col.ColumnName.ToLower() == "slrequestable")
-                return false;
-            if (col.ColumnName.ToLower() == "itemname")
-                return false;
-            if (col.ColumnName.ToLower() == "pkey")
-                return false;
-            if (col.ColumnName.ToLower() == "dispositionstatus")
-                return false;
-            if (col.ColumnName.ToLower() == "processeddescfieldnameone")
-                return false;
-            if (col.ColumnName.ToLower() == "processeddescfieldnametwo")
-                return false;
-            if (col.ColumnName.ToLower() == "rownum")
-                return false;
-            return true;
+        public static string RemoveTableNameFromField(string sFieldName)
+        {
+            string RemoveTableNameFromFieldRet = default;
+            int i;
+            RemoveTableNameFromFieldRet = sFieldName;
+            i = Strings.InStr(sFieldName, ".");
+            if (i > 1)
+            {
+                RemoveTableNameFromFieldRet = Strings.Mid(sFieldName, i + 1);
+            }
+            RemoveTableNameFromFieldRet = Strings.Trim(RemoveTableNameFromFieldRet);
+            return RemoveTableNameFromFieldRet;
+
         }
+
         private string NormalizeString(string s)
         {
             if (string.IsNullOrEmpty(s))
