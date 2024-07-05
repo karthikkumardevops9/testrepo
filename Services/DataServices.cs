@@ -7,9 +7,9 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using MSRecordsEngine.Models;
 using System.Collections.Generic;
-using Microsoft.VisualBasic;
 using System.Linq;
 using MSRecordsEngine.Services.Interface;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace MSRecordsEngine.Services
@@ -141,6 +141,8 @@ namespace MSRecordsEngine.Services
             }
         }
 
+        
+
         public bool IsADateType(Enums.DataTypeEnum eDataType)
         {
             switch (eDataType)
@@ -213,7 +215,7 @@ namespace MSRecordsEngine.Services
             bool IsSysAdminRet = default;
             var dt = new DataTable();
 
-            if (Strings.Len(tableName) == 0)
+            if (tableName.Length == 0)
             {
                 return IsSysAdminRet == true;
             }
@@ -360,7 +362,8 @@ namespace MSRecordsEngine.Services
         {
             try
             {
-                var schemacolumnlist = SchemaInfoDetails.GetSchemaInfo(tablename, RemoveTableNameFromField(idfield));
+       
+                var schemacolumnlist = SchemaInfoDetails.GetSchemaInfo(tablename, DatabaseMap.RemoveTableNameFromField(idfield));
                 if (schemacolumnlist is not null)
                 {
                     return schemacolumnlist[0].IsString;
@@ -562,18 +565,5 @@ namespace MSRecordsEngine.Services
             return ParenEncloseStatementRet;
         }
 
-        private string RemoveTableNameFromField(string sFieldName)
-        {
-            string RemoveTableNameFromFieldRet = default;
-            int i;
-            RemoveTableNameFromFieldRet = sFieldName;
-            i = sFieldName.IndexOf(".");
-            if (i > 0)
-            {
-                RemoveTableNameFromFieldRet = sFieldName.Substring(i + 1);
-            }
-            RemoveTableNameFromFieldRet = RemoveTableNameFromFieldRet.Trim();
-            return RemoveTableNameFromFieldRet;
-        }
     }
 }

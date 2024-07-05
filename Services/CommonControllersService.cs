@@ -361,21 +361,6 @@ namespace MSRecordsEngine.Services
             return true;
         }
 
-        public static string RemoveTableNameFromField(string sFieldName)
-        {
-            string RemoveTableNameFromFieldRet = default;
-            int i;
-            RemoveTableNameFromFieldRet = sFieldName;
-            i = Strings.InStr(sFieldName, ".");
-            if (i > 1)
-            {
-                RemoveTableNameFromFieldRet = Strings.Mid(sFieldName, i + 1);
-            }
-            RemoveTableNameFromFieldRet = Strings.Trim(RemoveTableNameFromFieldRet);
-            return RemoveTableNameFromFieldRet;
-
-        }
-
         private string NormalizeString(string s)
         {
             if (string.IsNullOrEmpty(s))

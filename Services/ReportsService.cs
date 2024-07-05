@@ -142,7 +142,7 @@ namespace MSRecordsEngine.Services
                                     var schemaColumnItem = schemaColumn[icol];
                                     if (bDoUpper)
                                     {
-                                        if (!RemoveTableNameFromField(tableEntity.IdFieldName).Equals(RemoveTableNameFromField(schemaColumnItem.ColumnName)))
+                                        if (!DatabaseMap.RemoveTableNameFromField(tableEntity.IdFieldName).Equals(DatabaseMap.RemoveTableNameFromField(schemaColumnItem.ColumnName)))
                                         {
                                             sFieldName = "";
                                             if (mcFieldName.Count != 0)
@@ -169,7 +169,7 @@ namespace MSRecordsEngine.Services
                                             }
                                         }
                                     }
-                                    else if (!RemoveTableNameFromField(relationObj.LowerTableFieldName).Equals(RemoveTableNameFromField(schemaColumnItem.ColumnName)))
+                                    else if (!DatabaseMap.RemoveTableNameFromField(relationObj.LowerTableFieldName).Equals(DatabaseMap.RemoveTableNameFromField(schemaColumnItem.ColumnName)))
                                     {
                                         if (mcFieldName.Count != 0)
                                         {
@@ -217,21 +217,5 @@ namespace MSRecordsEngine.Services
                 throw;
             } // ex
         }
-
-        private static string RemoveTableNameFromField(string sFieldName)
-        {
-            string RemoveTableNameFromFieldRet = default;
-            int i;
-            RemoveTableNameFromFieldRet = sFieldName;
-            i = Strings.InStr(sFieldName, ".");
-            if (i > 1)
-            {
-                RemoveTableNameFromFieldRet = Strings.Mid(sFieldName, i + 1);
-            }
-            RemoveTableNameFromFieldRet = Strings.Trim(RemoveTableNameFromFieldRet);
-            return RemoveTableNameFromFieldRet;
-
-        }
-
     }
 }
