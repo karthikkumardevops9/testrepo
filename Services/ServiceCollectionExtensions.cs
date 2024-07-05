@@ -11,6 +11,8 @@ namespace MSRecordsEngine.Services
             services.AddTransient<IDatabaseMap, DatabaseMap>();
             services.AddTransient<IDataServices, DataServices>();
             services.AddTransient<IReportService, ReportsService>();
+            services.AddTransient<IExporterService, ExporterService>();
+            services.AddTransient<IBackgroundStatusService, BackgroundStatusService>();
         }
     }
 }
