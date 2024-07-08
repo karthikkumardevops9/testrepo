@@ -258,6 +258,13 @@ namespace MSRecordsEngine.Models
             rmFldUnspecified = -1,
             rmFldUpdatable = 4
         }
+
+        public enum SavedType
+        {
+            Query = 0,
+            Favorite = 1,
+            Valt = 2
+        }
         public enum ReportsType
         {
             PastDueTrackableItemsReport,
@@ -818,5 +825,14 @@ namespace MSRecordsEngine.Models
         private bool _ReadOnlye;
     }
 
+    public class CoulmnSchemaInfo
+    {
+        public string TABLE_NAME { get; set; }
+        public string COLUMN_NAME { get; set;}
+        public string DATA_TYPE { get; set;}
+        public int CHARACTER_MAXIMUM_LENGTH { get; set;}
+        public string IS_NULLABLE { get; set;}
+        public bool IsAutoIncrement { get; set;}
+    }
 
 }

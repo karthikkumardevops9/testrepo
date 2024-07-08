@@ -1,7 +1,9 @@
 ﻿using MSRecordsEngine.Entities;
+using MSRecordsEngine.Models.FusionModels;
 using Smead.Security;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing;
 
 namespace MSRecordsEngine.Models
@@ -617,4 +619,71 @@ namespace MSRecordsEngine.Models
         public string InputMaskLength { get; set; }
     }
 
+    public class ReturnLoadViewsSettings
+    {
+        public ViewsCustomModel ViewsCustomModel { get; set; }
+        public List<MSRecordsEngine.Models.GridColumns> GridColumnEntities {  get; set; }
+        public List<ViewColumn> ViewColumns { get; set; }   
+        public  string TableName { get; set; }
+    }
+
+    public class GetViewsRelatedDataParam
+    {
+        public string TableName { get; set; }
+        public int ViewId { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ReturnGetViewsRelatedData
+    {
+        public List<ViewFilter> TempViewFilterList {  get; set; }
+        public string ErrorType { get; set; }
+        public string ErrorMessage { get; set; }
+        public int SLTableFileRoomOrderCount { get; set; }
+        public int MaxRecsPerFetch { get; set; }
+        public bool btnColumnAdd { get; set; }
+        public bool ShouldEnableMoveFilter { get; set; }
+        public bool SearchableView { get; set ; }
+        public bool Trackable { get; set ; }
+        public bool TaskList { get; set ; }
+        public bool InFileRoomOrder { get; set ; }
+        public bool FilterActive { get; set ; }
+        public bool IncludeTrackingLocation { get; set ; }
+    }
+
+    public class FillInternalFieldNameParams
+    {
+        public Enums.geViewColumnsLookupType ColumnTypeVar { get; set; }
+        public string TableName { get; set; }
+        public bool viewFlag { get; set; }
+        public bool IsLocationChecked { get; set; }
+        public string msSQL { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ValidateViewColEditSettingParams
+    {
+        public ViewsCustomModel viewsCustomModel { get; set; }
+        public string TableName { get; set; }
+        public Enums.geViewColumnsLookupType LookupType { get; set; }
+        public string FieldName { get; set; }
+        public string FieldType { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+
+    public class  FiltereOperaterValue
+    {
+        public List<KeyValuePair<string, string>> KeyValuePairs { get; set; }
+        public Dictionary<string, bool> DictionaryResult { get; set; }
+    }
+
+    public class FillColumnComboboxData
+    {
+        public DataTable DataTable { get; set; }
+        public string ValueFieldName { get; set; }
+        public string ThisFieldHeading { get; set; }
+        public string FirstLookupHeading { get; set; }
+        public string SecondLookupHeading { get; set; }
+    }
 }
