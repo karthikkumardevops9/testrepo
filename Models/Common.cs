@@ -258,11 +258,60 @@ namespace MSRecordsEngine.Models
             rmFldUnspecified = -1,
             rmFldUpdatable = 4
         }
+
         public enum SavedType
         {
             Query = 0,
             Favorite = 1,
             Valt = 2
+        }
+        public enum ReportsType
+        {
+            PastDueTrackableItemsReport,
+            ObjectOut,
+            ObjectsInventory,
+            RequestNew,
+            RequestNewBatch,
+            RequestPullList,
+            RequestException,
+            RequestInProcess,
+            RequestWaitList,
+            RetentionFinalDisposition,
+            RetentionCertifieDisposition,
+            RetentionInactivePullList,
+            RetentionInactiveRecords,
+            RetentionRecordsOnHold,
+            RetentionCitations,
+            RetentionCitationsWithRetCodes,
+            RetentionCodes,
+            RetentionCodesWithCitations
+        }
+
+        public enum SubmitType
+        {
+            Purged,
+            Archived,
+            Destroyed
+        }
+        public enum LoginUserType
+        {
+            Single = 0,
+            Azure = 1,
+            Okta = 2,
+        }
+        public enum ViewType
+        {
+            FusionView,
+            Favorite,
+            GlobalSearch
+        }
+        public enum BackgroundTaskProcess
+        {
+            Normal = 1,
+            Background,
+            ExceedMaxLimit,
+            ServiceNotEnabled,
+            NoSelection
         }
     }
 

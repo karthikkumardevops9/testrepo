@@ -13,6 +13,8 @@ namespace MSRecordsEngine.Services
             services.AddTransient<ISavedCriteria, SavedCriteria>();
             services.AddTransient<ITrackingServices, TrackingServices>();
             services.AddTransient<IViewService, ViewService>();
+            services.AddTransient<IExporterService, ExporterService>();
+            services.AddTransient<IBackgroundStatusService, BackgroundStatusService>();
         }
     }
 }
