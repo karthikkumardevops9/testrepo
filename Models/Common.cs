@@ -835,4 +835,19 @@ namespace MSRecordsEngine.Models
         public bool IsAutoIncrement { get; set;}
     }
 
+    public sealed class Keys
+    {
+        public static string _connMARSbuild(string conn)
+        {
+            if (!string.IsNullOrEmpty(conn))
+            {
+                if (!conn.Contains("MultipleActiveResultSets"))
+                {
+                    conn = conn + ";MultipleActiveResultSets=True";
+                }
+            }
+            return conn;
+        }
+    }
+
 }
