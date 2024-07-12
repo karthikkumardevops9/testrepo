@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 
+
+
 namespace MSRecordsEngine.Models
 {
     public sealed class Common
@@ -963,5 +965,20 @@ namespace MSRecordsEngine.Models
         public static string UserListQ = "select UserId As Id, UserName As SID, FullName as Name from SecureUser where UserId > 0";
 
         public static string TableNameQ = "select TableName from tables where tableId in ([TableIds])";
+    }
+
+    public sealed class Keys
+    {
+        public static string _connMARSbuild(string conn)
+        {
+            if (!string.IsNullOrEmpty(conn))
+            {
+                if (!conn.Contains("MultipleActiveResultSets"))
+                {
+                    conn = conn + ";MultipleActiveResultSets=True";
+                }
+            }
+            return conn;
+        }
     }
 }

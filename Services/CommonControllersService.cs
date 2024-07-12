@@ -434,7 +434,7 @@ namespace MSRecordsEngine.Services
             }
         }
 
-        private string GetConvertCultureDate(DateTime dtPreFormat, string cShortDatePattern, string timeOffSetVal, bool bWithTime = false, bool bConvertToLocalTimeZone = true, bool bDetectTime = false)
+        public string GetConvertCultureDate(DateTime dtPreFormat, string cShortDatePattern, string timeOffSetVal, bool bWithTime = false, bool bConvertToLocalTimeZone = true, bool bDetectTime = false)
         {
             string dtCultureFormat = string.Empty;
             if (dtPreFormat == default)

@@ -9,7 +9,6 @@ using MSRecordsEngine.Models;
 using System.Collections.Generic;
 using System.Linq;
 using MSRecordsEngine.Services.Interface;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace MSRecordsEngine.Services
@@ -140,8 +139,6 @@ namespace MSRecordsEngine.Services
                     }
             }
         }
-
-        
 
         public bool IsADateType(Enums.DataTypeEnum eDataType)
         {
@@ -420,150 +417,5 @@ namespace MSRecordsEngine.Services
             }
             return recordaffected;
         }
-
-        public string InjectWhereIntoSQL(string sSQL, string sNewWhere, string sOperator = "AND")
-        {
-            string InjectWhereIntoSQLRet = default;
-            string sInitWhere = string.Empty;
-            string sInitOrderBy = string.Empty;
-            string sInitSelect = string.Empty;
-            string sRetVal = sSQL;
-            int iPos;
-            var dataService =new DataServices();
-
-            sSQL = dataService.NormalizeString(sSQL);
-            iPos = sSQL.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
-
-            if (iPos > 0)
-            {
-                sInitSelect = sSQL.Substring(0, iPos).Trim();
-                sInitWhere = sSQL.Substring(iPos + " WHERE ".Length).Trim();
-
-                iPos = sInitWhere.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
-                if (iPos > 0)
-                {
-                    sInitOrderBy = sInitWhere.Substring(iPos + " ORDER BY ".Length).Trim();
-                    sInitWhere = sInitWhere.Substring(0, iPos).Trim();
-                }
-            }
-            else
-            {
-                iPos = sSQL.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
-                if (iPos > 0)
-                {
-                    sInitOrderBy = sSQL.Substring(iPos + " ORDER BY ".Length).Trim();
-                    sInitSelect = sSQL.Substring(0, iPos).Trim();
-                }
-                else
-                {
-                    sInitSelect = sSQL.Trim();
-                }
-            }
-
-            sRetVal = sInitSelect;
-
-            if (!string.IsNullOrEmpty(sInitWhere))
-            {
-                if (!string.IsNullOrEmpty(sNewWhere.Trim()))
-                {
-                    sRetVal += " WHERE (" + ParenEncloseStatement(sInitWhere) + " " + sOperator + " " + ParenEncloseStatement(sNewWhere) + ")";
-                }
-                else
-                {
-                    sRetVal += " WHERE " + ParenEncloseStatement(sInitWhere);
-                }
-            }
-            else if (!string.IsNullOrEmpty(sNewWhere.Trim()))
-            {
-                sRetVal += " WHERE " + ParenEncloseStatement(sNewWhere);
-            }
-
-            if (!string.IsNullOrEmpty(sInitOrderBy))
-                sRetVal += " ORDER BY " + sInitOrderBy;
-            InjectWhereIntoSQLRet = sRetVal;
-            return InjectWhereIntoSQLRet;
-        }
-
-        public string NormalizeString(string s)
-        {
-            if (string.IsNullOrEmpty(s))
-                return string.Empty;
-
-            s = s.Replace("\t", " "); 
-            s = s.Replace("\r", " "); 
-            s = s.Replace("\n", " "); 
-
-            while (s.Contains("  ")) 
-                s = s.Replace("  ", " ");
-
-            return s;
-        }
-
-        private string ParenEncloseStatement(string sSQL)
-        {
-            string ParenEncloseStatementRet = default;
-            long iParenCount;
-            long iMaxParenCount;
-            int iIndex;
-            bool bDoEnclose;
-            bool bInString;
-            string sCurChar;
-
-            bDoEnclose = false;
-            bInString = false;
-            iIndex = 1;
-            iParenCount = 0L;
-            iMaxParenCount = 0L;
-            while (iIndex <= sSQL.Length && !bDoEnclose)
-            {
-                sCurChar = sSQL.Substring(iIndex - 1, 1);
-                if (sCurChar == "\"")
-                {
-                    bInString = !bInString;
-                }
-
-                if (!bInString)
-                {
-                    if (sCurChar == "(")
-                    {
-                        iParenCount = iParenCount + 1L;
-                    }
-
-                    if (sCurChar == ")")
-                    {
-                        iParenCount = iParenCount - 1L;
-                    }
-                }
-
-                if (iParenCount > iMaxParenCount)
-                {
-                    iMaxParenCount = iParenCount;
-                }
-
-                if (iParenCount == 0L && iIndex > 1 && iIndex < sSQL.Length && iMaxParenCount > 0L)
-                {
-                    bDoEnclose = true;
-                }
-
-                iIndex = iIndex + 1;
-            }
-
-            if (iMaxParenCount == 0L)
-            {
-                bDoEnclose = true;
-            }
-
-            if (bDoEnclose)
-            {
-                ParenEncloseStatementRet = "(" + sSQL + ")";
-            }
-            else
-            {
-                ParenEncloseStatementRet = sSQL;
-            }
-
-            return ParenEncloseStatementRet;
-        }
-
     }
 }

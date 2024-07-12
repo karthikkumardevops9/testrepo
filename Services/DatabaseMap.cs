@@ -225,6 +225,47 @@ namespace MSRecordsEngine.Services
             return RemoveFieldNameFromFieldRet;
         }
 
+        public static bool IsAStringType(Enums.DataTypeEnum eDataType)
+        {
+            switch (eDataType)
+            {
+                case Enums.DataTypeEnum.rmBSTR:
+                case Enums.DataTypeEnum.rmChar:
+                case Enums.DataTypeEnum.rmVarChar:
+                case Enums.DataTypeEnum.rmLongVarChar:
+                case Enums.DataTypeEnum.rmWChar:
+                case Enums.DataTypeEnum.rmVarWChar:
+                case Enums.DataTypeEnum.rmLongVarWChar:
+                    {
+                        return true;
+                    }
+
+                default:
+                    {
+                        return false;
+                    }
+            }
+        }
+
+        public static bool IsADateType(Enums.DataTypeEnum eDataType)
+        {
+            switch (eDataType)
+            {
+                case Enums.DataTypeEnum.rmDate:
+                case Enums.DataTypeEnum.rmDBDate:
+                case Enums.DataTypeEnum.rmDBTimeStamp:
+                case Enums.DataTypeEnum.rmDBTime:
+                    {
+                        return true;
+                    }
+
+                default:
+                    {
+                        return false;
+                    }
+            }
+        }
+
         private static int miUserLinkIndexTableIdSize = 0;
 
         public static int UserLinkIndexTableIdSize
