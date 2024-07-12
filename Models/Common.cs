@@ -836,6 +836,136 @@ namespace MSRecordsEngine.Models
         public string IS_NULLABLE { get; set;}
         public bool IsAutoIncrement { get; set;}
     }
+    public static class DashboardQueries
+    {
+        public static string ChartQuery = "select [FieldName] As [X],  count(*) as [Y] from [TableName] Group by [FieldName]";
+        public static string ChartQueryCount = "select count(*) as [Y] from [TableName]";
+
+        // Private PeriodQuery = "DECLARE @currentDate DATE,@fromdate DATE, @todate DATE, @period INT
+        // SELECT @currentDate = GETDATE(), @period = [Period]
+        // IF(@period = 1) SELECT @fromdate = CONVERT(varchar, DATEADD(DAY,-14, @currentDate), 1), @todate = CONVERT(varchar, DATEADD(DAY,-7, @currentDate), 1)
+        // ELSE IF(@period = 2) SELECT @fromdate = CONVERT(varchar, DATEADD(MONTH,-2, @currentDate), 1),  @todate = CONVERT(varchar, DATEADD(MONTH,-1, @currentDate), 1)
+        // ELSE SELECT @fromdate = CONVERT(varchar, DATEADD(MONTH, -6, @currentDate), 1), @todate = CONVERT(varchar, DATEADD(MONTH, -3, @currentDate), 1)                 "
+
+        public static string PeriodQuery = @"DECLARE @currentDate date,@fromdate date,@todate date,@period int
+                         SELECT @currentDate = GETDATE(),@period = [Period]
+                         IF (@period = 1) SELECT @fromdate = CONVERT(varchar, DATEADD(DAY, -6, @currentDate), 1),@todate = @currentDate
+                         ELSE IF (@period = 2) Begin SET DATEFIRST 1 SELECT @fromdate = CONVERT(varchar, DATEADD(DAY, -29, @currentDate), 1), @todate = @currentDate End
+                         ELSE SELECT @fromdate = CONVERT(varchar, DATEADD(DAY, -89, @currentDate), 1), @todate = @currentDate";
+
+
+        public static string TimeSeriesChartQuery = PeriodQuery + @" SELECT [Filter] AS [X], COUNT(*) AS [Y] FROM [TableName] WHERE 
+                                                          [FieldName] >= @fromdate AND [FieldName] <= @todate GROUP BY [Filter]";
+
+        public static string TimeSeriesChartQueryCount = PeriodQuery + @" SELECT COUNT(*) AS [Y] FROM [TableName] WHERE 
+                                                              [FieldName] >= @fromdate AND [FieldName] <= @todate ";
+
+        public static string OperationChartQuery = PeriodQuery + @" SELECT  [Filter] AS [X], COUNT(*)  AS [Y], sl.actiontype AS AuditType FROM SLAuditUpdates  AS sl INNER JOIN Tables AS t
+                                          ON sl.TableName = t.TableName WHERE t.TableId IN ([TableIds]) AND sl.OperatorsId IN ([UserIds]) [AuditType]
+                                          AND (CONVERT(varchar , UpdateDateTime, 1) >= @fromdate AND CONVERT(varchar , UpdateDateTime, 1) <= @todate) 
+                                          GROUP BY [Filter] , sl.ActionType order by [Filter] desc";
+
+        public static string OperationChartQueryWeek = PeriodQuery + @" Declare @temptbl table (X nvarchar(12), Y int, WK int, AuditType int);
+                                              Insert Into @temptbl(X,Y,WK, AuditType)
+                                              SELECT
+                                                CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,UpdateDateTime)+1,UpdateDateTime), 6)  AS X,
+                                                COUNT(*) AS [Y],
+                                                DATEPART(WEEK,UpdateDateTime) AS WK,
+                                                sl.actiontype AS AuditType
+                                              FROM
+                                                SLAuditUpdates AS sl
+                                                INNER JOIN Tables AS t ON sl.TableName = t.TableName
+                                              WHERE
+                                                t.TableId IN ([TableIds])
+                                                AND sl.OperatorsId IN ([UserIds])
+                                                [AuditType] 
+                                                AND (
+                                                  CONVERT(varchar, UpdateDateTime, 1) >= @fromdate
+                                                  AND CONVERT(varchar, UpdateDateTime, 1) <= @todate
+                                                )
+                                              GROUP BY
+                                                CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,UpdateDateTime)+1,UpdateDateTime), 6),
+                                                DATEPART(WEEK,UpdateDateTime),
+                                                sl.actiontype
+                                              order by
+                                                DATEPART(WEEK,UpdateDateTime) desc
+                                              
+                                              
+                                              Declare @WeekFrom nvarchar(12) = CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,@fromdate)+1,@fromdate), 6)
+                                              Declare @WeekTo nvarchar(12) = CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,@todate)+1,@todate), 6)
+                                                                                           
+                                              Select  Case X  when @WeekFrom  then  CONVERT(nvarchar, @fromdate, 6) 
+                                              when @WeekTo then CONVERT(nvarchar, @todate, 6) else X end As X, Y, AuditType
+                                              from @temptbl order by WK desc";
+
+        public static string OperationChartQueryCount = PeriodQuery + @" SELECT  COUNT(*)  AS [Y] FROM SLAuditUpdates  AS sl INNER JOIN Tables AS t ON sl.TableName = t.TableName WHERE t.TableId IN ([TableIds]) AND sl.OperatorsId IN ([UserIds]) [AuditType]
+                                          AND (CONVERT(varchar , UpdateDateTime, 1) >= @fromdate AND CONVERT(varchar , UpdateDateTime, 1) <= @todate) ";
+
+        public static string TrackedChartQuery = PeriodQuery + @" SELECT [Filter] AS X, COUNT(*) AS Y FROM TrackingHistory  AS th
+                                         INNER JOIN tables t ON t.tableName = th.TrackedTable WHERE t.tableId IN ([TableIds]) AND 
+                                         (CONVERT(varchar , TransactionDateTime, 1) >= @fromdate AND CONVERT(varchar , TransactionDateTime, 1) <= @todate)
+                                         GROUP BY [Filter] order by [Filter] desc";
+
+        public static string TrackedChartQueryWeek = PeriodQuery + @" Declare @temptbl table (X nvarchar(12), Y int, WK int);
+                                           Insert Into @temptbl(X,Y,WK)
+                                           Select
+                                             CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,TransactionDateTime)+1,TransactionDateTime), 6)  AS X,
+                                             COUNT(*) AS Y, DATEPART(WEEK,TransactionDateTime) AS WK
+                                           From TrackingHistory AS th INNER JOIN tables t ON t.tableName = th.TrackedTable
+                                           Where t.tableId IN ([TableIds])
+                                             AND ( CONVERT(varchar, TransactionDateTime, 1) >= @fromdate AND CONVERT(varchar, TransactionDateTime, 1) <= @todate )
+                                           Group By CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,TransactionDateTime)+1,TransactionDateTime), 6), DATEPART(WEEK,TransactionDateTime)
+                                           order by DATEPART(WEEK,TransactionDateTime) desc
+                                           
+                                           Declare @WeekFrom nvarchar(12) = CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,@fromdate)+1,@fromdate), 6)
+                                           Declare @WeekTo nvarchar(12) = CONVERT(nvarchar, DATEAdd(day, -DATEPART(weekday,@todate)+1,@todate), 6)
+                                           
+                                           Select  Case X  when @WeekFrom  then  CONVERT(nvarchar, @fromdate, 6) 
+                                           		when @WeekTo then CONVERT(nvarchar, @todate, 6) else X end As X, Y
+                                           from @temptbl order by WK desc";
+
+
+        public static string TrackedChartQueryCount = PeriodQuery + " SELECT  COUNT(*) AS Y FROM TrackingHistory  AS th   INNER JOIN tables t ON t.tableName = th.TrackedTable WHERE t.tableId IN ([TableIds]) AND (CONVERT(varchar , TransactionDateTime, 1) >= @fromdate AND CONVERT(varchar , TransactionDateTime, 1) <= @todate) ";
+
+        public static string GridQuery = "select [Fields] from [TableName]";
+
+        public static string DashboardInsertQ = @"Declare @InsertedId table(Id int)
+                                        Insert Into SLUserDashboard (Name, UserID, Json) output Inserted.Id into @InsertedId  values(@Name, @UserID, @Json)  
+                                        select Id from @InsertedId";
+
+        public static string DashboardUpdateJsonQ = @"Declare @UpdatedId table(Id int)
+                                            update SLUserDashboard set Json = @Json output Inserted.Id into @UpdatedId where Id = @DashboardId
+                                            select Id from @UpdatedId";
+
+        public static string DashboardUpdateNameQ = @"Declare @UpdatedId table(Id int)
+                                            update SLUserDashboard set Name = @Name output Inserted.Id into @UpdatedId where Id = @DashboardId
+                                            select Id from @UpdatedId";
+
+        public static string DashboardGetIdBaseQ = "select ID, Name, Json, IsFav from SLUserDashboard where ID = @DashboardId";
+
+        public static string DashboardGetListQ = "select ID, Name, Json, isnull(IsFav, 0) as IsFav from SLUserDashboard where UserID=@UserId order by isnull(IsFav, 0) desc, Name";
+
+        public static string DashboardDeleteQ = @"Declare @InsertedId table(Id int)
+                                        Delete SLUserDashboard output Deleted.Id into @InsertedId  where ID = @DashboardId  
+                                        select Id from @InsertedId";
+
+        public static string TrackingTableQ = @"select t.TableId, t.TableName,  t.UserName from tables as t
+                                      inner join vwTablesAll as v
+                                      on t.TableName = v.TABLE_NAME COLLATE Latin1_General_CI_AS
+                                      where t.trackable = 1";
+
+        public static string AuditTableQ = @"select t.TableId, t.TableName,  t.UserName from tables as t
+                                      inner join vwTablesAll as v
+                                      on t.TableName = v.TABLE_NAME COLLATE Latin1_General_CI_AS
+                                      where t.AuditUpdate = 1";
+
+        public static string ViewColumnQ = @"select Id, Heading as Name, FieldName, ViewsId, ColumnNum from ViewColumns where viewsid = @ViewId
+                                   order by ColumnNum";
+
+        public static string UserListQ = "select UserId As Id, UserName As SID, FullName as Name from SecureUser where UserId > 0";
+
+        public static string TableNameQ = "select TableName from tables where tableId in ([TableIds])";
+    }
 
     public sealed class Keys
     {
@@ -851,5 +981,4 @@ namespace MSRecordsEngine.Models
             return conn;
         }
     }
-
 }
