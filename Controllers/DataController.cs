@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.Data;
 using System;
 using Microsoft.Extensions.Logging;
+using MSRecordsEngine.Controllers;
+using MSRecordsEngine.Services;
+using Leadtools.ImageProcessing.Core;
 namespace FusionWebApi.Controllers
 {
     [Route("[controller]")]
@@ -19,32 +22,25 @@ namespace FusionWebApi.Controllers
     //[Authorize]
     public class DataController : ControllerBase
     {
-        private ILogger<DataController> _logger;
-        public DataController(ILogger<DataController> logger)
+        private readonly CommonControllersService<DataController> _commonService;
+        public DataController(CommonControllersService<DataController> commonControllersService)
         {
-           _logger = logger;
+            _commonService = commonControllersService;
         }
-        [HttpGet]
-        [Route("TestingGet")]
-        public string GetCompany(string CompanyName)
-        {
-            _logger.LogWarning("test warning message");
-            return $"Testing.......{CompanyName}";
-        }
-        [HttpPost]
-        [Route("TestingPost")]
-        public Company GetCompanyModel(Company person)
-        {
-            var p = new Company();
-            p.CompanyName = person.CompanyName;
-            p.City = person.City;
-            return p;
-        }
-    }
-    public class Company
-    {
-        public string CompanyName { get; set; }         
-        public string City { get; set; }    
-    }
 
+        [HttpGet]
+        public void test()
+        {
+            try
+            {
+                throw new Exception("hello I am failure in ms record manager");
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+    }
 }

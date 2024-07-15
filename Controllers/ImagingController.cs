@@ -49,11 +49,5 @@ namespace MSRecordsEngine.Controllers
             }
 
         }
-        [Route("Testpassport")]
-        [HttpPost]
-         public string Testpassport(SaveNewAttachmentInPopupWindow param)
-        {
-            return param.passport.ConnectionString;
-        }
     }
 }
