@@ -21,8 +21,5 @@ namespace MSRecordsEngine.Services.Interface
         public bool IdFieldIsString(string tablename, string idfield);
         public string IDQueryValue(bool IfIdFieldIsString, string sID);
         public int ProcessADOCommand(string ConnectionString, ref string sSQL, [Optional, DefaultParameterValue(false)] bool bDoNoCount, [Optional, DefaultParameterValue(-1)] ref int lError, [Optional, DefaultParameterValue("")] ref string sErrorMsg);
-        public string InjectWhereIntoSQL(string sSQL, string sNewWhere, string sOperator = "AND");
-        public string NormalizeString(string s);
-
     }
 }

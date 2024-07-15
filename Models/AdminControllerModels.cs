@@ -111,7 +111,8 @@ namespace MSRecordsEngine.Models
         public string stringValue1 { get; set; }
         public string stringValue2 { get; set; }
         public string stringValue3 { get; set; }
-        public bool boolValue { get; set; }
+        public bool boolValue1 { get; set; }
+        public bool boolValue2 { get; set; }
         public int intValue { get; set; }
         public List<int> intLst { get; set; }
         public Dictionary<string, bool> DictionaryResult { get; set; }
@@ -685,5 +686,70 @@ namespace MSRecordsEngine.Models
         public string ThisFieldHeading { get; set; }
         public string FirstLookupHeading { get; set; }
         public string SecondLookupHeading { get; set; }
+    }
+
+    public class ViewTreePartialParam
+    {
+        public string Root { get; set; }
+        public Passport Passport { get; set; }
+    }
+    public class RefreshViewColGridParam
+    {
+        public string ConnectionString { get; set; }
+        public string TableName { get; set; }
+        public List<ViewColumn> ViewColumns { get; set; }
+    }
+
+    public class DeleteViewParams
+    {
+        public int ViewId { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ProcessFilterResult
+    {
+        public string sSql { get; set; }
+        public string Error { get; set; }
+    }
+
+    public class ValidateFilterDataParam
+    {
+        public ViewsCustomModel ViewsCustomModel { get; set; }
+        public List<ViewColumn> ViewColumns { get; set; }
+        public string ConnectionString {  set; get; }
+        public bool EventFlag { get; set; }
+    }
+
+    public class ReturnValidateFilterData
+    {
+        public string ErrorType { get; set; }
+        public string ErrorMessage { get; set; }
+        public string ErrorJson { get; set; }
+        public string MoveFilterFlagJson { get; set; }
+        public List<ViewFilter> ViewFilters { get; set; }
+    }
+
+    public class ValidateEditSettingsOnEditParams
+    {
+        public ViewColumn ViewColumn { get; set; }
+        public List<ViewColumn> ViewColumns { get; set;}
+        public string TableName { get; set; }
+        public View View {  get; set; }
+        public string ConnectionString {  get; set; }
+    }
+
+    public class DeleteReportParam
+    {
+        public int ReportId { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ValidateSqlStatementParams
+    {
+        public string ConnectionString { get; set; }
+        public bool IncludeFileRoomOrder { get; set; }
+        public bool IncludeTrackingLocation { get; set; }
+        public bool InTaskList { get; set; }
+        public ViewsCustomModel ViewsCustomModel { get; set; }
     }
 }

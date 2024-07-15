@@ -15,6 +15,8 @@ namespace MSRecordsEngine.Services
             services.AddTransient<IViewService, ViewService>();
             services.AddTransient<IExporterService, ExporterService>();
             services.AddTransient<IBackgroundStatusService, BackgroundStatusService>();
+            services.AddTransient<IDashboardService, DashboardService>();
+            services.AddTransient<ILayoutModelService,LayoutModelService>();
         }
     }
 }
