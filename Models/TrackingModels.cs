@@ -1,5 +1,6 @@
 ﻿using MSRecordsEngine.Entities;
 using System.Collections.Generic;
+using System.Data;
 
 namespace MSRecordsEngine.Models
 {
@@ -20,5 +21,14 @@ namespace MSRecordsEngine.Models
         public string Joins { get; set; }
         public List<Table> Tables { get; set; }
         public bool CreateJoinTablesRet { get; set; }
+    }
+
+    public class ColumnComboboxResult
+    {
+        public string ValueFieldName { get; set; }
+        public string ThisFieldHeading { get; set; }
+        public string FirstLookupHeading { get; set; }
+        public string SecondLookupHeading { get; set; }
+        public DataTable Table { get; set; }
     }
 }

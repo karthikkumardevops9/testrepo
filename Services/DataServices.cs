@@ -187,26 +187,6 @@ namespace MSRecordsEngine.Services
             }
         }
 
-        public List<T> GetRecords<T>(string ConnectionString, string sSql, object param = null)
-        {
-            List<T> records = new List<T>();
-            try
-            {
-                using (var conn = CreateConnection(ConnectionString))
-                {
-                    if(param != null)
-                        records = conn.Query<T>(sSql, param).ToList();
-                    else
-                        records = conn.Query<T>(sSql).ToList();
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
-            return records;
-        }
-
         public bool IsSysAdmin(string tableName, string ConnectionString, bool bDBOwnerOK = true)
         {
             bool IsSysAdminRet = default;

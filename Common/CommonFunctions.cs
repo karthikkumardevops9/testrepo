@@ -3,10 +3,16 @@ using MSRecordsEngine.Models;
 using MSRecordsEngine.Services;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Data;
 using System.Linq;
+using Dapper;
 
 public sealed class CommonFunctions
 {
+    private static IDbConnection CreateConnection(string connectionString)
+            => new SqlConnection(connectionString);
+
     public const string TRACKED_LOCATION_NAME = "SLTrackedDestination";
     public static string InjectWhereIntoSQL(string sSQL, string sNewWhere, string sOperator = "AND")
     {
@@ -242,6 +248,26 @@ public sealed class CommonFunctions
         }
 
         return ParenEncloseStatementRet;
+    }
+
+    public static List<T> GetRecords<T>(string ConnectionString, string sSql, object param = null)
+    {
+        List<T> records = new List<T>();
+        try
+        {
+            using (var conn = CreateConnection(ConnectionString))
+            {
+                if (param != null)
+                    records = conn.Query<T>(sSql, param).ToList();
+                else
+                    records = conn.Query<T>(sSql).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception(ex.Message);
+        }
+        return records;
     }
 }
 
