@@ -2,13 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.VisualBasic;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models;
 using MSRecordsEngine.Models.FusionModels;
+using MSRecordsEngine.Repository;
 using MSRecordsEngine.Services.Interface;
 using Smead.Security;
 
@@ -1003,6 +1006,106 @@ namespace MSRecordsEngine.Services
             }
             return IsLock;
         }
+
+        public Dictionary<int, ViewColumn> FillFilterFieldNames(List<ViewColumn> lViewColumn)
+        {
+            mcFilterColumns.Clear();
+            if (lViewColumn != null)
+            {
+                int iCount = 1;
+                foreach (ViewColumn viewColObj in lViewColumn)
+                {
+                    if ((bool)viewColObj.FilterField)
+                    {
+                        viewColObj.LookupIdCol = (short?)iCount;
+                        if (Convert.ToBoolean(viewColObj.DropDownFlag.Value))
+                        {
+                            viewColObj.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltDirect);
+                            viewColObj.TabOrder = iCount;
+                        }
+                        else
+                        {
+                            viewColObj.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltUndefined);
+                            viewColObj.TabOrder = -1;
+                        }
+                        mcFilterColumns.Add(iCount, viewColObj);
+                    }
+                    else if (viewColObj.LookupType == (int)Enums.geViewColumnsLookupType.ltLookup && viewColObj.DropDownFlag > 0)
+                    {
+                        var lookupRecord = lViewColumn.Where(m => m.ColumnNum == viewColObj.LookupIdCol).FirstOrDefault();
+                        if (lookupRecord != null)
+                        {
+                            if ((bool)lookupRecord.FilterField)
+                            {
+                                viewColObj.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltLookup);
+                                viewColObj.LookupIdCol = viewColObj.LookupIdCol;
+                                viewColObj.TabOrder = iCount;
+                                mcFilterColumns.Add(iCount, viewColObj);
+                            }
+                        }
+                    }
+                    iCount = iCount + 1;
+                }
+            }
+            return mcFilterColumns;
+        }
+
+        public void CreateViewsEntity(View oldViews, View newViews)
+        {
+            newViews.TableName = oldViews.TableName;
+            newViews.ViewName = oldViews.ViewName;
+            newViews.IncludeFileRoomOrder = oldViews.IncludeFileRoomOrder;
+            newViews.IncludeTrackingLocation = oldViews.IncludeTrackingLocation;
+            newViews.SearchableView = oldViews.SearchableView;
+            newViews.MaxRecsPerFetch = oldViews.MaxRecsPerFetch;
+            newViews.MaxRecsPerFetchDesktop = oldViews.MaxRecsPerFetchDesktop;
+            newViews.FiltersActive = oldViews.FiltersActive;
+
+            if (string.IsNullOrEmpty(oldViews.SQLStatement))
+            {
+                newViews.SQLStatement = "Select * From [" + oldViews.TableName + "]";
+            }
+            else
+            {
+                newViews.SQLStatement = oldViews.SQLStatement;
+            }
+
+            newViews.InTaskList = oldViews.InTaskList;
+            newViews.TaskListDisplayString = oldViews.TaskListDisplayString;
+            newViews.ReportStylesId = "Default";
+            if (oldViews.ViewOrder is not null)
+            {
+                if (0 is var arg25 && oldViews.ViewOrder is { } arg24 && arg24 != arg25)
+                {
+                    newViews.ViewOrder = oldViews.ViewOrder;
+                }
+            }
+            if (newViews.Id == 0)
+            {
+                newViews.Visible = true;
+                newViews.RowHeight = (short?)0;
+                newViews.ViewType = (short?)0;
+                newViews.DisplayMode = 1;
+            }
+        }
+
+        public async Task SQLViewDelete(int Id, Passport passport)
+        {
+            var err = new ErrorBaseModel();
+            string sql = string.Format("IF OBJECT_ID('view__{0}', 'V') IS NOT NULL DROP VIEW [view__{0}]", Id.ToString());
+            try
+            {
+                using (var cmd = new SqlCommand(sql, passport.Connection()))
+                {
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Eventlogs.LogError(ex, err, Id, passport.DatabaseName);
+            }
+        }
+
 
         #region Private Methods
 

@@ -15,5 +15,8 @@ namespace MSRecordsEngine.Services.Interface
         public ProcessFilterResult ProcessFilter(List<ViewFilter> cViewFilters, List<ViewColumn> cViewColumns, List<Table> cTables, string ConnectionString, View oViews, Table oTable, bool bActiveFilters, string sReturnStr, bool bQBEFilter, bool bConvertMemoField = true);
         public Task<FiltereOperaterValue> FillOperatorsDropDownOnChange(Dictionary<string, bool> filterControls, List<View> lView, List<Table> lTable, int iColumnNum, string TableName, string ConnectionString);
         public bool DataLocked(string sFieldName, string table, string ConnectionString);
+        public Dictionary<int, ViewColumn> FillFilterFieldNames(List<ViewColumn> lViewColumn);
+        public void CreateViewsEntity(View oldViews, View newViews);
+        public Task SQLViewDelete(int Id, Passport passport);
     }
 }

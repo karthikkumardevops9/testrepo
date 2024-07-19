@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
@@ -311,9 +310,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("EditOutputSettingsEntity")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> EditOutputSettingsEntity(EditRemoveOutputSettingsEntityParams editRemoveOutputSettingsEntityParams) //completed testing
+        public async Task<ReturnEditOutputSettingsEntity> EditOutputSettingsEntity(EditRemoveOutputSettingsEntityParams editRemoveOutputSettingsEntityParams) //completed testing
         {
-            var model = new ReturnErrorTypeErrorMsg();
+            var model = new ReturnEditOutputSettingsEntity();
             var pRowSelected = editRemoveOutputSettingsEntityParams.pRowSelected;
 
             try
@@ -322,7 +321,7 @@ namespace MSRecordsEngine.Controllers
                 {
                     if (pRowSelected is null)
                     {
-                        return new ReturnErrorTypeErrorMsg
+                        return new ReturnEditOutputSettingsEntity
                         {
                             ErrorType = "e",
                             ErrorMessage = "Null value found"
@@ -331,7 +330,7 @@ namespace MSRecordsEngine.Controllers
                     }
                     if (pRowSelected.Length == 0)
                     {
-                        return new ReturnErrorTypeErrorMsg
+                        return new ReturnEditOutputSettingsEntity
                         {
                             ErrorType = "e",
                             ErrorMessage = "Null value found"
@@ -340,7 +339,7 @@ namespace MSRecordsEngine.Controllers
                     string pOutputSettingsId = pRowSelected.GetValue(0).ToString();
                     if (string.IsNullOrWhiteSpace(pOutputSettingsId))
                     {
-                        return new ReturnErrorTypeErrorMsg
+                        return new ReturnEditOutputSettingsEntity
                         {
                             ErrorType = "e",
                             ErrorMessage = "Null value found"
@@ -360,8 +359,8 @@ namespace MSRecordsEngine.Controllers
                         }
                         var Setting = new JsonSerializerSettings();
                         Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                        model.stringValue1 = JsonConvert.SerializeObject(pOutputSettingsEntity, Newtonsoft.Json.Formatting.Indented, Setting);
-                        model.stringValue2 = Convert.ToString(SetExampleFileName(Convert.ToString(pOutputSettingsEntity.NextDocNum.Value), pOutputSettingsEntity.FileNamePrefix, pOutputSettingsEntity.FileExtension));
+                        model.OutputSettingsEntity = JsonConvert.SerializeObject(pOutputSettingsEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                        model.FileName = Convert.ToString(SetExampleFileName(Convert.ToString(pOutputSettingsEntity.NextDocNum.Value), pOutputSettingsEntity.FileNamePrefix, pOutputSettingsEntity.FileExtension));
 
                     }
                 }
@@ -521,9 +520,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("SetAuditPropertiesData")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> SetAuditPropertiesData(SetAuditPropertiesDataParam setAuditPropertiesDataParam) //completed testing
+        public async Task<ReturnSetAuditPropertiesData> SetAuditPropertiesData(SetAuditPropertiesDataParam setAuditPropertiesDataParam) //completed testing
         {
-            var model = new ReturnErrorTypeErrorMsg();
+            var model = new ReturnSetAuditPropertiesData();
             var pTableId = setAuditPropertiesDataParam.TableId;
             var pAuditConfidentialData = setAuditPropertiesDataParam.AuditConfidentialData;
             var pAuditUpdate = setAuditPropertiesDataParam.AuditUpdate;
@@ -557,7 +556,7 @@ namespace MSRecordsEngine.Controllers
                     }
                     model.ErrorType = "s";
                     model.ErrorMessage = "Selected Audit Properties are applied Successfully";
-                    model.intLst = lTableIds;
+                    model.TableIds = lTableIds;
                 }
             }
             catch (Exception ex)
@@ -708,9 +707,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("CheckChildTableExist")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> CheckChildTableExist(CheckChildTableExistParam checkChildTableExistParam) //completed testing 
+        public async Task<ReturnCheckChildTableExist> CheckChildTableExist(CheckChildTableExistParam checkChildTableExistParam) //completed testing 
         {
-            var model = new ReturnErrorTypeErrorMsg();
+            var model = new ReturnCheckChildTableExist();
             bool bChildExist = false;
             try
             {
@@ -735,7 +734,7 @@ namespace MSRecordsEngine.Controllers
                 model.ErrorType = "e";
                 model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
-            model.boolValue1 = bChildExist;
+            model.ChildExist = bChildExist;
             return model;
         }
 
@@ -2218,9 +2217,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("CheckModuleLevelAccess")]
         [HttpPost]
-        public async Task<ReturnErrorTypeErrorMsg> CheckModuleLevelAccess(CheckModuleLevelAccessParams checkModuleLevelAccessParams) //completed testing
+        public async Task<ReturnCheckModuleLevelAccess> CheckModuleLevelAccess(CheckModuleLevelAccessParams checkModuleLevelAccessParams) //completed testing
         {
-            var model = new ReturnErrorTypeErrorMsg();
+            var model = new ReturnCheckModuleLevelAccess();
             var passport = checkModuleLevelAccessParams.passport;
             var TablePermission = checkModuleLevelAccessParams.TablePermission;
             var iCntRpt = checkModuleLevelAccessParams.iCntRpt;
@@ -2284,10 +2283,10 @@ namespace MSRecordsEngine.Controllers
                     mdlAccessDictionary.Add("Security", bAddTabSecuirty);
                     mdlAccessDictionary.Add("AdminPermission", bAdminPermission);
 
-                    model.DictionaryResult = mdlAccessDictionary;
+                    model.AccessDictionary = mdlAccessDictionary;
                     model.AtLeastOneViewPermissionSessionValue = bAtLeastOneViewPermission;
                     model.AtLeastOneTablePermissionSessionValue = bAtLeastOneTablePermission;
-                    model.intValue = iCntRpts;
+                    model.iCntRpts = iCntRpts;
                 }
             }
             catch (Exception ex)
@@ -3463,9 +3462,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("GetReportStylesData")]
         [HttpGet]
-        public async Task<ReturnErrorTypeErrorMsg> GetReportStylesData(string ConnectionString, string reportStyleVar, int selectedRowsVar = 0, bool cloneFlag = false) //completed testing
+        public async Task<ReturnGetReportStylesData> GetReportStylesData(string ConnectionString, string reportStyleVar, int selectedRowsVar = 0, bool cloneFlag = false) //completed testing
         {
-            var model = new ReturnErrorTypeErrorMsg();
+            var model = new ReturnGetReportStylesData();
 
             try
             {
@@ -3484,7 +3483,7 @@ namespace MSRecordsEngine.Controllers
 
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                    model.stringValue2 = JsonConvert.SerializeObject(reportStyleEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ReportStyleEntity = JsonConvert.SerializeObject(reportStyleEntity, Newtonsoft.Json.Formatting.Indented, Setting);
                     if (cloneFlag)
                     {
                         allReportStyle = await context.ReportStyles.OrderBy(m => m.Id).ToListAsync();
@@ -3520,7 +3519,7 @@ namespace MSRecordsEngine.Controllers
                         }
                         while (true);
 
-                        model.stringValue1 = JsonConvert.SerializeObject(sReportStyleName, Newtonsoft.Json.Formatting.Indented, Setting);
+                        model.ReportStyleName = JsonConvert.SerializeObject(sReportStyleName, Newtonsoft.Json.Formatting.Indented, Setting);
                         return model;
                     }
                     else
@@ -3951,9 +3950,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("FillViewColumnControl")]
         [HttpGet]
-        public async Task<ReturnErrorTypeErrorMsg> FillViewColumnControl(string ConnectionString, string TableName, bool viewFlag, int viewId = 0) //Complete testing
+        public async Task<ReturnFillViewColumnControl> FillViewColumnControl(string ConnectionString, string TableName, bool viewFlag, int viewId = 0) //Complete testing
         {
-            var model = new ReturnErrorTypeErrorMsg();
+            var model = new ReturnFillViewColumnControl();
 
             try
             {
@@ -4002,9 +4001,9 @@ namespace MSRecordsEngine.Controllers
 
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                    model.stringValue1 = JsonConvert.SerializeObject(columnType, Newtonsoft.Json.Formatting.Indented, Setting);
-                    model.stringValue2 = JsonConvert.SerializeObject(visualAttribute, Newtonsoft.Json.Formatting.Indented, Setting);
-                    model.stringValue3 = JsonConvert.SerializeObject(allignment, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ColumnType = JsonConvert.SerializeObject(columnType, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.VisualAttribute = JsonConvert.SerializeObject(visualAttribute, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.Allignment = JsonConvert.SerializeObject(allignment, Newtonsoft.Json.Formatting.Indented, Setting);
                     model.ErrorType = "s";
                 }
             }
@@ -4521,7 +4520,7 @@ namespace MSRecordsEngine.Controllers
                     }
                 }
 
-                
+
             }
             catch (Exception ex)
             {
@@ -4616,7 +4615,7 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
-        #region Views
+        #region Views All Methods Moved 
 
         [Route("LoadViewsSettings")]
         [HttpGet]
@@ -4704,7 +4703,6 @@ namespace MSRecordsEngine.Controllers
                         {
                             if (model.ViewColumns.Count == 0)
                             {
-                                // Taken columns from AltView, If view does not have any columns - FUS- 5704
                                 var oAltView = await context.Views.Where(x => x.Id == oViews.AltViewId).FirstOrDefaultAsync();
                                 model.ViewColumns = await context.ViewColumns.Where(x => x.ViewsId == oAltView.Id).OrderBy(x => x.ColumnNum).ToListAsync();
                             }
@@ -4897,8 +4895,16 @@ namespace MSRecordsEngine.Controllers
                     string sErrorMessage = "";
                     int arglError = (int)lError;
 
-
-                    var fields = SchemaInfoDetails.GetColumnsSchema(TableName, ConnectionString).ToList();
+                    var fields = new List<SchemaTableColumnObject>();
+                    if (LookupType == Enums.geViewColumnsLookupType.ltLookup)
+                    {
+                        fields = SchemaInfoDetails.GetColumnsSchema(FieldName.Split(".")[0].ToUpper(), ConnectionString).ToList();
+                    }
+                    else
+                    {
+                        fields = SchemaInfoDetails.GetColumnsSchema(TableName, ConnectionString).ToList();
+                    }
+                    
                     var keyfield = fields.Where(a => a.COLUMN_NAME.ToLower() == FieldName.Split(".")[1].ToLower()).FirstOrDefault();
                     lError = arglError;
                     if (fields.Count > 0)
@@ -5171,11 +5177,11 @@ namespace MSRecordsEngine.Controllers
 
         [Route("ViewsOrderChange")]
         [HttpGet]
-        public async Task<ReturnErrorTypeErrorMsg> ViewsOrderChange(string pAction, int pViewId, string ConnectionString) //complete testing
+        public async Task<ReturnViewsOrderChange> ViewsOrderChange(string pAction, int pViewId, string ConnectionString) //complete testing
         {
-            var model = new ReturnErrorTypeErrorMsg();
-            model.boolValue1 = false;
-            model.boolValue2 = false;
+            var model = new ReturnViewsOrderChange();
+            model.LowerLast = false;
+            model.UpperLast = false;
             try
             {
                 using (var context = new TABFusionRMSContext(ConnectionString))
@@ -5227,12 +5233,12 @@ namespace MSRecordsEngine.Controllers
 
                         if (intUpdatedOrder == intLastOrder)
                         {
-                            model.boolValue1 = true;
+                            model.LowerLast = true;
                             //bLowerLast = true;
                         }
                         if (intUpdatedOrder == 1)
                         {
-                            model.boolValue2 = true;
+                            model.UpperLast = true;
                             //bUpperLast = true;
                         }
                         context.Entry(oViews).State = EntityState.Modified;
@@ -5325,44 +5331,389 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
-        //[Route("GetOperatorDDLData")]
-        //[HttpGet]
-        //public async Task GetOperatorDDLData(int iViewId, int iColumnNum, string ConnectionString, string tableName)
-        //{
-        //    try
-        //    {
-        //        string jsonObjectOperator = string.Empty;
-        //        string jsonFilterControls = string.Empty;
-        //        var filterControls = new Dictionary<string, bool>();
-        //        var oOperatorData = new List<KeyValuePair<string, string>>();
-        //        string sThisFieldHeading = "";
-        //        string sFirstLookupHeading = "";
-        //        string sSecondLookupHeading = "";
-        //        string sRecordJSON = "";
-        //        string sValueFieldNameJSON = "";
-        //        string sLookupFieldJSON = "";
-        //        string sFirstLookupJSON = "";
-        //        string sSecondLookupJSON = "";
-        //        string filterColumnsJSON = "";
-        //        string sValueFieldName = "";
+        [Route("GetOperatorDDLData")]
+        [HttpPost]
+        public async Task<ReturnGetOperatorDDLData> GetOperatorDDLData(GetOperatorDDLDataParam getOperatorDDLDataParam) //complete testing 
+        {
+            var iViewId = getOperatorDDLDataParam.ViewId;
+            var iColumnNum = getOperatorDDLDataParam.ColumnNum;
+            var ConnectionString = getOperatorDDLDataParam.ConnectionString;
+            var tableName = getOperatorDDLDataParam.TableName;
+            var lstTEMPViewColumns = getOperatorDDLDataParam.ViewColumns;
+            var filterColumns = getOperatorDDLDataParam.ViewFilters;
 
-        //        var Setting = new JsonSerializerSettings();
-        //        Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            var model = new ReturnGetOperatorDDLData();
+            try
+            {
+                string jsonObjectOperator = string.Empty;
+                string jsonFilterControls = string.Empty;
+                var filterControls = new Dictionary<string, bool>();
+                var oOperatorData = new List<KeyValuePair<string, string>>();
+                string sThisFieldHeading = "";
+                string sFirstLookupHeading = "";
+                string sSecondLookupHeading = "";
+                string sValueFieldName = "";
 
-        //        using (var context = new TABFusionRMSContext(ConnectionString))
-        //        {
-        //            var fillOperatorsDropDownOnChangeResult = await _viewService.FillOperatorsDropDownOnChange(filterControls, await context.Views.ToListAsync(), await context.Tables.ToListAsync(), iColumnNum, tableName, ConnectionString);
-        //            filterControls = fillOperatorsDropDownOnChangeResult.DictionaryResult;
-        //            oOperatorData = fillOperatorsDropDownOnChangeResult.KeyValuePairs;
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _commonService.Logger.LogError($"Error:{ex.Message}");
-        //        //model.ErrorType = "e";
-        //        //model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
-        //    }
-        //}
+                var Setting = new JsonSerializerSettings();
+                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var fillOperatorsDropDownOnChangeResult = await _viewService.FillOperatorsDropDownOnChange(filterControls, await context.Views.ToListAsync(), await context.Tables.ToListAsync(), iColumnNum, tableName, ConnectionString);
+                    filterControls = fillOperatorsDropDownOnChangeResult.DictionaryResult;
+                    oOperatorData = fillOperatorsDropDownOnChangeResult.KeyValuePairs;
+
+                    if (filterControls["FieldDDL"])
+                    {
+                        var oViewFilterColumns = new ViewColumn();
+                        if (lstTEMPViewColumns != null)
+                        {
+                            oViewFilterColumns = lstTEMPViewColumns.Where(m => m.ColumnNum == iColumnNum).FirstOrDefault();
+                        }
+                        if (oViewFilterColumns != null)
+                        {
+                            var fillColumnCombobox = await FillColumnCombobox(oViewFilterColumns, ConnectionString);
+
+                            var table = fillColumnCombobox.Table;
+                            sValueFieldName = fillColumnCombobox.ValueFieldName;
+                            sThisFieldHeading = fillColumnCombobox.ThisFieldHeading;
+                            sFirstLookupHeading = fillColumnCombobox.FirstLookupHeading;
+                            sSecondLookupHeading = fillColumnCombobox.SecondLookupHeading;
+
+                            if (!string.IsNullOrEmpty(sValueFieldName))
+                            {
+                                model.ValueFieldNameJSON = JsonConvert.SerializeObject(sValueFieldName, Newtonsoft.Json.Formatting.Indented, Setting);
+                            }
+                            if (!string.IsNullOrEmpty(sThisFieldHeading))
+                            {
+                                model.LookupFieldJSON = JsonConvert.SerializeObject(sThisFieldHeading, Newtonsoft.Json.Formatting.Indented, Setting);
+                            }
+                            if (!string.IsNullOrEmpty(sFirstLookupHeading))
+                            {
+                                model.FirstLookupJSON = JsonConvert.SerializeObject(sFirstLookupHeading, Newtonsoft.Json.Formatting.Indented, Setting);
+                            }
+                            if (!string.IsNullOrEmpty(sSecondLookupHeading))
+                            {
+                                model.SecondLookupJSON = JsonConvert.SerializeObject(sSecondLookupHeading, Newtonsoft.Json.Formatting.Indented, Setting);
+                            }
+                            model.RecordJSON = JsonConvert.SerializeObject(table, Newtonsoft.Json.Formatting.Indented, Setting);
+                        }
+                    }
+
+                    if (filterColumns == null)
+                    {
+                        filterColumns = await context.ViewFilters.Where(m => m.ViewsId == iViewId).ToListAsync();
+                    }
+                    model.FilterColumnsJSON = JsonConvert.SerializeObject(filterColumns, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.JsonObjectOperator = JsonConvert.SerializeObject(oOperatorData, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.JsonFilterControls = JsonConvert.SerializeObject(filterControls, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Record saved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        private async Task<ColumnComboboxResult> FillColumnCombobox(ViewColumn oViewColumn, string ConnectionString) //complete testing 
+        {
+            var result = new ColumnComboboxResult();
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var filterFieldList = new List<KeyValuePair<string, string>>();
+                string sLookupTableName = "";
+                var oParentTable = new Table();
+                bool bLookUpById;
+                bool bFoundIt;
+                string sThisFieldName = "";
+                string actualTableName = (await context.Views.Where(m => m.Id == oViewColumn.ViewsId).FirstOrDefaultAsync()).TableName;
+                string sSQL = "";
+                var table = new DataTable();
+                string sFirstLookupField = "";
+                string sSecondLookupField = "";
+                string sLookupFieldName = "";
+
+                if (oViewColumn != null)
+                {
+                    if (oViewColumn.LookupType == (short)Enums.geViewColumnsLookupType.ltLookup)
+                    {
+                        sLookupTableName = oViewColumn.FieldName;
+                        if (sLookupTableName.Contains("."))
+                        {
+                            sLookupTableName = sLookupTableName.Substring(0, sLookupTableName.IndexOf("."));
+                        }
+                        else
+                        {
+                            sLookupTableName = actualTableName;
+                        }
+
+                        bLookUpById = false;
+                        sThisFieldName = DatabaseMap.RemoveTableNameFromField(oViewColumn.FieldName);
+                        result.ThisFieldHeading = oViewColumn.Heading;
+                        if (!string.IsNullOrEmpty(sLookupTableName))
+                        {
+                            oParentTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(sLookupTableName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        sLookupFieldName = sThisFieldName;
+                        if (oParentTable != null)
+                        {
+                            result.ValueFieldName = DatabaseMap.RemoveTableNameFromField(oParentTable.IdFieldName);
+                        }
+                        else
+                        {
+                            result.ValueFieldName = sThisFieldName;
+                        }
+                        result.ValueFieldName = DatabaseMap.RemoveTableNameFromField(result.ValueFieldName);
+                    }
+                    else if (oViewColumn.LookupType == (short)Enums.geViewColumnsLookupType.ltDirect)
+                    {
+                        bFoundIt = false;
+                        var parentRelationShip = await context.RelationShips.Where(m => m.LowerTableName.Trim().ToLower().Equals(actualTableName.Trim().ToLower())).ToListAsync();
+                        foreach (RelationShip oRelationObj in parentRelationShip)
+                        {
+                            if (DatabaseMap.RemoveTableNameFromField(oRelationObj.LowerTableFieldName).Trim().ToLower() == DatabaseMap.RemoveTableNameFromField(oViewColumn.FieldName).Trim().ToLower())
+                            {
+                                bFoundIt = true;
+                                sLookupTableName = oRelationObj.UpperTableName;
+                                break;
+                            }
+                        }
+                        if (!bFoundIt)
+                        {
+                            var oRelationShip = await context.RelationShips.OrderBy(m => m.Id).ToListAsync();
+                            foreach (RelationShip oRelationObj in oRelationShip)
+                            {
+                                if (oRelationObj.LowerTableFieldName.Trim().ToLower() == oViewColumn.FieldName.Trim().ToLower())
+                                {
+                                    sLookupTableName = oRelationObj.UpperTableName;
+                                    break;
+                                }
+                            }
+                        }
+                        if (string.IsNullOrEmpty(sLookupTableName))
+                        {
+                            var tempTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(actualTableName.Trim().ToLower())).FirstOrDefaultAsync();
+                            if (DatabaseMap.RemoveTableNameFromField(tempTable.RetentionFieldName).Trim().ToLower() == DatabaseMap.RemoveTableNameFromField(oViewColumn.FieldName).Trim().ToLower())
+                            {
+                                sLookupTableName = "SLRetentionCodes";
+                            }
+                            else if (sLookupTableName.Contains("."))
+                            {
+                                sLookupTableName = sLookupTableName.Substring(0, sLookupTableName.IndexOf("."));
+                            }
+                            else
+                            {
+                                sLookupTableName = actualTableName;
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(sLookupTableName))
+                        {
+                            oParentTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(sLookupTableName.Trim().ToLower())).FirstOrDefaultAsync();
+                            sThisFieldName = "Id";
+                            result.ThisFieldHeading = "Id";
+                        }
+                    }
+
+                    if (oParentTable != null)
+                    {
+                        sLookupFieldName = DatabaseMap.RemoveTableNameFromField(oParentTable.IdFieldName);
+                    }
+                    else
+                    {
+                        sLookupFieldName = sThisFieldName;
+                    }
+
+                    if (oParentTable != null)
+                    {
+                        sFirstLookupField = DatabaseMap.RemoveTableNameFromField(oParentTable.DescFieldNameOne);
+                        sSecondLookupField = DatabaseMap.RemoveTableNameFromField(oParentTable.DescFieldNameTwo);
+                    }
+                    else
+                    {
+                        sFirstLookupField = "";
+                        sSecondLookupField = "";
+                    }
+                    if (!string.IsNullOrEmpty(sFirstLookupField))
+                    {
+                        if (sFirstLookupField.Trim().ToLower() != sLookupFieldName.Trim().ToLower())
+                        {
+                            result.FirstLookupHeading = oParentTable.DescFieldPrefixOne;
+                            if (result.FirstLookupHeading == null)
+                            {
+                                result.FirstLookupHeading = sFirstLookupField;
+                            }
+                            if (!string.IsNullOrEmpty(sSecondLookupField))
+                            {
+                                if (sSecondLookupField.Trim().ToLower() != sLookupFieldName.Trim().ToLower())
+                                {
+                                    result.SecondLookupHeading = oParentTable.DescFieldPrefixTwo;
+                                    if (result.SecondLookupHeading == null)
+                                    {
+                                        result.SecondLookupHeading = sSecondLookupField;
+                                    }
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(sSecondLookupField))
+                        {
+                            if (sSecondLookupField.Trim().ToLower() != sLookupFieldName.Trim().ToLower())
+                            {
+                                result.SecondLookupHeading = oParentTable.DescFieldPrefixTwo;
+                                if (result.SecondLookupHeading == null)
+                                {
+                                    result.SecondLookupHeading = sSecondLookupField;
+                                }
+                            }
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(sSecondLookupField))
+                    {
+                        if (sSecondLookupField.Trim().ToLower() != sLookupFieldName.Trim().ToLower())
+                        {
+                            result.SecondLookupHeading = oParentTable.DescFieldPrefixTwo;
+                            if (result.SecondLookupHeading == null)
+                            {
+                                result.SecondLookupHeading = sSecondLookupField;
+                            }
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(result.ThisFieldHeading))
+                    {
+                        if (!string.IsNullOrEmpty(result.FirstLookupHeading))
+                        {
+                            if (result.FirstLookupHeading.Trim().ToLower() == result.ThisFieldHeading.Trim().ToLower())
+                            {
+                                result.FirstLookupHeading = sFirstLookupField;
+                                if (!string.IsNullOrEmpty(result.SecondLookupHeading))
+                                {
+                                    if (result.SecondLookupHeading.Trim().ToLower() == result.ThisFieldHeading.Trim().ToLower())
+                                    {
+                                        result.SecondLookupHeading = sSecondLookupField;
+                                    }
+                                }
+                            }
+                            else if (!string.IsNullOrEmpty(result.SecondLookupHeading))
+                            {
+                                if (result.SecondLookupHeading.Trim().ToLower() == result.ThisFieldHeading.Trim().ToLower())
+                                {
+                                    result.SecondLookupHeading = sSecondLookupField;
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(result.SecondLookupHeading))
+                        {
+                            if (result.SecondLookupHeading.Trim().ToLower() == result.ThisFieldHeading.Trim().ToLower())
+                            {
+                                result.SecondLookupHeading = sSecondLookupField;
+                            }
+                        }
+                    }
+                    if (oViewColumn.LookupType == (int)Enums.geViewColumnsLookupType.ltDirect)
+                    {
+                        result.ValueFieldName = result.ThisFieldHeading;
+                    }
+                    if (oViewColumn.LookupType == (int)Enums.geViewColumnsLookupType.ltLookup)
+                    {
+                        bool flag = true;
+                        if (!string.IsNullOrEmpty(result.ValueFieldName))
+                        {
+                            if (!string.IsNullOrEmpty(sLookupFieldName))
+                            {
+                                result.ValueFieldName = result.ThisFieldHeading;
+                                flag = false;
+                            }
+                            if (!string.IsNullOrEmpty(sFirstLookupField) && flag)
+                            {
+                                result.ValueFieldName = result.FirstLookupHeading;
+                                flag = false;
+                            }
+                            if (!string.IsNullOrEmpty(sSecondLookupField) && flag)
+                            {
+                                result.ValueFieldName = result.SecondLookupHeading;
+                                flag = false;
+                            }
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(sLookupFieldName))
+                    {
+                        sSQL = "SELECT [" + sLookupFieldName + "]";
+                    }
+                    else
+                    {
+                        sSQL = "SELECT ";
+                    }
+                    if (!string.IsNullOrEmpty(result.FirstLookupHeading))
+                    {
+                        sSQL = sSQL + ",[" + sFirstLookupField + "]";
+                    }
+                    if (!string.IsNullOrEmpty(result.SecondLookupHeading))
+                    {
+                        sSQL = sSQL + ",[" + sSecondLookupField + "] ";
+                    }
+
+                    if (!string.IsNullOrEmpty(sSQL) && oParentTable != null)
+                    {
+                        sSQL = sSQL + " FROM [" + oParentTable.TableName + "];";
+                    }
+                    else
+                    {
+                        sSQL = sSQL + " FROM [" + sLookupTableName + "];";
+                    }
+                    var rs = CommonFunctions.GetRecords<dynamic>(ConnectionString, sSQL);
+                    if (rs.Count > 0)
+                    {
+                        if (!string.IsNullOrEmpty(result.ThisFieldHeading))
+                        {
+                            table.Columns.Add(new DataColumn(result.ThisFieldHeading));
+                        }
+                        if (!string.IsNullOrEmpty(result.FirstLookupHeading))
+                        {
+                            table.Columns.Add(new DataColumn(result.FirstLookupHeading));
+                        }
+                        else
+                        {
+                            sFirstLookupField = "";
+                        }
+                        if (!string.IsNullOrEmpty(result.SecondLookupHeading))
+                        {
+                            table.Columns.Add(new DataColumn(result.SecondLookupHeading));
+                        }
+                        else
+                        {
+                            sSecondLookupField = "";
+                        }
+
+                        for (int i = 0; i < rs.Count; i++)
+                        {
+                            var rowObj = table.NewRow();
+
+                            if (!string.IsNullOrEmpty(result.ThisFieldHeading) && !string.IsNullOrEmpty(sLookupFieldName))
+                            {
+                                rowObj[result.ThisFieldHeading] = rs[i].Text;
+                            }
+                            if (!string.IsNullOrEmpty(result.FirstLookupHeading) && !string.IsNullOrEmpty(sFirstLookupField))
+                            {
+                                rowObj[result.FirstLookupHeading] = rs[i];
+                            }
+                            if (!string.IsNullOrEmpty(result.SecondLookupHeading) && !string.IsNullOrEmpty(sSecondLookupField))
+                            {
+                                rowObj[result.SecondLookupHeading] = rs[i];
+                            }
+                            table.Rows.Add(rowObj);
+                        }
+
+                    }
+                }
+                result.Table = table;
+                return result;
+            }
+        }
 
         [Route("ValidateSqlStatement")]
         [HttpPost]
@@ -5452,6 +5803,504 @@ namespace MSRecordsEngine.Controllers
             model.stringValue1 = ViewIdJSON;
             return model;
         }
+
+        [Route("MoveFilterInSQL")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> MoveFilterInSQL(MoveFilterInSQLParams moveFilterInSQLParams) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var connectionString = moveFilterInSQLParams.ConnectionString;
+            var lViewFiltersData = moveFilterInSQLParams.ViewFilters;
+            var lstViewColumns = moveFilterInSQLParams.viewColumns;
+            var lViewsCustomModelEntites = moveFilterInSQLParams.ViewsCustomModel;
+            string sError = "";
+            string sSQL = "";
+            string sTemp = "";
+            int iWherePos;
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            try
+            {
+                using (var context = new TABFusionRMSContext(connectionString))
+                {
+                    var lViewsData = lViewsCustomModelEntites.ViewsModel;
+                    int oViewId = lViewsData.Id;
+                    if (lViewFiltersData == null)
+                    {
+                        lViewFiltersData = await context.ViewFilters.Where(m => m.ViewsId == oViewId).ToListAsync();
+                    }
+                    var oTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(lViewsData.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (lViewFiltersData != null)
+                    {
+                        var lViewFiltersDataList = lViewFiltersData.Where(m => m.ViewsId != -1).ToList();
+                        var processFilter = _viewService.ProcessFilter(lViewFiltersData, lstViewColumns, await context.Tables.ToListAsync(), connectionString, lViewsData, oTable, true, sSQL, false, true);
+                        sError = processFilter.Error;
+                        sSQL = processFilter.sSql;
+                    }
+                    if (!string.IsNullOrEmpty(sError))
+                    {
+                        model.ErrorMessage = string.Format("Error Moving Filters: {0}", sError);
+                        model.ErrorType = "w";
+                    }
+                    else
+                    {
+                        sTemp = lViewsData.SQLStatement;
+                        iWherePos = sTemp.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+
+                        if (iWherePos > 0)
+                        {
+                            sTemp = sTemp.Substring(0, iWherePos + 6) + "(" + sTemp.Substring(iWherePos + 7);
+                            sTemp = sTemp + " AND " + sSQL + ")";
+                        }
+                        else
+                        {
+                            sTemp = sTemp + " WHERE " + sSQL;
+                        }
+                        var viewFilterData = await context.ViewFilters.Where(m => m.ViewsId == lViewsData.Id).ToListAsync();
+                        context.ViewFilters.RemoveRange(viewFilterData);
+                        await context.SaveChangesAsync();
+
+                        model.ErrorMessage = "";
+                        model.ErrorType = "s";
+
+                        string SQLState = sTemp;
+                        model.stringValue1 = JsonConvert.SerializeObject(SQLState, Newtonsoft.Json.Formatting.Indented, Setting);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetColumnsDDL")]
+        [HttpPost]
+        public async Task<string> GetColumnsDDL(List<ViewColumn> viewColumns) //complete testing
+        {
+            string jsonObjectColumns = string.Empty;
+            var filterColumns = new Dictionary<int, ViewColumn>();
+            var lstTEMPViewColumns = new List<ViewColumn>();
+            var filterFieldList = new List<KeyValuePair<string, string>>();
+
+            if (viewColumns != null)
+            {
+                foreach (ViewColumn ViewColumn in viewColumns)
+                {
+                    var objectView = ViewColumn;
+                    lstTEMPViewColumns.Add(objectView);
+                }
+                if (lstTEMPViewColumns != null)
+                {
+                    filterColumns = _viewService.FillFilterFieldNames(lstTEMPViewColumns);
+                }
+            }
+            if (filterColumns != null)
+            {
+                foreach (var viewCol in filterColumns)
+                {
+                    if (viewCol.Value.LookupType == (short)Enums.geViewColumnsLookupType.ltLookup)
+                    {
+                        filterFieldList.Add(new KeyValuePair<string, string>(viewCol.Value.Heading, Convert.ToString(viewCol.Value.ColumnNum) + "_" + Convert.ToString(viewCol.Value.LookupIdCol) + "***"));
+                    }
+                    else
+                    {
+                        filterFieldList.Add(new KeyValuePair<string, string>(viewCol.Value.Heading, Convert.ToString(viewCol.Value.ColumnNum) + "_" + Convert.ToString(viewCol.Value.ColumnNum)));
+                    }
+                }
+            }
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            jsonObjectColumns = JsonConvert.SerializeObject(filterFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+            return jsonObjectColumns;
+        }
+
+        [Route("SetViewsDetails")]
+        [HttpPost]
+        public async Task<ReturnSetViewsDetails> SetViewsDetails(SetViewsDetailsParam setViewsDetailsParam) //complete testing 
+        {
+            var model = new ReturnSetViewsDetails();
+            var passport = setViewsDetailsParam.Passport;
+            var lViewsCustomModelEntites = setViewsDetailsParam.ViewsCustomModel;
+            var pIncludeFileRoomOrder = setViewsDetailsParam.IncludeFileRoomOrder;
+            var pIncludeTrackingLocation = setViewsDetailsParam.IncludeTrackingLocation;
+            var pInTaskList = setViewsDetailsParam.InTaskList;
+            var FiltersActive = setViewsDetailsParam.FiltersActive;
+            var lViewColumns = setViewsDetailsParam.ViewColumns;
+            var lViewFiltersDataTemp = setViewsDetailsParam.ViewFilters;
+            var dictionary = setViewsDetailsParam.OrgViewColumnIds;
+            var dicUpdatedColNums = setViewsDetailsParam.UpViewColumnIds;
+            var pViewEntity = new View();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var lViewsData = lViewsCustomModelEntites.ViewsModel;
+                    lViewsData.IncludeFileRoomOrder = pIncludeFileRoomOrder;
+                    lViewsData.IncludeTrackingLocation = pIncludeTrackingLocation;
+                    lViewsData.FiltersActive = FiltersActive;
+                    lViewsData.InTaskList = pInTaskList;
+                    int viewIdVar = lViewsData.Id;
+                    string oldViewName = "";
+                    if (lViewsData.Id > 0)
+                    {
+                        var viewEn = await context.Views.Where(x => x.Id == lViewsData.Id).FirstOrDefaultAsync();
+                        pViewEntity = viewEn;
+                        oldViewName = pViewEntity.ViewName;
+                        _viewService.CreateViewsEntity(lViewsData, pViewEntity);
+                    }
+                    else
+                    {
+                        lViewsData.ViewOrder = context.Views.Where(x => x.TableName.Trim().ToLower().Equals(lViewsData.TableName.Trim().ToLower())).Max(x => x.ViewOrder) + 1;
+                        _viewService.CreateViewsEntity(lViewsData, pViewEntity);
+                    }
+
+                    var lViewFiltersData = new List<ViewFilter>();
+                    lViewFiltersData = lViewsCustomModelEntites.ViewFilterList;
+                    int lSecureObjectId;
+
+                    var oSecureObject = new Smead.Security.SecureObject(passport);
+
+                    if (viewIdVar > 0)
+                    {
+                        var criteriaRecords = await context.s_SavedCriteria.Where(c => c.ViewId == viewIdVar).ToListAsync();
+                        List<int> criteriaIds = criteriaRecords.Select(c => c.Id).ToList();
+                        var childrenQueryRecords = await context.s_SavedChildrenQuery.Where(q => q.SavedCriteriaId.HasValue && criteriaIds.Contains(q.SavedCriteriaId.Value)).ToListAsync();
+                        var missingColumnRecords = childrenQueryRecords.Where(q => !lViewColumns.Any(vc => vc.Heading == q.ColumnName)).ToList();
+
+                        if (missingColumnRecords.Count > 0)
+                        {
+                            foreach (var recordToDelete in missingColumnRecords)
+                            {
+                                context.s_SavedChildrenQuery.Remove(recordToDelete);
+                            }
+                            await context.SaveChangesAsync();
+                        }
+                    }
+
+                    var oTable = new Table();
+                    if (lViewsData != null)
+                    {
+                        oTable = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(lViewsData.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    }
+
+                    var lViewColumn = await context.ViewColumns.Where(x => x.ViewsId == lViewsData.Id).ToListAsync();
+
+                    if (lViewsData != null)
+                    {
+                        if (lViewsData.Id > 0)
+                        {
+                            bool con1 = await context.Views.AnyAsync(x => (x.ViewName.Trim().ToLower()) == (lViewsData.ViewName.Trim().ToLower()) && x.Id != lViewsData.Id && x.TableName.Trim().ToLower().Equals(lViewsData.TableName.Trim().ToLower())) == false;
+                            bool con2 = lViewsData.ViewName.Trim().ToLower().Equals("Purchase Orders".Trim().ToLower());
+                            if (con1 || con2)
+                            {
+                                if (string.Compare(oldViewName, lViewsData.ViewName, StringComparison.OrdinalIgnoreCase) != 0)
+                                {
+                                    oSecureObject.Rename(oldViewName, Smead.Security.SecureObject.SecureObjectType.View, lViewsData.ViewName);
+                                }
+                                context.Entry(pViewEntity).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+                                viewIdVar = pViewEntity.Id;
+                            }
+                            else
+                            {
+                                model.ErrorType = "w";
+                                model.ErrorMessage = string.Format("The View Name \"{0}\" is already in use. Please select a different View Name.", lViewsData.ViewName);
+                                return model;
+                            }
+                        }
+                        else if (await context.Views.AnyAsync(x => (x.ViewName.Trim().ToLower()) == (lViewsData.ViewName.Trim().ToLower())) == false)
+                        {
+
+                            lSecureObjectId = oSecureObject.GetSecureObjectID(lViewsData.ViewName, Smead.Security.SecureObject.SecureObjectType.View);
+                            if (lSecureObjectId != 0)
+                                oSecureObject.UnRegister(lSecureObjectId);
+
+                            lSecureObjectId = oSecureObject.GetSecureObjectID(oTable.TableName, Smead.Security.SecureObject.SecureObjectType.Table);
+                            if (lSecureObjectId == 0L)
+                                lSecureObjectId = (int)Enums.SecureObjects.View;
+
+                            oSecureObject.Register(lViewsData.ViewName, Smead.Security.SecureObject.SecureObjectType.View, lSecureObjectId);
+
+                            context.Views.Add(pViewEntity);
+                            await context.SaveChangesAsync();
+                            viewIdVar = pViewEntity.Id;
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The View Name \"{0}\" is already in use. Please select a different View Name.", lViewsData.ViewName);
+                            return model;
+                        }
+
+                        var viewFilterList = await context.ViewFilters.ToListAsync();
+                        if (lViewFiltersDataTemp != null)
+                        {
+                            foreach (ViewFilter pViewFilter in lViewFiltersDataTemp)
+                            {
+                                if (pViewFilter.ColumnNum is not null)
+                                {
+                                    var viewColObj = lViewColumns.Where(m => m.ColumnNum == pViewFilter.ColumnNum).FirstOrDefault();
+                                    pViewFilter.Sequence = 0;
+                                    pViewFilter.PartOfView = true;
+                                    if ((pViewFilter.ViewsId != (-1)))
+                                    {
+                                        if (viewFilterList.Any(x => x.ViewsId == pViewFilter.ViewsId && x.Id == pViewFilter.Id))
+                                        {
+                                            context.Entry(pViewFilter).State = EntityState.Modified;
+                                            await context.SaveChangesAsync();
+                                        }
+                                        else
+                                        {
+                                            pViewFilter.Id = 0;
+                                            pViewFilter.ViewsId = viewIdVar;
+                                            context.ViewFilters.Add(pViewFilter);
+                                            await context.SaveChangesAsync();
+                                        }
+                                    }
+                                    else if (pViewFilter.Id > 0)
+                                    {
+                                        var deleteViewFilter = await context.ViewFilters.Where(m => m.Id == pViewFilter.Id).FirstOrDefaultAsync();
+                                        if (deleteViewFilter != null)
+                                        {
+                                            context.ViewFilters.Remove(deleteViewFilter);
+                                            await context.SaveChangesAsync();
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (lViewFiltersDataTemp.Count != 0)
+                            {
+                                var oViewUpdate = await context.Views.Where(m => m.Id == viewIdVar).FirstOrDefaultAsync();
+                                oViewUpdate.FiltersActive = FiltersActive;
+                                context.Entry(oViewUpdate).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+                            }
+                        }
+
+                        int preViewId = pViewEntity.Id;
+                        var pViewColumnList = await context.ViewColumns.Where(x => x.ViewsId == pViewEntity.Id).ToListAsync();
+
+                        if (pViewColumnList != null)
+                        {
+                            if (pViewColumnList.Count() == 0 && lViewsData.Id > 0)
+                            {
+                                var oAltView = await context.Views.Where(x => x.Id == pViewEntity.AltViewId).FirstOrDefaultAsync();
+                                pViewColumnList = await context.ViewColumns.Where(x => x.ViewsId == oAltView.Id).OrderBy(x => x.ColumnNum).ToListAsync();
+                                preViewId = oAltView.Id;
+                            }
+                        }
+                        else
+                        {
+                            preViewId = pViewEntity.Id;
+                        }
+
+                        int iColumnNum = 0;
+                        if (pViewColumnList != null)
+                        {
+                            foreach (ViewColumn pViewColObj in pViewColumnList)
+                            {
+                                pViewColObj.ColumnNum = (short?)(iColumnNum - 1);
+                                context.Entry(pViewColObj).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+                                iColumnNum = iColumnNum - 1;
+                            }
+                        }
+
+                        var ViewColumnObj = new ViewColumn();
+
+                        //var dictionary = ContextService.GetObjectFromJson<Dictionary<int, int>>("OrgViewColumnIds", httpContext);
+                        //var dicUpdatedColNums = ContextService.GetObjectFromJson<Dictionary<int, int>>("UpViewColumnIds", httpContext);
+
+                        if (dicUpdatedColNums == null)
+                        {
+                            dicUpdatedColNums = new();
+                        }
+                        if (dictionary == null)
+                        {
+                            dictionary = new();
+                        }
+
+                        if (lViewColumns != null)
+                        {
+                            foreach (ViewColumn pViewColObj in pViewColumnList)
+                            {
+                                if (lViewColumns.Any(m => m.Id == pViewColObj.Id))
+                                {
+                                    var tempViewCol = lViewColumns.Where(m => m.Id == pViewColObj.Id).FirstOrDefault();
+
+                                    if (tempViewCol == null)
+                                        continue;
+
+                                    if (dicUpdatedColNums.Count > 0)
+                                    {
+                                        var newColumnOrder = dicUpdatedColNums.Where(m => m.Key == pViewColObj.Id).FirstOrDefault();
+                                        tempViewCol.ColumnNum = (Int16)newColumnOrder.Value;
+                                    }
+
+                                    var pviewcol = pViewColObj;
+                                    pviewcol =  AddUpdateViewColumn(pviewcol, tempViewCol);
+                                    context.Entry(pviewcol).State = EntityState.Modified;
+                                    lViewColumns.Remove(tempViewCol);
+                                    await context.SaveChangesAsync();
+                                }
+                                else
+                                {
+                                    context.ViewColumns.Remove(pViewColObj);
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+
+                            foreach (ViewColumn pViewColumns in lViewColumns)
+                            {
+                                if (lViewColumns.Any(m => m.Id == pViewColumns.Id))
+                                {
+                                    pViewColumns.Id = 0;
+                                    pViewColumns.ViewsId = preViewId;
+                                    context.ViewColumns.Add(pViewColumns);
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+
+                        }
+                    }
+
+                    await _viewService.SQLViewDelete(viewIdVar, passport);
+
+                    var vwFilterData = await context.ViewFilters.Where(m => m.ViewsId == viewIdVar).ToListAsync();
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.ViewId = JsonConvert.SerializeObject(viewIdVar, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    if (pViewEntity.AltViewId != 0)
+                    {
+                        var altViewId = Convert.ToInt32(model.ViewId);
+                        string altViewIdJSON = JsonConvert.SerializeObject(pViewEntity.AltViewId, Newtonsoft.Json.Formatting.Indented, Setting);
+                        model.ViewColumns = await context.ViewColumns.Where(x => x.ViewsId == altViewId).OrderBy(x => x.ColumnNum).ToListAsync();
+                    }
+                    else
+                    {
+                        var viewId = Convert.ToInt32(model.ViewId);
+                        model.ViewColumns = await context.ViewColumns.Where(x => x.ViewsId == viewId).OrderBy(x => x.ColumnNum).ToListAsync();
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "View Properties are applied Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            model.View = pViewEntity;
+            return model;
+        }
+
+        private ViewColumn AddUpdateViewColumn(ViewColumn viewColumnEntity, ViewColumn formEntity) //complete testing 
+        {
+            viewColumnEntity.Id = formEntity.Id;
+            if (formEntity.ViewsId is not null)
+            {
+                viewColumnEntity.ViewsId = formEntity.ViewsId;
+            }
+            if (formEntity.FieldName is not null)
+            {
+                viewColumnEntity.FieldName = formEntity.FieldName;
+            }
+            if (formEntity.Heading is not null)
+            {
+                viewColumnEntity.Heading = formEntity.Heading;
+            }
+            if (formEntity.LookupType is not null)
+            {
+                viewColumnEntity.LookupType = formEntity.LookupType;
+            }
+            viewColumnEntity.EditMask = formEntity.EditMask;
+            viewColumnEntity.AlternateFieldName = formEntity.AlternateFieldName;
+            if (formEntity.DropDownFlag is not null)
+            {
+                viewColumnEntity.DropDownFlag = formEntity.DropDownFlag;
+            }
+            viewColumnEntity.MaskPromptChar = formEntity.MaskPromptChar;
+            if (formEntity.ColumnNum is not null)
+            {
+                viewColumnEntity.ColumnNum = formEntity.ColumnNum;
+            }
+            if (formEntity.MaxPrintLines is not null)
+            {
+                viewColumnEntity.MaxPrintLines = formEntity.MaxPrintLines;
+            }
+            else
+            {
+                viewColumnEntity.MaxPrintLines = 0;
+            }
+            viewColumnEntity.InputMask = formEntity.InputMask;
+            if (formEntity.LookupIdCol is not null)
+            {
+                viewColumnEntity.LookupIdCol = formEntity.LookupIdCol;
+            }
+            if (formEntity.ColumnWidth is null)
+            {
+                viewColumnEntity.ColumnWidth = (short?)200;
+            }
+            else
+            {
+                viewColumnEntity.ColumnWidth = formEntity.ColumnWidth;
+            }
+            viewColumnEntity.ColumnOrder = formEntity.ColumnOrder;
+            viewColumnEntity.ColumnStyle = formEntity.ColumnStyle;
+            viewColumnEntity.ColumnVisible = formEntity.ColumnVisible;
+            viewColumnEntity.SortableField = formEntity.SortableField;
+            viewColumnEntity.FilterField = formEntity.FilterField;
+            viewColumnEntity.EditAllowed = formEntity.EditAllowed;
+            viewColumnEntity.DropDownSuggestionOnly = formEntity.DropDownSuggestionOnly;
+            viewColumnEntity.MaskInclude = formEntity.MaskInclude;
+            viewColumnEntity.CountColumn = formEntity.CountColumn;
+            viewColumnEntity.SubtotalColumn = formEntity.SubtotalColumn;
+            viewColumnEntity.PrintColumnAsSubheader = false;
+            viewColumnEntity.RestartPageNumber = formEntity.RestartPageNumber;
+            viewColumnEntity.UseAsPrintId = formEntity.UseAsPrintId;
+            viewColumnEntity.SuppressPrinting = formEntity.SuppressPrinting;
+            viewColumnEntity.ValueCount = false;
+            viewColumnEntity.DropDownReferenceColNum = (short?)0;
+            viewColumnEntity.FormColWidth = 0;
+            viewColumnEntity.MaskClipMode = false;
+            viewColumnEntity.SortOrderDesc = formEntity.SortOrderDesc;
+            viewColumnEntity.SuppressDuplicates = formEntity.SuppressDuplicates;
+            viewColumnEntity.VisibleOnForm = true;
+            viewColumnEntity.VisibleOnPrint = true;
+            viewColumnEntity.PageBreakField = formEntity.PageBreakField;
+
+            viewColumnEntity.FreezeOrder = 0;
+            viewColumnEntity.AlternateSortColumn = 0;
+            viewColumnEntity.PrinterColWidth = 0;
+            viewColumnEntity.SortOrder = formEntity.SortOrder;
+            viewColumnEntity.LabelJustify = 0;
+            viewColumnEntity.LabelLeft = 0;
+            viewColumnEntity.LabelTop = 0;
+            viewColumnEntity.LabelWidth = 0;
+            viewColumnEntity.LabelHeight = 0;
+            viewColumnEntity.ControlLeft = 0;
+            viewColumnEntity.ControlTop = 0;
+            viewColumnEntity.ControlWidth = 0;
+            viewColumnEntity.ControlHeight = 0;
+            viewColumnEntity.TabOrder = 0;
+            viewColumnEntity.SortField = default;
+
+            return viewColumnEntity;
+        }
+
 
         #endregion
 

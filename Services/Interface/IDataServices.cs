@@ -13,7 +13,6 @@ namespace MSRecordsEngine.Services.Interface
         public bool IsAStringType(Enums.DataTypeEnum eDataType);
         public bool IsADateType(Enums.DataTypeEnum eDataType);
         public bool IsANumericType(Enums.DataTypeEnum eDataType);
-        public List<T> GetRecords<T>(string ConnectionString, string sSql, object param = null);
         public bool IsSysAdmin(string tableName, string ConnectionString, bool bDBOwnerOK = true);
         public object IsContainField(string ConnectionString, string tableName, List<SchemaColumns> schemaColumnList, string fieldName, List<KeyValuePair<string, string>> DDList);
         public object IsContainStringField(string ConnectionString, string tableName, List<SchemaColumns> schemaColumnList, string fieldName, List<KeyValuePair<string, string>> DDList);

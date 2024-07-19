@@ -109,15 +109,6 @@ namespace MSRecordsEngine.Models
         public string ErrorMessage { get; set; }
         public string ErrorType { get; set; }
         public string stringValue1 { get; set; }
-        public string stringValue2 { get; set; }
-        public string stringValue3 { get; set; }
-        public bool boolValue1 { get; set; }
-        public bool boolValue2 { get; set; }
-        public int intValue { get; set; }
-        public List<int> intLst { get; set; }
-        public Dictionary<string, bool> DictionaryResult { get; set; }
-        public bool AtLeastOneTablePermissionSessionValue { get; set; }
-        public bool AtLeastOneViewPermissionSessionValue { get; set; }
     }
 
     public class EditRemoveOutputSettingsEntityParams
@@ -751,5 +742,102 @@ namespace MSRecordsEngine.Models
         public bool IncludeTrackingLocation { get; set; }
         public bool InTaskList { get; set; }
         public ViewsCustomModel ViewsCustomModel { get; set; }
+    }
+
+    public class MoveFilterInSQLParams
+    {
+        public ViewsCustomModel ViewsCustomModel { get; set; }
+        public List<ViewFilter> ViewFilters { get; set; }
+        public List<ViewColumn> viewColumns { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class GetOperatorDDLDataParam
+    {
+        public int ViewId { get; set; }
+        public int ColumnNum { get; set; }
+        public string TableName { get; set; }
+        public string ConnectionString { get; set; }
+        public List<ViewColumn> ViewColumns { get; set; }
+        public List<ViewFilter> ViewFilters { get; set; }
+    }
+
+    public class ReturnGetOperatorDDLData
+    {
+        public string ErrorType { get; set; }
+        public string ErrorMessage { get; set; }
+        public string LookupFieldJSON { get; set; }
+        public string ValueFieldNameJSON { get; set; }
+        public string FirstLookupJSON { get; set; }
+        public string SecondLookupJSON { get; set; }
+        public string RecordJSON { get; set; }
+        public string JsonFilterControls { get; set; }
+        public string FilterColumnsJSON { get; set; }
+        public string JsonObjectOperator { get; set; }
+    }
+
+    public class SetViewsDetailsParam
+    {
+        public Passport Passport { get; set; }
+        public ViewsCustomModel ViewsCustomModel { get; set; }
+        public List<ViewColumn> ViewColumns { get; set; }
+        public List<ViewFilter> ViewFilters { get; set; }
+        public Dictionary<int, int> OrgViewColumnIds { get; set; }
+        public Dictionary<int, int> UpViewColumnIds { get; set; }
+        public bool IncludeFileRoomOrder { get; set; }
+        public bool IncludeTrackingLocation { get; set;}
+        public bool InTaskList { get; set;}
+        public bool FiltersActive { get; set;}
+    }
+
+    public class ReturnSetViewsDetails
+    {
+        public string ErrorType { get; set; }
+        public string ErrorMessage { get; set; }
+        public string ViewId { get; set; }
+        public List<ViewColumn> ViewColumns { get; set; }
+        public View View {  get; set; }
+    }
+
+    public class ReturnEditOutputSettingsEntity : ReturnErrorTypeErrorMsg
+    {
+        public string OutputSettingsEntity { get; set; }
+        public string FileName { get; set; }
+    }
+
+    public class ReturnGetReportStylesData : ReturnErrorTypeErrorMsg
+    {
+        public string ReportStyleName { get; set; }
+        public string ReportStyleEntity { get; set; }
+    }
+
+    public class ReturnFillViewColumnControl : ReturnErrorTypeErrorMsg
+    {
+        public string ColumnType { get; set; }
+        public string Allignment {  get; set; }
+        public string VisualAttribute { get; set; }
+    }
+
+    public class ReturnSetAuditPropertiesData : ReturnErrorTypeErrorMsg 
+    {
+        public List<int> TableIds { get; set; }
+    }
+    public class ReturnCheckModuleLevelAccess : ReturnErrorTypeErrorMsg
+    {
+        public int iCntRpts { get; set; }
+        public Dictionary<string, bool> AccessDictionary { get; set; }
+        public bool AtLeastOneTablePermissionSessionValue { get; set; }
+        public bool AtLeastOneViewPermissionSessionValue { get; set; }
+    }
+
+    public class ReturnViewsOrderChange : ReturnErrorTypeErrorMsg
+    {
+        public bool LowerLast {  get; set; }
+        public bool UpperLast { get; set;}
+    }
+
+    public class ReturnCheckChildTableExist: ReturnErrorTypeErrorMsg
+    {
+        public bool ChildExist { get; set; }
     }
 }
