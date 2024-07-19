@@ -1,9 +1,11 @@
-﻿using Smead.Security;
+﻿using MSRecordsEngine.Models.FusionModels;
+using Smead.Security;
 
 namespace MSRecordsEngine.Services.Interface
 {
     public interface ILayoutModelService
     {
-        string LoadTasks(Passport passport);
+        TasksBar ExecuteTasksbar(Passport passport);
+        string ExecuteDashboardTasksbar(Passport passport);
     }
 }

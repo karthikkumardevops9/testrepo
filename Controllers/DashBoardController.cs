@@ -646,7 +646,7 @@ namespace MSRecordsEngine.Controllers
             try
             {
                 model.JsonString = param.widgetObjectJson;
-                model.TaskList = _layoutModelService.LoadTasks(param.passport);
+                model.TaskList = _layoutModelService.ExecuteDashboardTasksbar(param.passport);
             }
             catch (Exception ex) { 
                 model.isError= true;
