@@ -315,6 +315,13 @@ namespace MSRecordsEngine.Models
             ServiceNotEnabled,
             NoSelection
         }
+        public enum geOfficialRecordConversonType
+        {
+            orcNoConversion = 0,
+            orcFirstVersionConversion = 1,
+            orcLastVersionConversion = 2,
+            orcConversionToNothing = 4
+        }
     }
 
     public class CollectionsClass

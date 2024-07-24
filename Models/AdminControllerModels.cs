@@ -840,4 +840,27 @@ namespace MSRecordsEngine.Models
     {
         public bool ChildExist { get; set; }
     }
+
+    public class SetSystemAddressDetailsParam
+    {
+        public SystemAddress SystemAddress { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class SetVolumeDetailsParam
+    {
+        public Volume Volume { get; set; }
+        public Passport Passport { get; set; }
+        public bool Active { get; set; }
+    }
+
+    public class GetVolumesListParams
+    {
+        public string ConnectionString { get; set; }
+        public string sord { get; set; }
+        public int page { get; set; }
+        public string pId { get; set; }
+        public int rows { get; set; }
+    }
+
 }
