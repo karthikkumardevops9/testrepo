@@ -7,6 +7,7 @@ using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models;
 using MSRecordsEngine.Models.FusionModels;
 using MSRecordsEngine.RecordsManager;
+using MSRecordsEngine.Repository;
 using MSRecordsEngine.Services;
 using MSRecordsEngine.Services.Interface;
 using Newtonsoft.Json;
@@ -51,6 +52,33 @@ namespace MSRecordsEngine.Controllers
         }
 
         #region Attachments All methods are moved
+
+        [Route("LoadAttachmentParticalView")]
+        [HttpPost]
+        public async Task<List<vwGetOutputSetting>> LoadAttachmentParticalView(Passport passport) //completed testing 
+        {
+            var pFilterdVolums = new List<vwGetOutputSetting>();
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var pVolumeList = await context.vwGetOutputSettings.Where(x => x.Active == true).ToListAsync();
+                    foreach (var pvwGetOutputSetting in pVolumeList)
+                    {
+                        if (passport.CheckPermission(pvwGetOutputSetting.Name, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Volumes, Permissions.Permission.Access))
+                        {
+                            pFilterdVolums.Add(pvwGetOutputSetting);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return pFilterdVolums;
+        }
 
         [Route("GetOutputSettingList")]
         [HttpPost]
@@ -3114,7 +3142,7 @@ namespace MSRecordsEngine.Controllers
                                         if (!(await context.SecureObjectPermissions.AnyAsync(x => (x.GroupID == 0 && x.SecureObjectID == pSecurableID) & x.PermissionID == pPermissionId)))
                                         {
                                             // 'Assigned new permission
-                                            AddNewSecureObjectPermission(pSecurableID, pPermissionId, connectionString);
+                                            await AddNewSecureObjectPermission(pSecurableID, pPermissionId, connectionString);
                                         }
                                     }
                                 }
@@ -6398,10 +6426,441 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
+        
         #endregion
 
+        #region Directories Module All methods moved
+
+        #region Drive Details All Methods Moved
+
+        [Route("GetSystemAddressList")]
+        [HttpGet]
+        public string GetSystemAddressList(string sord, int page, int rows, string ConnectionString) //complete testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystemAddressEntities = from t in context.SystemAddresses
+                                                 select new { t.Id, t.DeviceName, t.PhysicalDriveLetter };
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSystemAddressEntities.GetJsonListForGrid(sord, page, rows, "DeviceName"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("SetSystemAddressDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetSystemAddressDetails(SetSystemAddressDetailsParam setSystemAddressDetailsParam) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pSystemAddress = setSystemAddressDetailsParam.SystemAddress;
+            try
+            {
+                using (var context = new TABFusionRMSContext(setSystemAddressDetailsParam.ConnectionString))
+                {
+                    if (pSystemAddress.Id > 0)
+                    {
+                        if (await context.SystemAddresses.AnyAsync(x => (x.DeviceName.Trim().ToLower()) == (pSystemAddress.DeviceName.Trim().ToLower()) && x.Id != pSystemAddress.Id) == false)
+                        {
+                            pSystemAddress.PhysicalDriveLetter = pSystemAddress.PhysicalDriveLetter.ToUpper();
+                            context.Entry(pSystemAddress).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The Device Name \"{0}\" is already in use. Please select a different Device Name", pSystemAddress.DeviceName);
+                        }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Directory/Drive updated successfully";
+                    }
+                    else
+                    {
+                        if (await context.SystemAddresses.AnyAsync(x => (x.DeviceName.Trim().ToLower()) == (pSystemAddress.DeviceName.Trim().ToLower())) == false)
+                        {
+                            pSystemAddress.PhysicalDriveLetter = pSystemAddress.PhysicalDriveLetter.ToUpper();
+                            context.SystemAddresses.Add(pSystemAddress);
+                            await context.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The Device Name \"{0}\" is already in use. Please select a different Device Name", pSystemAddress.DeviceName);
+                        }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Directory/Drive added successfully";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("EditSystemAddress")]
+        [HttpGet]
+        public async Task<string> EditSystemAddress(int SystemAddressId, string ConnectionString) //complete testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystemAddressEntity = await context.SystemAddresses.Where(x => x.Id == SystemAddressId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSystemAddressEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("DeleteSystemAddress")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteSystemAddress(int SystemAddressId, string ConnectionString) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oSystemAddressEntity = await context.SystemAddresses.Where(x => x.Id == SystemAddressId).FirstOrDefaultAsync();
+                    if (oSystemAddressEntity != null)
+                    {
+                        var oVolumns = await context.Volumes.Where(x => x.SystemAddressesId == SystemAddressId).FirstOrDefaultAsync();
 
 
+                        if (oVolumns != null)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "Row Has Volumes Assigned. Deletion Is Not Allowed";
+                        }
+                        else
+                        {
+                            context.SystemAddresses.Remove(oSystemAddressEntity);
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Directory/Drive deleted successfully";
+                        }
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "There is no record found for delete";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Volumes Details All Methods Moved
+
+        [Route("GetVolumesList")]
+        [HttpPost]
+        public string GetVolumesList(GetVolumesListParams getVolumesListParams) //complete testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(getVolumesListParams.ConnectionString))
+                {
+                    var pVolumeEntities = from t in context.Volumes
+                                          select new { t.Id, t.Name, t.PathName, t.DirDiskMBLimitation, t.DirCountLimitation, t.Active, t.ImageTableName, t.SystemAddressesId };
+
+                    if (!string.IsNullOrEmpty(getVolumesListParams.pId))
+                    {
+                        int intpId = Convert.ToInt32(getVolumesListParams.pId);
+                        pVolumeEntities = pVolumeEntities.Where(p => p.SystemAddressesId == intpId);
+                    }
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pVolumeEntities.GetJsonListForGrid(getVolumesListParams.sord, getVolumesListParams.page, getVolumesListParams.rows, "Name"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("SetVolumeDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetVolumeDetails(SetVolumeDetailsParam setVolumeDetailsParam) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pVolume = setVolumeDetailsParam.Volume;
+            var pActive = setVolumeDetailsParam.Active;
+            var passport = setVolumeDetailsParam.Passport;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var oSecureObject = new Smead.Security.SecureObject(passport);
+                    pVolume.Active = pActive;
+                    pVolume.Active = pActive;
+
+
+                    if (pVolume.Id > 0)
+                    {
+                        var pVolumnEntity = await context.Volumes.Where(x => x.Id == pVolume.Id).FirstOrDefaultAsync();
+                        string oldVolumnName = pVolumnEntity.Name;
+
+                        if (await context.Volumes.AnyAsync(x => (x.Name.Trim().ToLower()) == (pVolume.Name.Trim().ToLower()) && x.Id != pVolume.Id) == false)
+                        {
+                            if (pVolume.PathName.Substring(0, 1) != @"\")
+                            {
+                                pVolume.PathName = @"\" + pVolume.PathName;
+                            }
+                            pVolumnEntity.Name = pVolume.Name;
+                            pVolumnEntity.PathName = pVolume.PathName;
+                            pVolumnEntity.DirDiskMBLimitation = pVolume.DirDiskMBLimitation;
+                            pVolumnEntity.DirCountLimitation = pVolume.DirCountLimitation;
+                            pVolumnEntity.Active = pVolume.Active;
+                            pVolumnEntity.ImageTableName = pVolume.ImageTableName;
+
+                            if (!string.Equals(oldVolumnName.Trim(), pVolume.Name.Trim(), StringComparison.OrdinalIgnoreCase))
+                            {
+                                var oSecureObjectOld = await context.SecureObjects
+                                    .Where(x => x.Name.Trim().ToLower() == oldVolumnName.Trim().ToLower())
+                                    .FirstOrDefaultAsync();
+
+                                if (oSecureObjectOld != null)
+                                {
+                                    oSecureObjectOld.Name = pVolume.Name;
+                                    context.Entry(oSecureObjectOld).State = EntityState.Modified;
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+
+                            context.Entry(pVolumnEntity).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Selected Volume updated Successfully";
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The Volume Name \"{0}\" is already in use. Please select a different Volume Name", pVolume.Name);
+                            return model;
+                        }
+                    }
+                    else if (await context.Volumes.AnyAsync(x => (x.Name.Trim().ToLower()) == (pVolume.Name.Trim().ToLower())) == false)
+                    {
+                        if (pVolume.PathName.Substring(0, 1) != @"\")
+                        {
+                            pVolume.PathName = @"\" + pVolume.PathName;
+                        }
+
+                        int lCounter;
+                        lCounter = oSecureObject.GetSecureObjectID(pVolume.Name, Smead.Security.SecureObject.SecureObjectType.Volumes);
+                        if (lCounter == 0L)
+                            lCounter = oSecureObject.Register(pVolume.Name, Smead.Security.SecureObject.SecureObjectType.Volumes, (int)Enums.SecureObjects.Volumes);
+                        var oSecureObjectPermission = new SecureObjectPermission();
+                        oSecureObjectPermission.GroupID = -1;
+                        oSecureObjectPermission.SecureObjectID = Convert.ToInt32(lCounter.ToString());
+                        oSecureObjectPermission.PermissionID = 3;
+                        if (await context.SecureObjectPermissions.AnyAsync(x => x.GroupID == oSecureObjectPermission.GroupID & x.SecureObjectID == oSecureObjectPermission.SecureObjectID & x.PermissionID == oSecureObjectPermission.PermissionID) == false)
+                        {
+                            context.SecureObjectPermissions.Add(oSecureObjectPermission);
+                            await context.SaveChangesAsync();
+                        }
+                        context.Volumes.Add(pVolume);
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Volume added Successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The Volume Name \"{0}\" is already in use. Please select a different Volume Name", pVolume.Name);
+                        return model;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("EditVolumeDetails")]
+        [HttpGet]
+        public async Task<string> EditVolumeDetails(string ConnectionString, int VolumeId) //complete testing 
+        {
+            var jsonObject = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pVolumeEntity = await context.Volumes.Where(x => x.Id == VolumeId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pVolumeEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+
+            return jsonObject;
+        }
+
+        [Route("DeleteVolumesEntity")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteVolumesEntity(string ConnectionString, int VolumeId) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    bool lOutputSettings = await context.OutputSettings.AnyAsync();
+                    if (await context.OutputSettings.AnyAsync(x => x.VolumesId == VolumeId) == true)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "Volume cannot be removed. Volume is in use by one of the Default settings";
+                        return model;
+                    }
+                    var oVolumeEntity = await context.Volumes.Where(x => x.Id == VolumeId).FirstOrDefaultAsync();
+                    if (oVolumeEntity != null)
+                    {
+                        var oDirectory = await context.Directories.Where(x => x.VolumesId == VolumeId).FirstOrDefaultAsync();
+
+                        object oImagePointers = null;
+                        object oPCFilesPointer = null;
+                        if (oDirectory != null)
+                        {
+                            oImagePointers = await context.ImagePointers.Where(x => x.ScanDirectoriesId == oDirectory.Id).FirstOrDefaultAsync();
+                            oPCFilesPointer = await context.PCFilesPointers.Where(x => x.ScanDirectoriesId == oDirectory.Id).FirstOrDefaultAsync();
+                        }
+
+                        if (oImagePointers != null || oPCFilesPointer != null)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "Row Has Attachments Assigned.  Deletion Is Not Allowed";
+                        }
+                        else
+                        {
+                            context.Volumes.Remove(oVolumeEntity);
+                            await context.SaveChangesAsync();
+
+                            var oSecureObjEntity = await context.SecureObjects.Where(m => (m.Name) == (oVolumeEntity.Name) & m.SecureObjectTypeID == (int)Enums.SecureObjectType.Volumes).FirstOrDefaultAsync();
+                            int SecureObjectId = oSecureObjEntity.SecureObjectID;
+                            context.SecureObjects.Remove(oSecureObjEntity);
+                            await context.SaveChangesAsync();
+
+                            var oSecureObjPermissions = await context.SecureObjectPermissions.Where(m => m.SecureObjectID == SecureObjectId).ToListAsync();
+
+                            context.SecureObjectPermissions.RemoveRange(oSecureObjPermissions);
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Selected Volume deleted Successfully";
+                        }
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "There is no record found for delete";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Table
+
+        [Route("LoadAccordianTable")]
+        [HttpPost]
+        public async Task<string> LoadAccordianTable(Passport passport) //completed testing 
+        {
+            var pTablesList = new List<Table>();
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var pTablesEntities = await context.Tables.Where(m => (m.TableName.Trim().ToLower()) != ("Operators".Trim().ToLower())).OrderBy(m => m.TableName).ToListAsync();
+                    var lAllTables = await context.vwTablesAlls.Select(x => x.TABLE_NAME).ToListAsync();
+
+                    foreach (var oTable in pTablesEntities)
+                    {
+                        if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Models.Enums.SecureObjects.Table, (Permissions.Permission)Models.Enums.PassportPermissions.Configure))
+                        {
+                            pTablesList.Add(oTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
+            }
+
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            string jsonObject = JsonConvert.SerializeObject(pTablesList.OrderBy(m => m.UserName), Newtonsoft.Json.Formatting.Indented, Setting);
+            return jsonObject;
+
+        }
+
+        
+
+        #endregion
 
 
         [Route("BindAccordian")]
@@ -6440,38 +6899,6 @@ namespace MSRecordsEngine.Controllers
             return jsonObject;
         }
 
-        [Route("LoadAccordianTable")]
-        [HttpPost]
-        public async Task<string> LoadAccordianTable(Passport passport) //completed testing 
-        {
-            var pTablesList = new List<Table>();
-            try
-            {
-                using (var context = new TABFusionRMSContext(passport.ConnectionString))
-                {
-                    var pTablesEntities = await context.Tables.Where(m => (m.TableName.Trim().ToLower()) != ("Operators".Trim().ToLower())).OrderBy(m => m.TableName).ToListAsync();
-                    var lAllTables = await context.vwTablesAlls.Select(x => x.TABLE_NAME).ToListAsync();
-
-                    foreach (var oTable in pTablesEntities)
-                    {
-                        if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Models.Enums.SecureObjects.Table, (Permissions.Permission)Models.Enums.PassportPermissions.Configure))
-                        {
-                            pTablesList.Add(oTable);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
-            }
-
-            var Setting = new JsonSerializerSettings();
-            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-            string jsonObject = JsonConvert.SerializeObject(pTablesList.OrderBy(m => m.UserName), Newtonsoft.Json.Formatting.Indented, Setting);
-            return jsonObject;
-
-        }
 
         [Route("GetReportInformation")]
         [HttpPost]
@@ -7421,6 +7848,81 @@ namespace MSRecordsEngine.Controllers
             }
         }
 
+        private async Task<bool> AddSecureObjectPermissionsBySecureObjectType(int pSecureObjectID, int pBaseSecureObjectID, int pSecureObjectType, string ConnectionString)
+        {
+            bool bSucceed = false;
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    string sSql = "INSERT INTO SecureObjectPermission (GroupID, SecureObjectID, PermissionID) SELECT GroupID," + pSecureObjectID + " AS SecureObjectId, PermissionID FROM SecureObjectPermission AS SecureObjectPermission WHERE     (SecureObjectID = " + pBaseSecureObjectID + ") AND (PermissionID IN (SELECT     PermissionID FROM          SecureObjectPermission AS SecureObjectPermission_1 WHERE (SecureObjectID = " + pSecureObjectType + ") AND (GroupID = 0)))";
+                    bSucceed = Convert.ToBoolean(await conn.ExecuteAsync(sSql, commandType: CommandType.Text));
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return bSucceed;
+        }
+
+        private async Task<string> VerifyRetentionDispositionTypesForParentAndChildren(int pTableId, string ConnectionString)        {            Table oTable;            string sMessage = string.Empty;            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();
+                    var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableEntites.TableName)).ToListAsync();
+                    var lstRelatedChildTable = await context.RelationShips.Where(x => (x.UpperTableName) == (pTableEntites.TableName)).ToListAsync();
+
+                    if (pTableEntites.RetentionFinalDisposition != 0)
+                    {
+
+                        foreach (var lTableName in lstRelatedTables)
+                        {
+
+                            oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.UpperTableName)).FirstOrDefaultAsync();
+
+                            if (oTable != null)
+                            {
+                                if (((oTable.RetentionPeriodActive == true) || (oTable.RetentionInactivityActive == true)) && (oTable.RetentionFinalDisposition != 0))
+                                {
+                                    if (oTable.RetentionFinalDisposition != pTableEntites.RetentionFinalDisposition)
+                                        sMessage = Constants.vbTab + Constants.vbTab + oTable.UserName + Constants.vbCrLf;
+                                }
+                                oTable = null;
+                            }
+
+                        }
+
+                        foreach (var lTableName in lstRelatedChildTable)
+                        {
+
+                            oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.LowerTableName)).FirstOrDefaultAsync();
+
+                            if (oTable != null)
+                            {
+                                if (((oTable.RetentionPeriodActive == true) || (oTable.RetentionInactivityActive == true)) && (oTable.RetentionFinalDisposition != 0))
+                                {
+                                    if ((oTable.RetentionFinalDisposition != pTableEntites.RetentionFinalDisposition))
+                                        sMessage = Constants.vbTab + Constants.vbTab + oTable.UserName + Constants.vbCrLf;
+                                }
+                                oTable = null;
+                            }
+
+                        }
+
+                        if (string.Compare(sMessage, "", StringComparison.Ordinal) > 0)
+                        {
+                            sMessage = string.Format("<b>WARNING:</b>;  The following related tables have a retention disposition set differently than this table: <b>{1}</b>; {0} This could give different results than expected. {0};Please correct the appropriate table if this is not what is intended.", Environment.NewLine, sMessage);
+                        }
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");                sMessage = string.Empty;
+            }            return sMessage;        }
 
         #endregion
     }

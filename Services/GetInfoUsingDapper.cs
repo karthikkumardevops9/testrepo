@@ -183,5 +183,26 @@ namespace MSRecordsEngine.Services
                     }
             }
         }
+
+        public static async Task<bool> ProcessADOCommand(string sSQL, string connectionString,bool bDoNoCount = false)
+        {
+            int recordaffected = default;
+            using (var conn = CreateConnection(connectionString))
+            {
+                try
+                {
+                    if (bDoNoCount)
+                    {
+                        sSQL = "SET NOCOUNT OFF;" + sSQL + ";SET NOCOUNT ON";
+                    }
+                    recordaffected = await conn.ExecuteAsync(sSQL, commandType: CommandType.Text);
+                    return true;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
     }
 }
