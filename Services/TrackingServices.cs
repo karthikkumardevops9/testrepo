@@ -16,92 +16,15 @@ namespace MSRecordsEngine.Services
 {
     public class TrackingServices : ITrackingServices
     {
-        private const string SL_USERNAME = "@@SL_UserName";
-
-        public const int TRACKING_LOCATION = 1;
-        public const int TRACKING_EMPLOYEE = 2;
-        private static int miBatchNum = 0;
-
-        public static string msSignatureFile;
-        public static string SignatureFile
-        {
-            get
-            {
-                return msSignatureFile;
-            }
-            set
-            {
-                msSignatureFile = value;
-            }
-        }
-
-        public static DateTime StartTime
-        {
-            get
-            {
-                return msStartTime;
-            }
-            set
-            {
-                msStartTime = value;
-            }
-        }
-        public static DateTime msStartTime;
-
-        public static bool TelxonModeOn
-        {
-            get
-            {
-                return mbTelxonModeOn;
-            }
-            set
-            {
-                mbTelxonModeOn = value;
-            }
-        }
-        public static bool mbTelxonModeOn;
-
-        public static DateTime ScanDateTime
-        {
-            get
-            {
-                return mdScanDateTime;
-            }
-            set
-            {
-                mdScanDateTime = value;
-            }
-        }
-        public static DateTime mdScanDateTime;
-
-        public static string TelxonUserName
-        {
-            get
-            {
-                return msTelxonUserName;
-            }
-            set
-            {
-                msTelxonUserName = value;
-            }
-        }
-        public static string msTelxonUserName;
-
-        public static bool FromEXE
-        {
-            get
-            {
-                return mbFromEXE;
-            }
-            set
-            {
-                mbFromEXE = value;
-            }
-        }
-        public static bool mbFromEXE { get; set; }
+       
         private IDbConnection CreateConnection(string connectionString)
             => new SqlConnection(connectionString);
+        private readonly CommonControllersService<TrackingServices> _commonService;
 
+        public TrackingServices(CommonControllersService<TrackingServices> commonService)
+        {
+            _commonService = commonService;
+        }
 
         //public static string StripLeadingZeros(string stripThis)
         //{
@@ -159,7 +82,13 @@ namespace MSRecordsEngine.Services
                                 {
                                     try
                                     {
-                                        
+                                        if (oDestTable.DBName != null)
+                                        {
+                                            var oDatabase = await context.Databases.FirstOrDefaultAsync(m => m.DBName.Trim().ToLower().Equals(oDestTable.DBName.Trim().ToLower()));
+                                            if (oDatabase != null)
+                                                ConnectionString = _commonService.GetConnectionString(oDatabase, false);
+
+                                        }
                                         string sSQL = string.Format("SELECT [{0}] FROM [{1}] WHERE [{2}]='{3}'", oDestTable.TrackingOUTFieldName, oDestTable.TableName, DatabaseMap.RemoveTableNameFromField(oDestTable.IdFieldName), oDestinationId);
                                         using (var conn = CreateConnection(ConnectionString))
                                         {
@@ -169,7 +98,7 @@ namespace MSRecordsEngine.Services
                                     catch
                                     {
                                         outType = false;
-                                    }  
+                                    }
 
                                     break;
                                 }
@@ -210,6 +139,13 @@ namespace MSRecordsEngine.Services
                     int oDueBackDaysInt = 0;
                     if (oDestTable.TrackingDueBackDaysFieldName.Length > 0)
                     {
+                        if (oDestTable.DBName != null)
+                        {
+                            var oDatabase = await context.Databases.FirstOrDefaultAsync(m => m.DBName.Trim().ToLower().Equals(oDestTable.DBName.Trim().ToLower()));
+                            if (oDatabase != null)
+                                ConnectionString = _commonService.GetConnectionString(oDatabase, false);
+                        }
+
                         string sSQL = string.Format("SELECT [{0}] FROM [{1}] WHERE [{2}]='{3}'", oDestTable.TrackingDueBackDaysFieldName, oDestTable.TableName, DatabaseMap.RemoveTableNameFromField(oDestTable.IdFieldName), oDestinationId);
 
                         using (var conn = CreateConnection(ConnectionString))
@@ -226,7 +162,7 @@ namespace MSRecordsEngine.Services
                         var defalutDueBackDays = await context.Systems.OrderBy(m => m.Id).FirstOrDefaultAsync();
                         oDueBackDaysInt = (int)defalutDueBackDays.DefaultDueBackDays;
                     }
-                        
+
                     return DateTime.Now.AddDays(oDueBackDaysInt);
                 }
             }
@@ -243,6 +179,8 @@ namespace MSRecordsEngine.Services
             string oObjectId = null;
             Table objectTable = null;
             Table destTable = null;
+            string connStringObject = "";
+            string connStringDestinaion = "";
             try
             {
                 using (var context = new TABFusionRMSContext(passport.ConnectionString))
@@ -250,7 +188,23 @@ namespace MSRecordsEngine.Services
                     objectTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(trackableType.Trim().ToLower())).FirstOrDefaultAsync();
                     destTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(destinationType.Trim().ToLower())).FirstOrDefaultAsync();
 
-                    bool IfObjIdFieldIsString = await GetInfoUsingDapper.IdFieldIsString(passport.ConnectionString, objectTable.TableName, objectTable.IdFieldName);
+                    if (objectTable.DBName != null)
+                    {
+                        var oDatabase = await context.Databases.FirstOrDefaultAsync(m => m.DBName.Trim().ToLower().Equals(objectTable.DBName.Trim().ToLower()));
+                        if (oDatabase != null)
+                            connStringObject = _commonService.GetConnectionString(oDatabase, false);
+                    }
+                    connStringObject = connStringObject.Length > 0 ? connStringObject : passport.ConnectionString;
+
+                    if (destTable.DBName != null)
+                    {
+                        var oDatabase = await context.Databases.FirstOrDefaultAsync(m => m.DBName.Trim().ToLower().Equals(destTable.DBName.Trim().ToLower()));
+                        if (oDatabase != null)
+                            connStringDestinaion = _commonService.GetConnectionString(oDatabase, false);
+                    }
+                    connStringDestinaion = connStringDestinaion.Length > 0 ? connStringDestinaion : passport.ConnectionString;
+
+                    bool IfObjIdFieldIsString = await GetInfoUsingDapper.IdFieldIsString(connStringObject, objectTable.TableName, objectTable.IdFieldName);
                     if (!IfObjIdFieldIsString)
                     {
                         int oUserLinkTableIdSize = await GetInfoUsingDapper.UserLinkIndexTableIdSize(passport.ConnectionString);
@@ -261,7 +215,7 @@ namespace MSRecordsEngine.Services
                         oObjectId = trackableID;
                     }
 
-                    bool IfDestIdFieldIsString = await GetInfoUsingDapper.IdFieldIsString(passport.ConnectionString, destTable.TableName, destTable.IdFieldName);
+                    bool IfDestIdFieldIsString = await GetInfoUsingDapper.IdFieldIsString(connStringDestinaion, destTable.TableName, destTable.IdFieldName);
                     if (!IfDestIdFieldIsString)
                     {
                         int oUserLinkTableIdSize = await GetInfoUsingDapper.UserLinkIndexTableIdSize(passport.ConnectionString);
@@ -286,7 +240,7 @@ namespace MSRecordsEngine.Services
                                passport);
                 }
 
-                
+
             }
             catch (Exception ex)
             {

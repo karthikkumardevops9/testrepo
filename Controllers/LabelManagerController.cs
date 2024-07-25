@@ -86,20 +86,20 @@ namespace MSRecordsEngine.Controllers
             {
                 using (var context = new TABFusionRMSContext(param.ConnectionString))
                 {
-                
+
                     var pOneStripJob = await context.OneStripJobs.FirstOrDefaultAsync(x => x.Name.Trim().ToLower().Equals(param.Name.Trim().ToLower()));
                     var jobsId = pOneStripJob?.Id ?? 0;
                     var pOneStripJobField = await context.OneStripJobFields.Where(x => x.OneStripJobsId == jobsId).ToListAsync();
                     var oTable = await context.Tables.FirstOrDefaultAsync(x => x.TableName == pOneStripJob.TableName);
                     var pOneStripForm = await context.OneStripForms.FirstOrDefaultAsync(x => x.Id == pOneStripJob.OneStripFormsId);
-           
+
                     if (oTable != null)
                     {
                         oBarCodePrefix = oTable.BarCodePrefix;
                         tableName = pOneStripJob.TableName;
-                        rowCount = await GetCountAsync(tableName,param.ConnectionString);
+                        rowCount = await GetCountAsync(tableName, param.ConnectionString);
                     }
-                    
+
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
                     onestripjobfields = JsonConvert.SerializeObject(pOneStripJobField, Formatting.Indented, Setting);
@@ -135,18 +135,19 @@ namespace MSRecordsEngine.Controllers
                 using (var context = new TABFusionRMSContext(param.ConnectionString))
                 {
                     var pTable = await context.Tables.FirstOrDefaultAsync(x => x.TableName.Trim().ToLower().Equals(param.TableName.Trim().ToLower()) && !string.IsNullOrEmpty(x.DBName.Trim().ToLower()));
-                   
+
                     if (pTable != null)
                     {
                         var DbEntity = await context.Databases.FirstOrDefaultAsync(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower()));
-                        param.ConnectionString = _commonService.GetConnectionString(DbEntity, false);
+                        if (DbEntity != null)
+                            param.ConnectionString = _commonService.GetConnectionString(DbEntity, false);
                     }
 
-                    using(var con = CreateConnection(param.ConnectionString))
+                    using (var con = CreateConnection(param.ConnectionString))
                     {
                         var sSql = "SELECT * FROM [" + param.TableName + "]";
-                        var reader = await con.ExecuteReaderAsync(sSql,CommandType.Text);
-                        lOutput.Load(reader,LoadOption.OverwriteChanges);
+                        var reader = await con.ExecuteReaderAsync(sSql, CommandType.Text);
+                        lOutput.Load(reader, LoadOption.OverwriteChanges);
 
                         sSql = @"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC  INNER JOIN  INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KU
                                  ON TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME WHERE TC.TABLE_NAME = @TableName AND TC.CONSTRAINT_TYPE = 'PRIMARY KEY';";
@@ -199,10 +200,11 @@ namespace MSRecordsEngine.Controllers
 
                     oBarCodePrefix = oTable.BarCodePrefix;
 
-                    if (pTable != null) 
+                    if (pTable != null)
                     {
                         var DbEntity = await context.Databases.FirstOrDefaultAsync(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower()));
-                        param.ConnectionString = _commonService.GetConnectionString(DbEntity, false);
+                        if (DbEntity != null)
+                            param.ConnectionString = _commonService.GetConnectionString(DbEntity, false);
                     }
                     var finalSQL = param.SqlString.Split(new string[] { "WHERE" }, StringSplitOptions.None)[0];
                     var dateColumn = true;
@@ -218,26 +220,27 @@ namespace MSRecordsEngine.Controllers
                         // sSql = "SELECT TOP 1 * FROM " + table
                         dateColumn = false;
                     }
-                    using(var con = CreateConnection(param.ConnectionString))
+                    using (var con = CreateConnection(param.ConnectionString))
                     {
                         var reader = await con.ExecuteReaderAsync(sSql, CommandType.Text);
                         lOutput.Load(reader, LoadOption.OverwriteChanges);
                         if (lOutput.Rows.Count == 0)
                             sString = param.Field;
                         else if (dateColumn)
-                            sString = _commonService.GetConvertCultureDate(lOutput.Rows[0]["DateColumn"].ToString(), param.CultureShortPattern, param.OffSetVal,param.BWithTime,param.ConvertToLocalTimeZone);
+                            sString = _commonService.GetConvertCultureDate(lOutput.Rows[0]["DateColumn"].ToString(), param.CultureShortPattern, param.OffSetVal, param.BWithTime, param.ConvertToLocalTimeZone);
                         else
                             sString = lOutput.Rows[0][param.Field].ToString();
                     }
                 }
 
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 sString = param.Field;
                 _commonService.Logger.LogError($"Error:{ex.Message}");
             }
 
-            return new ReturnFirstValue(){Str=sString,BarcodePrefix =oBarCodePrefix};
+            return new ReturnFirstValue() { Str = sString, BarcodePrefix = oBarCodePrefix };
         }
 
         [Route("AddLabel")]
@@ -247,12 +250,12 @@ namespace MSRecordsEngine.Controllers
             AddlabelRespose result = new AddlabelRespose();
             string sMessage = string.Empty;
             int lError = 0;
-            var qlist = new List<object>(); 
+            var qlist = new List<object>();
             var Setting = new JsonSerializerSettings();
             Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
             try
             {
-                using(var context = new TABFusionRMSContext(param.ConnectionString))
+                using (var context = new TABFusionRMSContext(param.ConnectionString))
                 {
                     var oTable = await context.Tables.FirstOrDefaultAsync(x => x.TableName == param.OneStripJobs.TableName);
                     result.BarCodePrefix = oTable.BarCodePrefix;
@@ -261,7 +264,7 @@ namespace MSRecordsEngine.Controllers
 
                     if (sSQL.Trim().Length > 0)
                     {
-                        using(var conn = CreateConnection(param.ConnectionString))
+                        using (var conn = CreateConnection(param.ConnectionString))
                         {
                             var data = await conn.QueryAsync<object>(sSQL);
                             qlist = data.ToList();
@@ -340,7 +343,7 @@ namespace MSRecordsEngine.Controllers
                     else
                     {
                         var pOneStripJob = await context.OneStripJobs.FirstOrDefaultAsync(x => x.Name.Trim().ToLower().Equals(param.OneStripJobs.Name.Trim().ToLower()));
-                        if (pOneStripJob == null) 
+                        if (pOneStripJob == null)
                         {
                             param.OneStripJobs.Inprint = 0;
                             param.OneStripJobs.UserUnits = 0;
@@ -359,7 +362,7 @@ namespace MSRecordsEngine.Controllers
                         }
                     }
                     var tableName = param.OneStripJobs.TableName.ToString();
-                    result.RowCount = await GetCountAsync(tableName,param.ConnectionString);
+                    result.RowCount = await GetCountAsync(tableName, param.ConnectionString);
                 }
             }
             catch (Exception ex)
@@ -463,15 +466,15 @@ namespace MSRecordsEngine.Controllers
                     var queryParam = new DynamicParameters();
                     queryParam.Add("LabelObjectType", LabelObjectType.AsTableValuedParameter("dbo.TableType_RMS_AddEditLabelObject"));
                     queryParam.Add("OneStripJobsId", param.OneStripJobsId);
-                    await con.ExecuteAsync("SP_RMS_AddEditLabelObjectDetails", queryParam,commandType: CommandType.StoredProcedure);
+                    await con.ExecuteAsync("SP_RMS_AddEditLabelObjectDetails", queryParam, commandType: CommandType.StoredProcedure);
                 }
-                using(var context = new TABFusionRMSContext(param.ConnectionString))
+                using (var context = new TABFusionRMSContext(param.ConnectionString))
                 {
                     var pOneStripJobFields = await context.OneStripJobFields.Where(x => x.OneStripJobsId == param.OneStripJobsId).ToListAsync();
                     result = JsonConvert.SerializeObject(pOneStripJobFields, Formatting.Indented, Setting);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
             }
@@ -485,7 +488,7 @@ namespace MSRecordsEngine.Controllers
             ApiResponse result = new ApiResponse();
             try
             {
-                using(var context = new TABFusionRMSContext(param.ConnectionString))
+                using (var context = new TABFusionRMSContext(param.ConnectionString))
                 {
                     var pOneStripJob = await context.OneStripJobs.FirstOrDefaultAsync(x => x.Name.Trim().ToLower().Equals(param.Name.Trim().ToLower()));
 
@@ -524,7 +527,8 @@ namespace MSRecordsEngine.Controllers
                     if (pTable != null)
                     {
                         pDatabaseEntity = await context.Databases.FirstOrDefaultAsync(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower()));
-                        param.ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        if (pDatabaseEntity != null)
+                            param.ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
                     }
                     string finalSQL = param.SqlString.Split(new string[] { "WHERE" }, StringSplitOptions.None)[0];
                     using (var con = CreateConnection(param.ConnectionString))
@@ -563,7 +567,7 @@ namespace MSRecordsEngine.Controllers
                 {
                     var oONeStripJobs = await context.OneStripJobs.FirstOrDefaultAsync(x => x.Id == param.OneStripJobsId);
                     var oOneStripForms = await context.OneStripForms.FirstOrDefaultAsync(x => x.Id == param.OneStripFormsId);
-                    
+
                     oONeStripJobs.OneStripFormsId = param.OneStripFormsId;
                     oONeStripJobs.LabelHeight = oOneStripForms.LabelHeight;
                     oONeStripJobs.LabelWidth = oOneStripForms.LabelWidth;
@@ -584,28 +588,26 @@ namespace MSRecordsEngine.Controllers
         }
 
         #region Private Method
-        private async Task<int> GetCountAsync(string tableName,string connectionString)
+        private async Task<int> GetCountAsync(string tableName, string connectionString)
         {
             try
             {
-                using(var context = new TABFusionRMSContext(connectionString))
+                using (var context = new TABFusionRMSContext(connectionString))
                 {
                     var pTable = await context.Tables.FirstOrDefaultAsync(x => x.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower()) && !string.IsNullOrEmpty(x.DBName.Trim().ToLower()));
-                    
+
                     Databas pDatabaseEntity = null;
                     if (pTable != null)
                     {
                         pDatabaseEntity = await context.Databases.FirstOrDefaultAsync(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower()));
-                        if(pDatabaseEntity != null)
-                        {
+                        if (pDatabaseEntity != null)
                             connectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
-                        }
                     }
 
-                    using ( var conn = CreateConnection(connectionString))
+                    using (var conn = CreateConnection(connectionString))
                     {
                         var countQuery = "SELECT COUNT(1) FROM " + tableName;
-                        var loutput = await conn.ExecuteScalarAsync(countQuery,CommandType.Text);
+                        var loutput = await conn.ExecuteScalarAsync(countQuery, CommandType.Text);
                         return Convert.ToInt32(loutput);
                     }
                 }
