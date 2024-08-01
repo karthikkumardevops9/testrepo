@@ -17,6 +17,6 @@ namespace MSRecordsEngine.Services.Interface
         public bool DataLocked(string sFieldName, string table, string ConnectionString);
         public Dictionary<int, ViewColumn> FillFilterFieldNames(List<ViewColumn> lViewColumn);
         public void CreateViewsEntity(View oldViews, View newViews);
-        public Task SQLViewDelete(int Id, Passport passport);
+        public Task SQLViewDelete(int Id, string ConnectionString);
     }
 }

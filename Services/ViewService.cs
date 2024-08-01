@@ -1,19 +1,16 @@
+using Dapper;
+using Microsoft.VisualBasic;
+using MSRecordsEngine.Entities;
+using MSRecordsEngine.Models;
+using MSRecordsEngine.Services.Interface;
+using Smead.Security;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Entity;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.ViewEngines;
-using Microsoft.VisualBasic;
-using MSRecordsEngine.Entities;
-using MSRecordsEngine.Models;
-using MSRecordsEngine.Models.FusionModels;
-using MSRecordsEngine.Repository;
-using MSRecordsEngine.Services.Interface;
-using Smead.Security;
 
 namespace MSRecordsEngine.Services
 {
@@ -23,6 +20,9 @@ namespace MSRecordsEngine.Services
         public const string TRACKED_LOCATION_NAME = "SLTrackedDestination";
 
         public static Dictionary<int, ViewColumn> mcFilterColumns = new Dictionary<int, ViewColumn>();
+
+        private IDbConnection CreateConnection(string connectionString)
+            => new SqlConnection(connectionString);
 
         public string GetBindViewMenus(string root, List<Table> lTableEntities, List<View> lViewEntities, Passport _passport)
         {
@@ -1089,20 +1089,12 @@ namespace MSRecordsEngine.Services
             }
         }
 
-        public async Task SQLViewDelete(int Id, Passport passport)
+        public async Task SQLViewDelete(int Id, string ConnectionString)
         {
-            var err = new ErrorBaseModel();
             string sql = string.Format("IF OBJECT_ID('view__{0}', 'V') IS NOT NULL DROP VIEW [view__{0}]", Id.ToString());
-            try
+            using (var conn = CreateConnection(ConnectionString))
             {
-                using (var cmd = new SqlCommand(sql, passport.Connection()))
-                {
-                    await cmd.ExecuteNonQueryAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Eventlogs.LogError(ex, err, Id, passport.DatabaseName);
+                await conn.ExecuteAsync(sql, commandType: CommandType.Text);
             }
         }
 
