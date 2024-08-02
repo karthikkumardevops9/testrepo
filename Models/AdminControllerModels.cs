@@ -1,4 +1,5 @@
-﻿using MSRecordsEngine.Entities;
+﻿using Microsoft.AspNetCore.Http;
+using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models.FusionModels;
 using Smead.Security;
 using System;
@@ -1044,6 +1045,36 @@ namespace MSRecordsEngine.Models
     public class ReturnSetAdvanceDetails: ReturnErrorTypeErrorMsg
     {
         public string WarningMsg { get; set; }
+    }
+
+    public class GetDataListParams
+    {
+        public string ConnectionString { get; set; }
+        public string TableName {  get; set; }
+        public string sidx { get; set;}
+        public string sord { get; set;}
+        public int page { get; set;}
+        public int rows { get; set;}
+    }
+
+    public class DeleteSelectedRowsParam
+    {
+        public string ConnectionString { get; set; }
+        public string TableName { get; set; }
+        public string rows { get; set; }
+        public string col { get; set; }
+    }
+
+    public class ProcessRequestParam
+    {
+        public string Data {  get; set; }
+        public string TableName { get; set; }
+        public string ColName { get; set; }
+        public string ColType { get; set; }
+        public string ColumnName { get; set; }
+        public string PkValue { get; set; }
+        public string ColumnValue { get; set; }
+        public string ConnectionString { get; set; }
     }
 
 }

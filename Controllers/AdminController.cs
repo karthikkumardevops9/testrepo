@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Leadtools.Document.Unstructured.Highlevel;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Routing;
@@ -14,6 +15,7 @@ using MSRecordsEngine.Repository;
 using MSRecordsEngine.Services;
 using MSRecordsEngine.Services.Interface;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Smead.Security;
 using System;
 using System.Collections;
@@ -24,6 +26,8 @@ using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.Entity.Validation;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -6828,7 +6832,7 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
-        #region Table
+        #region Table All methods Moved
 
         [Route("LoadAccordianTable")]
         [HttpPost]
@@ -10141,6 +10145,442 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
+        #region Data Module All methods Moved
+
+        [Route("GetDataList")]
+        [HttpPost]
+        public async Task<string> GetDataList(GetDataListParams getDataListParams) //completed testing 
+        {
+            var jsonObject = string.Empty;
+
+            var ConnectionString = getDataListParams.ConnectionString;
+            var pTabledName = getDataListParams.TableName;
+            var sidx = getDataListParams.sidx;
+            var sord = getDataListParams.sord;
+            var page = getDataListParams.page;
+            var rows = getDataListParams.rows;
+
+            DataTable dtRecords = new DataTable();
+            int totalRecords = 0;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntity = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTabledName.Trim().ToLower())).FirstOrDefaultAsync();
+                    Databas pDatabaseEntity = null;
+
+                    if (pTableEntity != null)
+                    {
+                        if (pTableEntity.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTableEntity.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        if(pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+                    }
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var param = new DynamicParameters();
+                        param.Add("@TableName", pTabledName);
+                        param.Add("@PageNo", page);
+                        param.Add("@PageSize", rows);
+                        param.Add("@DataAndColumnInfo", true);
+                        param.Add("@ColName", sidx);
+                        param.Add("@Sort", sord);
+
+                        var loutput = await conn.ExecuteReaderAsync("SP_RMS_GetTableData", param, commandType: CommandType.StoredProcedure);
+                        if (loutput != null)
+                            dtRecords.Load(loutput);
+
+                        if (dtRecords.Rows.Count == 0)
+                            return "NUll Value";
+                        else
+                        {
+                            System.Threading.Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
+                            if (dtRecords.Columns.Contains("TotalCount"))
+                            {
+                                if (dtRecords.Rows.Count != 0)
+                                {
+                                    totalRecords = Convert.ToInt32(dtRecords.AsEnumerable().ElementAtOrDefault(0)["TotalCount"]);
+                                }
+                                dtRecords.Columns.Remove("TotalCount");
+
+                            }
+                            if (dtRecords.Columns.Contains("ROWNUM"))
+                            {
+                                dtRecords.Columns.Remove("ROWNUM");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            var dataList = CommonFunctions.ConvertDTToJQGridResult(dtRecords, totalRecords, sidx, sord, page, rows);
+
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            jsonObject = JsonConvert.SerializeObject(dataList, Newtonsoft.Json.Formatting.Indented, Setting);
+
+            return jsonObject;
+        }
+
+        [Route("DeleteSelectedRows")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteSelectedRows(DeleteSelectedRowsParam deleteSelectedRowsParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var tablename = deleteSelectedRowsParam.TableName;
+            var col = deleteSelectedRowsParam.col;
+            var rows = deleteSelectedRowsParam.rows;
+            var ConnectionString = deleteSelectedRowsParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var RowID = new DataTable();
+                    var row = rows.Split(',');
+                    RowID.Columns.Add("ID", typeof(string));
+                    RowID.Columns.Add("Col", typeof(string));
+                    int i = 0;
+                    foreach (string value in row)
+                    {
+                        RowID.Rows.Add(row[i], col);
+                        i = i + 1;
+                    }
+
+                    var pTable = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(tablename.Trim().ToLower()) && !string.IsNullOrEmpty(x.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    Databas pDatabaseEntity = null;
+
+                    if (pTable != null)
+                    {
+                        if (pTable.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        if (pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+                    }
+
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var param = new DynamicParameters();
+                        param.Add("@TableType", RowID.AsTableValuedParameter("TableType_RMS_DeleteDataRecords"));
+                        param.Add("@TableName", tablename);
+                        param.Add("@ColName", col);
+
+                        var loutput = await conn.ExecuteAsync("SP_RMS_DeleteDataRecords", param, commandType: CommandType.StoredProcedure);
+                        model.ErrorMessage = "Record saved successfully";
+                        model.ErrorType = "s";
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("ProcessRequest")]
+        [HttpPost]
+        public async Task<string> ProcessRequest(ProcessRequestParam processRequestParam) //completed testing 
+        {
+            var ConnectionString = processRequestParam.ConnectionString;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    string data = processRequestParam.Data;
+
+                    string tableName = processRequestParam.TableName;
+                    string colName = processRequestParam.ColName;
+                    string colType = processRequestParam.ColType;
+                    string columnName = processRequestParam.ColumnName;
+                    string pkValue = processRequestParam.PkValue;
+
+                    //string data = forms["x01"];
+
+                    //string tableName = forms["x02"];
+                    //string colName = forms["x03"];
+                    //string colType = forms["x04"];
+                    //string columnName = forms["x05"];
+                    //string pkValue = forms["x07"];
+                    string columnValue;
+
+                    var jsonObject = JsonConvert.DeserializeObject<JObject>(data);
+                    var jsonType = JsonConvert.DeserializeObject<JObject>(colType);
+                    var strOperation = jsonObject.GetValue("oper");
+                    if (columnName.Trim().ToLower().Equals("id"))
+                    {
+                        if (processRequestParam.ColumnValue.Contains("<"))
+                        {
+                            columnValue = jsonObject.GetValue(columnName).ToString();
+                        }
+                        else
+                        {
+                            columnValue = processRequestParam.ColumnValue;
+                        }
+                    }
+
+                    else if (processRequestParam.ColumnValue.Equals(""))
+                    {
+                        columnValue = null;
+                    }
+                    else
+                    {
+                        columnValue = processRequestParam.ColumnValue;
+                    }
+
+
+                    var AddEditType = new DataTable();
+                    AddEditType.Columns.Add("Col_Name", typeof(string));
+                    AddEditType.Columns.Add("Col_Data", typeof(string));
+
+                    var cNames = colName.Split(',');
+
+                    object val = "";
+
+                    for (int value = 0, loopTo = cNames.Length - 1; value <= loopTo; value++)
+                    {
+                        var types = jsonType.GetValue(cNames[value]);
+
+                        object type = null;
+                        string incremented = "true";
+                        string readOnlye = "false";
+
+                        //if (Convert.ToBoolean(Operators.ConditionalCompareObjectNotEqual(types, null, false)))
+                        //{
+                        //    type = types.ToString().Split(',')[0];
+                        //    incremented = types.ToString().Split(',')[1];
+                        //    readOnlye = types.ToString().Split(',')[2];
+                        //}
+                        if (types != null)
+                        {
+                            var parts = types.ToString().Split(',');
+                            type = parts[0];
+                            incremented = parts[1];
+                            readOnlye = parts[2];
+                        }
+
+
+                        if (readOnlye != "true")
+                        {
+                            switch (type)
+                            {
+                                case "String":
+                                    {
+                                        string str = jsonObject.GetValue(cNames[value]).ToString();
+
+                                        if (str.IndexOf("'") > -1)
+                                        {
+                                            str = str.Replace("'", Convert.ToString(ControlChars.Quote));
+                                        }
+
+                                        val = str;
+                                        break;
+                                    }
+
+                                case "Int32":
+                                case "Int64":
+                                case "Int16":
+                                    {
+                                        if ((cNames[value]) != (columnName))
+                                        {
+                                            string intr = jsonObject.GetValue(cNames[value]).ToString();
+                                            if (string.IsNullOrEmpty(intr))
+                                            {
+                                                val = jsonObject.GetValue(intr);
+                                            }
+                                            else
+                                            {
+                                                decimal round = Math.Round(decimal.Parse(jsonObject.GetValue(cNames[value]).ToString()));
+                                                val = int.Parse(round.ToString());
+                                            }
+                                        }
+                                        else if (incremented.Equals("false"))
+                                        {
+                                            if (!string.IsNullOrEmpty(jsonObject.GetValue(cNames[value]).ToString()))
+                                            {
+                                                val = int.Parse(jsonObject.GetValue(cNames[value]).ToString());
+                                            }
+
+                                        }
+
+                                        break;
+                                    }
+                                case "Double":
+                                    {
+                                        string str = jsonObject.GetValue(cNames[value]).ToString();
+                                        if (string.IsNullOrEmpty(str))
+                                        {
+                                            val = jsonObject.GetValue(str);
+                                        }
+                                        else
+                                        {
+                                            val = jsonObject.GetValue(cNames[value]).ToString();
+                                        }
+
+                                        break;
+                                    }
+                                case "Decimal":
+                                    {
+                                        string str = jsonObject.GetValue(cNames[value]).ToString();
+                                        if (string.IsNullOrEmpty(str))
+                                        {
+                                            val = jsonObject.GetValue(str);
+                                        }
+                                        else
+                                        {
+                                            val = jsonObject.GetValue(cNames[value]).ToString();
+                                        }
+
+                                        break;
+                                    }
+                                case "DateTime":
+                                    {
+                                        string dates = jsonObject.GetValue(cNames[value]).ToString();
+                                        if (string.IsNullOrEmpty(dates))
+                                        {
+                                            val = jsonObject.GetValue(dates);
+                                        }
+                                        else
+                                        {
+                                            var argresult = new DateTime();
+                                            if (DateTime.TryParse(dates, out argresult))
+                                            {
+                                                if (dates.IndexOf(":") > -1)
+                                                {
+                                                    val = DateTime.Parse(dates).ToString(CultureInfo.InvariantCulture);
+                                                }
+                                                else
+                                                {
+                                                    val = DateTime.Parse(dates).ToString("MM/dd/yyyy");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                val = DateTime.ParseExact(dates, "MM/dd/yyyy HH:mm", CultureInfo.InvariantCulture).ToString("MM/dd/yyyy HH:mm");
+                                            }
+                                        }
+
+                                        break;
+                                    }
+                                case "Byte[]":
+                                    {
+                                        val = Constants.vbByte;
+                                        break;
+                                    }
+                                case "Boolean":
+                                    {
+                                        val = jsonObject.GetValue(cNames[value]);
+                                        break;
+                                    }
+
+                                default:
+                                    {
+                                        val = jsonObject.GetValue(cNames[value]);
+                                        break;
+                                    }
+                            }
+                            //if (Convert.ToBoolean(Operators.AndObject(Operators.AndObject(Operators.ConditionalCompareObjectNotEqual(type, "Byte[]", false), (cNames[value]) != (columnName)), Operators.ConditionalCompareObjectNotEqual(type, null, false))))
+                            //{
+                            //    if (!(strOperation.ToString().Equals("edit") & val is null))
+                            //    {
+                            //        AddEditType.Rows.Add(cNames[value], val);
+                            //    }
+                            //}
+                            if (type != "Byte[]" && cNames[value] != columnName && type != null)
+                            {
+                                if (!(strOperation.ToString() == "edit" && val == null))
+                                {
+                                    AddEditType.Rows.Add(cNames[value], val);
+                                }
+                            }
+                            else if (cNames[value].Equals(columnName) & incremented.Equals("false"))
+                            {
+                                AddEditType.Rows.Add(cNames[value], val);
+                            }
+                        }
+                    }
+
+                    int n;
+
+                    var pTable = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower()) && !string.IsNullOrEmpty(x.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    Databas pDatabaseEntity = null;
+
+                    if (pTable != null)
+                    {
+                        if (pTable.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        if (pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+                    }
+
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var param = new DynamicParameters();
+                        if (strOperation.ToString().Equals("add"))
+                        {
+                            param.Add("@TableType", AddEditType.AsTableValuedParameter("TableType_RMS_AddEditDataRecords"));
+                            param.Add("@TableName", tableName);
+                        }
+                        else
+                        {
+                            param.Add("@TableType", AddEditType.AsTableValuedParameter("TableType_RMS_AddEditDataRecords"));
+                            param.Add("@TableName", tableName);
+                            param.Add("@ColName", columnName);
+                            if (pkValue == null)
+                            {
+                                param.Add("@ColVal", columnValue);
+                            }
+                            else
+                            {
+                                param.Add("@ColVal", pkValue);
+                            }
+                        }
+
+                        if (strOperation.ToString().Equals("add"))
+                        {
+                            int loutput = await conn.ExecuteAsync("SP_RMS_AddDataRecords", param, commandType: CommandType.StoredProcedure);
+                            return "Record saved successfully";
+                        }
+                        else
+                        {
+                            int loutput = await conn.ExecuteAsync("SP_RMS_EditDataRecords", param, commandType: CommandType.StoredProcedure);
+                            return "Record updated successfully";
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                return string.Format("Error : {0}", ex.Message);
+            }
+        }
+
+        #endregion
 
         [Route("BindAccordian")]
         [HttpPost]
