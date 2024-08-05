@@ -7,6 +7,7 @@ using System.Data.SqlClient;
 using System.Data;
 using System.Linq;
 using Dapper;
+using System.Collections;
 
 public sealed class CommonFunctions
 {
@@ -530,6 +531,29 @@ public sealed class CommonFunctions
             throw ex.InnerException;
         }
 
+    }
+
+    public static object ConvertDTToJQGridResult(DataTable dtRecords, int totalRecords, string sidx, string sord, int page, int rows)
+    {
+        int totalPages = (int)Math.Round(Math.Truncate(Math.Ceiling(totalRecords / (float)rows)));
+        int pageIndex = Convert.ToInt32(page) - 1;
+
+        var Dv = dtRecords.AsDataView();
+        if (!string.IsNullOrEmpty(sidx))
+        {
+            Dv.Sort = sidx + " " + sord;
+        }
+
+        var objListOfEmployeeEntity = new List<object>();
+        foreach (DataRowView dRow in Dv)
+        {
+            var hashtable = new Hashtable();
+            foreach (DataColumn column in dtRecords.Columns)
+                hashtable.Add(column.ColumnName, dRow[column.ColumnName].ToString());
+            objListOfEmployeeEntity.Add(hashtable);
+        }
+        var jsonData = new { total = totalPages, page, records = totalRecords, rows = objListOfEmployeeEntity };
+        return jsonData;
     }
 }
 
