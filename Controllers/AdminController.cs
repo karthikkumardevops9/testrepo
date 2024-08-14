@@ -1,17 +1,13 @@
 ﻿using Dapper;
-using Leadtools.Document.Unstructured.Highlevel;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ViewEngines;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.FileIO;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models;
 using MSRecordsEngine.Models.FusionModels;
 using MSRecordsEngine.RecordsManager;
-using MSRecordsEngine.Repository;
 using MSRecordsEngine.Services;
 using MSRecordsEngine.Services.Interface;
 using Newtonsoft.Json;
@@ -26,16 +22,13 @@ using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.Entity.Validation;
 using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Xml;
-using static System.Data.Entity.Infrastructure.Design.Executor;
 
 namespace MSRecordsEngine.Controllers
 {
@@ -48,16 +41,23 @@ namespace MSRecordsEngine.Controllers
         private readonly IViewService _viewService;
         private readonly IDataServices _dataServices;
         private readonly ITrackingServices _trackingServices;
+        private readonly IDatabaseMapService _databaseMapService;
 
         private IDbConnection CreateConnection(string connectionString)
             => new SqlConnection(connectionString);
-        public AdminController(CommonControllersService<AdminController> commonControllersService, IReportService reportService, IViewService viewService, IDataServices dataServices, ITrackingServices trackingServices)
+        public AdminController(CommonControllersService<AdminController> commonControllersService,
+                               IReportService reportService,
+                               IViewService viewService,
+                               IDataServices dataServices,
+                               ITrackingServices trackingServices,
+                               IDatabaseMapService databaseMapService)
         {
             _commonService = commonControllersService;
             _reportService = reportService;
             _viewService = viewService;
             _dataServices = dataServices;
             _trackingServices = trackingServices;
+            _databaseMapService = databaseMapService;
         }
 
         #region Attachments All methods are moved
@@ -7853,13 +7853,13 @@ namespace MSRecordsEngine.Controllers
         {
             var model = new ReturnErrorTypeErrorMsg();
 
-            var pOperationName = addEditFieldParam.OperationName ;
-            var pTableName = addEditFieldParam.TableName ;
-            var pNewInternalName = addEditFieldParam.NewInternalName ;
-            var pOriginalInternalName = addEditFieldParam.OriginalInternalName ;
-            var pFieldType = addEditFieldParam.FieldType ;
-            var pOriginalFieldType = addEditFieldParam.OriginalFieldType ;
-            var pFieldSize = addEditFieldParam.FieldSize ;
+            var pOperationName = addEditFieldParam.OperationName;
+            var pTableName = addEditFieldParam.TableName;
+            var pNewInternalName = addEditFieldParam.NewInternalName;
+            var pOriginalInternalName = addEditFieldParam.OriginalInternalName;
+            var pFieldType = addEditFieldParam.FieldType;
+            var pOriginalFieldType = addEditFieldParam.OriginalFieldType;
+            var pFieldSize = addEditFieldParam.FieldSize;
             var pOriginalFieldSize = addEditFieldParam.OriginalFieldSize;
             var ConnectionString = addEditFieldParam.ConnectionString;
 
@@ -8479,7 +8479,7 @@ namespace MSRecordsEngine.Controllers
                 {
                     sSQLCreateNew = "ALTER TABLE [" + sTableName + "] " + "ADD [" + sOldFieldName + "] " + sFieldType;
                 }
-                
+
                 await GetInfoUsingDapper.ProcessADOCommand(sSQLCreateNew, ConnectionString, true);
 
                 sSQLAddToNew = "UPDATE [" + sTableName + "] " + "SET [" + sOldFieldName + "] =" + "[TEMP___]";
@@ -9476,7 +9476,7 @@ namespace MSRecordsEngine.Controllers
                                         string tableObjectJSON = JsonConvert.SerializeObject(tableEntity, Newtonsoft.Json.Formatting.Indented, Setting);
                                         model.ErrorMessage = "";
                                         model.ErrorType = "s";
-                                        
+
                                         model.RecordJSON = sRecordJSON;
                                         model.ColVisibleJSON = colVisibleJSON;
                                         model.Col1VisibleJSON = col1VisibleJSON;
@@ -10119,7 +10119,7 @@ namespace MSRecordsEngine.Controllers
         private async Task<List<KeyValuePair<string, string>>> LoadAdvancedLevelList(string tableName, List<RelationShip> relationshipEntity, string ConnectionString)
         {
             var parentDDList = new List<KeyValuePair<string, string>>();
-            
+
             using (var context = new TABFusionRMSContext(ConnectionString))
             {
                 var tableEntity = await context.Tables.OrderBy(m => m.TableId).ToListAsync();
@@ -10176,7 +10176,7 @@ namespace MSRecordsEngine.Controllers
                         {
                             pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTableEntity.DBName.Trim().ToLower())).FirstOrDefaultAsync();
                         }
-                        if(pDatabaseEntity != null)
+                        if (pDatabaseEntity != null)
                         {
                             ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
                         }
@@ -10582,6 +10582,2270 @@ namespace MSRecordsEngine.Controllers
 
         #endregion
 
+        #region Database
+
+        #region External Database
+
+        [Route("GetAllSQLInstance")]
+        [HttpGet]
+        public string GetAllSQLInstance()
+        {
+            SqlClientFactory newFactory = SqlClientFactory.Instance;            System.Data.Common.DbDataAdapter cmd = newFactory.CreateDataAdapter();
+
+            DataTable dataTable = new DataTable();
+
+            System.Data.Common.DbProviderFactory factory = SqlClientFactory.Instance;            var lstSQLInstances = new string[dataTable.Rows.Count + 1];
+
+            var jsonObject = string.Empty;
+
+            try            {                if (factory.CanCreateDataSourceEnumerator)                {                    System.Data.Common.DbDataSourceEnumerator instance =                        factory.CreateDataSourceEnumerator();                    DataTable table = instance.GetDataSources();                    foreach (DataRow row in table.Rows)                    {                        Console.WriteLine("{0}\\{1}",                            row["ServerName"], row["InstanceName"]);                    }                }                int i = 1;                lstSQLInstances[0] = "";                foreach (DataRow dr in dataTable.Rows)                {                    lstSQLInstances[i] = string.Concat(dr["ServerName"], @"\", dr["InstanceName"]);                    i = i + 1;                }                var Setting = new JsonSerializerSettings();
+                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                jsonObject = JsonConvert.SerializeObject(lstSQLInstances, Newtonsoft.Json.Formatting.Indented, Setting);            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+
+        [Route("GetDatabaseList")]
+        [HttpPost]
+        public async Task<ReturnGetDatabaseList> GetDatabaseList(GetDatabaseListParam getDatabaseListParam)
+        {
+            var model = new ReturnGetDatabaseList();
+
+            var instance = getDatabaseListParam.Instance;
+            var userID = getDatabaseListParam.UserID;
+            var pass = getDatabaseListParam.Pass;
+
+            var list = new List<string>();            string conString;            var Setting = new JsonSerializerSettings();
+            if (userID.Equals("") | pass.Equals(""))            {                conString = "Data Source=" + instance + ";Persist Security Info=True;Integrated Security=SSPI;";            }            else            {                conString = "Data Source=" + instance + ";User ID=" + userID + ";Password=" + pass + ";Persist Security Info=True;MultipleActiveResultSets=True;";            }            using (var con = new SqlConnection(conString))            {                try                {                    con.Open();
+                    using (var cmd = new SqlCommand("SELECT name from sys.databases", con))                    {                        using (IDataReader dr = (await cmd.ExecuteReaderAsync()))                        {                            while (dr.Read())                            {                                if (IsUserDatabase(dr[0].ToString()) == false)                                {                                    list.Add(dr[0].ToString());                                }                            }                        }                    }                    model.ErrorType = "s";                }
+
+                catch (Exception ex)                {                    _commonService.Logger.LogError($"Error:{ex.Message}");                    if (userID.Equals("") & pass.Equals(""))                    {                        model.ErrorType = "e";                        model.ErrorMessage = string.Format("{0} {1} {2}", "The SQL Server", instance, "could not be opened");                    }                    else                    {                        model.ErrorType = "e";                        model.ErrorMessage = "Login failed. Please verify the user name and password";                    }                    return model;                }            }            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;            model.DatabaseList = JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented, Setting);
+
+            return model;
+        }
+
+
+        [Route("AddNewDB")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> AddNewDB(AddNewDBParam addNewDBParam)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pDatabas = addNewDBParam.Databas;
+            var Connectionstring = addNewDBParam.Connectionstring;
+            var DBProvider = addNewDBParam.DBProvider;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(Connectionstring))
+                {
+                    bool mAdd;
+
+                    var pDatabaseEntity = await context.Databases.Where(x => (x.DBName.Trim().ToLower()) == (pDatabas.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (pDatabas.Id > 0)
+                    {
+                        mAdd = false;
+                    }
+                    else
+                    {
+                        mAdd = true;
+                    }
+
+                    int connTime;
+                    if (pDatabas.DBConnectionTimeout != 0)
+                    {
+                        connTime = (int)pDatabas.DBConnectionTimeout;
+                    }
+                    else
+                    {
+                        connTime = 10;
+                    }
+
+                    if (mAdd)
+                    {
+                        if (await context.Databases.AnyAsync(x => (x.DBName.Trim().ToLower()) == (pDatabas.DBName.Trim().ToLower())))
+                        {
+                            model.ErrorType = "e";
+                            model.ErrorMessage = string.Format("A Database Connection named {0} already exists", pDatabas.DBName);
+                        }
+                        else
+                        {
+                            string conText = "UID=" + pDatabas.DBUserId + ";PWD=" + pDatabas.DBPassword + ";DATABASE=" + pDatabas.DBDatabase + ";Server=" + pDatabas.DBServer;
+                            pDatabas.DBConnectionText = conText;
+                            pDatabas.DBProvider = DBProvider;
+                            pDatabas.DBConnectionTimeout = connTime;
+                            pDatabas.DBUseDBEngineUIDPWD = false;
+                            //_iDatabas.Add(pDatabas);
+
+                            context.Entry(pDatabas).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Database connection has been added successfully";
+                        }
+                    }
+                    else if (await context.Databases.AnyAsync(x => (x.DBName.Trim().ToLower()) == (pDatabas.DBName.Trim().ToLower()) & x.Id != pDatabas.Id))
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = string.Format("A Database Connection named {0} already exists", pDatabas.DBName);
+                    }
+                    else
+                    {
+                        var pDatabase = await context.Databases.Where(x => x.Id == pDatabas.Id).FirstOrDefaultAsync();
+                        string instance = pDatabas.DBServer;
+                        string userID = pDatabas.DBUserId;
+                        string pass = pDatabas.DBPassword;
+                        object conString;
+                        bool valid = true;
+
+                        if (userID is null & pass is null)
+                        {
+                            conString = "Data Source=" + instance + ";Persist Security Info=True;Integrated Security=SSPI;";
+                        }
+                        else
+                        {
+                            conString = "Data Source=" + instance + ";User ID=" + userID + ";Password=" + pass + ";Persist Security Info=True;MultipleActiveResultSets=True;";
+                        }
+                        using (var con = new SqlConnection(Convert.ToString(conString)))
+                        {
+                            try
+                            {
+                                con.Open();
+                            }
+                            catch (Exception)
+                            {
+                                valid = false;
+                            }
+                        }
+
+                        if (valid)
+                        {
+                            string conText = "UID=" + pDatabas.DBUserId + ";PWD=" + pDatabas.DBPassword + ";DATABASE=" + pDatabas.DBDatabase + ";Server=" + pDatabas.DBServer;
+                            pDatabase.DBName = pDatabas.DBName;
+                            pDatabase.DBConnectionText = conText;
+                            pDatabase.DBProvider = DBProvider;
+                            pDatabase.DBConnectionTimeout = connTime;
+                            pDatabase.DBUseDBEngineUIDPWD = false;
+                            pDatabase.DBUserId = pDatabas.DBUserId;
+                            pDatabase.DBPassword = pDatabas.DBPassword;
+                            pDatabase.DBServer = pDatabas.DBServer;
+                            pDatabase.DBDatabase = pDatabas.DBDatabase;
+
+                            //_iDatabas.Update(pDatabase);
+
+                            context.Entry(pDatabase).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Database connection has been updated successfully";
+                        }
+                        else
+                        {
+                            model.ErrorType = "e";
+                            model.ErrorMessage = "Login failed. Please verify the user name and password";
+                        }
+
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("GetAllSavedInstances")]
+        [HttpGet]
+        public async Task<string> GetAllSavedInstances(string ConnectionString)
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pDatabase = await context.Databases.ToListAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pDatabase, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+
+        [Route("DisconnectDBCheck")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> DisconnectDBCheck(string ConnectionString, string connName)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    string table = null;
+                    if (await context.Tables.AnyAsync(x => x.DBName.Trim().ToLower().Equals(connName.Trim().ToLower())))
+                    {
+
+                        var pTable = await context.Tables.Where(x => x.DBName.Trim().ToLower().Equals(connName.Trim().ToLower())).ToListAsync();
+
+                        if (pTable.Count() == 0 == false)
+                        {
+                            foreach (Table tables in pTable.ToList())
+                                table = table + "Tables: " + tables.UserName + Constants.vbCrLf;
+                        }
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The {0} External Database is in use in the following places and cannot be disconnected from TAB FusionRMS: {1} {2} ", connName, Constants.vbNewLine, table);
+                        table = null;
+                    }
+                    else
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("DisconnectDB")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> DisconnectDB(string ConnectionString, string connName)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pDatabases = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(connName.Trim().ToLower())).FirstOrDefaultAsync();
+                    context.Databases.Remove(pDatabases);
+                    await context.SaveChangesAsync();
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected database connection has been disconnected successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("CheckIfDateChanged")]
+        [HttpPost]
+        public async Task<bool> CheckIfDateChanged(CheckIfDateChangedParam checkIfDateChangedParam)
+        {
+            var pDatabase = checkIfDateChangedParam.Databas;
+            var ConnectionString = checkIfDateChangedParam.Connectionstring;
+
+            bool Changed;            bool mAdd;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                if (pDatabase.Id > 0)
+                {
+                    mAdd = false;
+                }
+                else
+                {
+                    mAdd = true;
+                }
+
+                if (mAdd)
+                {
+                    if (string.IsNullOrEmpty(pDatabase.DBName) & string.IsNullOrEmpty(pDatabase.DBDatabase) & string.IsNullOrEmpty(pDatabase.DBServer) & string.IsNullOrEmpty(pDatabase.DBPassword) & string.IsNullOrEmpty(pDatabase.DBUserId))
+                    {
+                        Changed = false;
+                    }
+                    else
+                    {
+                        Changed = true;
+                    }
+                }
+
+                else
+                {
+                    var mDatabases = await context.Databases.Where(x => x.Id == pDatabase.Id).FirstOrDefaultAsync();
+
+                    Changed = !pDatabase.DBName.Trim().ToLower().Equals(mDatabases.DBName.Trim().ToLower());
+
+                    if (mDatabases.DBUseDBEngineUIDPWD == true)
+                    {
+                        Changed = Changed | !pDatabase.DBUserId.Trim().ToLower().Equals(mDatabases.DBUserId.Trim().ToLower());
+                        Changed = Changed | !pDatabase.DBPassword.Trim().ToLower().Equals(mDatabases.DBPassword.Trim().ToLower());
+                    }
+
+                    Changed = Changed | !pDatabase.DBDatabase.Trim().ToLower().Equals(mDatabases.DBDatabase.Trim().ToLower());
+                    Changed = Changed | !pDatabase.DBServer.Trim().ToLower().Equals(mDatabases.DBServer.Trim().ToLower());
+
+                    int connTime;
+                    if (pDatabase.DBConnectionTimeout != 0)
+                    {
+                        connTime = (int)pDatabase.DBConnectionTimeout;
+                    }
+                    else
+                    {
+                        connTime = 10;
+                    }
+
+                    if (connTime != mDatabases.DBConnectionTimeout)
+                    {
+                        Changed = true;
+                    }
+
+                    return Changed;
+                }
+                return Changed;
+            }
+        }
+
+        private bool IsUserDatabase(string DataBaseName)
+        {
+            bool IsUserDatabaseRet = default;            IsUserDatabaseRet = false;            if (DataBaseName.Trim().ToLower().Equals("master"))            {                IsUserDatabaseRet = true;            }            if (DataBaseName.Trim().ToLower().Equals("msdb"))            {                IsUserDatabaseRet = true;            }            if (DataBaseName.Trim().ToLower().Equals("model"))            {                IsUserDatabaseRet = true;            }            if (DataBaseName.Trim().ToLower().Equals("tempdb"))            {                IsUserDatabaseRet = true;            }            return IsUserDatabaseRet;
+        }
+
+        #endregion
+
+        #region Map
+
+        [Route("LoadMapView")]
+        [HttpGet]
+        public async Task<ReturnLoadMapView> LoadMapView(string ConnectionString)
+        {
+            var model = new ReturnLoadMapView();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lSystemEntities = await context.Systems.ToListAsync();
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var lTabletabEntities = await context.TableTabs.ToListAsync();
+                    var lTabsetsEntities = await context.TabSets.ToListAsync();
+                    var lRelationShipEntities = await context.RelationShips.ToListAsync();
+
+                    TreeView treeView = new TreeView();
+
+                    treeView = DatabaseMap.GetBindTreeControl(lSystemEntities, lTableEntities, lTabletabEntities, lTabsetsEntities, lRelationShipEntities);
+
+                    var Items = Enumerable.Repeat(new SelectListItem()
+                    {
+                        Value = lSystemEntities.FirstOrDefault().UserName,
+                        Text = lSystemEntities.FirstOrDefault().UserName,
+                        Selected = true
+                    }, count: 1);
+
+                    var DatabaseList = Items.Concat(context.Databases.CreateSelectList<Databas>("DBName", "DBName", null));
+                    var FieldTypeList = context.LookupTypes.Where(x => x.LookupTypeForCode.Trim().ToUpper().Equals("FLDSZ")).CreateSelectList<LookupType>("LookupTypeCode", "LookupTypeValue", default(int?), "SortOrder", System.ComponentModel.ListSortDirection.Ascending);
+
+                    model.TreeView = treeView;
+                    model.DatabaseList = DatabaseList;
+                    model.FieldTypeList = FieldTypeList;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+
+            return model;
+        }
+
+
+        [Route("SetNewWorkgroup")]
+        [HttpPost]
+        public async Task<ReturnSetNewWorkgroup> SetNewWorkgroup(SetNewWorkgroupParam setNewWorkgroupParam) //completed testing 
+        {
+            var passport = setNewWorkgroupParam.Passport;
+            var pWorkGroupName = setNewWorkgroupParam.WorkGroupName;
+            var pTabsetsId = setNewWorkgroupParam.TabsetsId;
+
+            var model = new ReturnSetNewWorkgroup();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);
+
+                    if (await context.TabSets.AnyAsync(x => (x.UserName.Trim().ToLower()) == (pWorkGroupName.Trim().ToLower())) == false)
+                    {
+                        var pTabsetEntity = new TabSet();
+                        if ((await context.TabSets.ToListAsync()).Count() == 0)
+                        {
+                            pTabsetEntity.Id = 1;
+                        }
+                        else
+                        {
+                            pTabsetEntity.Id = (short)(context.TabSets.Max(x => x.Id) + 1);
+                        }
+
+                        pTabsetEntity.UserName = pWorkGroupName.Trim();
+                        pTabsetEntity.ViewGroup = 0;
+                        pTabsetEntity.StartupTabset = false;
+                        pTabsetEntity.TabFontBold = false;
+
+                        context.TabSets.Add(pTabsetEntity);
+                        await context.SaveChangesAsync();
+
+                        pTabsetsId = pTabsetEntity.Id;
+
+                        oSecureObjectMain.Register(pWorkGroupName.Trim(), Smead.Security.SecureObject.SecureObjectType.WorkGroup, (int)Smead.Security.SecureObject.SecureObjectType.WorkGroup);
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The Workgroup name \"{0}\" is already used", pWorkGroupName.Trim());
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "A Workgroup has been created successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            model.TabSetId = Guid.NewGuid().ToString() + "_Tabsets_" + pTabsetsId.ToString();
+            return model;
+        }
+
+
+        [Route("EditNewWorkgroup")]
+        [HttpGet]
+        public async Task<string> EditNewWorkgroup(int TabsetsId, string ConnectionString)
+        {
+            var jsonObject = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTabsetsEntity = await context.TabSets.Where(x => x.Id == TabsetsId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pTabsetsEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+
+            return jsonObject;
+        }
+
+
+        [Route("RemoveNewWorkgroup")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveNewWorkgroup(RemoveNewWorkgroupParam removeNewWorkgroupParam) //completed testing 
+        {
+            var pTabsetsId = removeNewWorkgroupParam.TabSetsId;
+            var passport = removeNewWorkgroupParam.Passport;
+
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    int lSecureObjectId;                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);
+
+                    string sUserName = "";
+
+                    if (pTabsetsId > 0)
+                    {
+                        var pTabletab = await context.TableTabs.Where(x => x.TabSet == pTabsetsId).ToListAsync();                        if (pTabletab.Count() > 0)                        {                            model.ErrorType = "w";                            model.ErrorMessage = "Workgroup cannot be removed because child reference exists";                            return model;                        }                        var pTabsetEntity = await context.TabSets.Where(x => x.Id == pTabsetsId).FirstOrDefaultAsync();                        sUserName = pTabsetEntity.UserName;                        if (pTabsetEntity != null)                        {                            context.TabSets.Remove(pTabsetEntity);                            await context.SaveChangesAsync();                            lSecureObjectId = oSecureObjectMain.GetSecureObjectID(sUserName, Smead.Security.SecureObject.SecureObjectType.WorkGroup);                            if (lSecureObjectId != 0)                                oSecureObjectMain.UnRegister(lSecureObjectId);
+                        }
+                    }
+
+                    model.ErrorType = "s";                    model.ErrorMessage = "Selected Workgroup has been removed successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("SetNewTable")]
+        [HttpPost]
+        public async Task<ReturnSetNewTable> SetNewTable(SetNewTableParam setNewTableParam) //completed testing 
+        {
+            var model = new ReturnSetNewTable();
+
+            var pParentNodeId = setNewTableParam.ParentNodeId;
+            var pFieldType = setNewTableParam.FieldType;
+            var pFieldSize = setNewTableParam.FieldSize;
+            var pNodeLevel = setNewTableParam.NodeLevel;
+            var pTableName = setNewTableParam.TableName;
+            var pDatabaseName = setNewTableParam.DatabaseName;
+            var pUserName = setNewTableParam.UserName;
+            var pIdFieldName = setNewTableParam.IdFieldName;
+            var passport = setNewTableParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                if (pFieldType == (int)Enums.meFieldTypes.ftText)
+                {
+                    int iMaxFieldSize = DatabaseMap.UserLinkIndexTableIdSize;
+                    if (pFieldSize < 1 | pFieldSize > iMaxFieldSize)
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = string.Format("Field Size must be a value between 1 to {0}", iMaxFieldSize);
+                        return model;
+                    }
+                }
+
+                string sDatabaseName = Keys.DBName;
+                Databas pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pDatabaseName.Trim().ToLower())).FirstOrDefaultAsync();
+                Table pParentTableEntity = null;
+                bool bSysAdmin;
+                var lViewEntities = await context.Views.ToListAsync();
+                Table pCurrentTableEntity;
+                string sViewName = "";
+                TabSet pTabSetEntity;
+                int iTabSetId = 0;
+                string sNewNodeId = 0.ToString();
+                int iTableTabId = 0;
+                int iRelId = 0;
+                int iTableId = 0;
+                int viewIdTemp = 0;
+                int lSecureObjectId;
+                var oSecureObjectMain = new Smead.Security.SecureObject(passport);
+
+                if (pDatabaseEntity != null)
+                {
+
+                }
+                else
+                {
+                    List<SchemaColumns> oSchemaColumns;
+                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableName, ConnectionString, pIdFieldName);
+                    if (oSchemaColumns.Count > 0)
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "Internal Name Already Exists";
+                        return model;
+                    }
+
+                    bSysAdmin = await _databaseMapService.IsSysAdmin("", ConnectionString, null, pDatabases: pDatabaseEntity);
+
+                    if (bSysAdmin)
+                    {
+                        try
+                        {
+                            if (pNodeLevel == (int)Enums.eNodeLevel.ndTabSets)
+                            {
+                                pTabSetEntity = await context.TabSets.Where(x => x.Id == pParentNodeId).FirstOrDefaultAsync();
+                                if (pTabSetEntity != null)
+                                {
+                                    iTabSetId = pTabSetEntity.Id;
+                                }
+                            }
+                            else if (pNodeLevel == (int)Enums.eNodeLevel.ndTableTabRel)
+                            {
+                                pParentTableEntity = await context.Tables.Where(x => x.TableId == pParentNodeId).FirstOrDefaultAsync();
+                            }
+
+                            string sParentTableName = "";
+                            bool SaveData = false;
+
+
+                            if (pDatabaseEntity != null)
+                            {
+                                sDatabaseName = pDatabaseEntity.DBName;
+                            }
+
+                            if (pParentTableEntity != null)
+                            {
+                                sParentTableName = pParentTableEntity.TableName;
+                            }
+
+                            string pOutPutStr = await _databaseMapService.CreateNewTables(pTableName, pIdFieldName, (Enums.meFieldTypes)pFieldType, pFieldSize, pDatabaseEntity, pParentTableEntity, ConnectionString);
+                            if (string.IsNullOrEmpty(pOutPutStr))
+                            {
+                                var resSetTableEntity = await _databaseMapService.SetTablesEntity(pTableName, pUserName, pIdFieldName, sDatabaseName, (Enums.meFieldTypes)pFieldType, iTableId, ConnectionString);
+
+                                if (resSetTableEntity.Success)
+                                {
+                                    iTableId = resSetTableEntity.TableId;
+
+                                    pCurrentTableEntity = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                                    if (lViewEntities.Any(x => (x.ViewName.Trim().ToLower()) == (pUserName.Trim().ToLower())) == false)
+                                    {
+                                        sViewName = "All " + Strings.Trim(pUserName);
+                                    }
+                                    else
+                                    {
+                                        sViewName = "All " + Strings.Trim(pUserName) + " " + (lViewEntities.Where(x => x.ViewName.Trim().ToLower().Contains(pUserName.Trim().ToLower())).Count() + 1);
+                                    }
+
+                                    int iViewId = 0;
+
+                                    var resSetViewsEntity = await _databaseMapService.SetViewsEntity(pTableName, sViewName, ConnectionString, iViewId);
+
+                                    if (resSetViewsEntity.Success)
+                                    {
+                                        iViewId = resSetViewsEntity.ViewId;
+
+                                        viewIdTemp = iViewId;
+
+                                        if (await _databaseMapService.SetViewColumnEntity(iViewId, pTableName, pIdFieldName, pFieldType, ConnectionString, pParentTableEntity))
+                                        {
+                                            if (!string.IsNullOrEmpty(Strings.Trim(sParentTableName)))
+                                            {
+                                                var resSetRelationshipsEntity = await _databaseMapService.SetRelationshipsEntity(pTableName, pParentTableEntity, ConnectionString, iRelId);
+
+                                                if (resSetRelationshipsEntity.Success)
+                                                {
+                                                    iRelId = resSetRelationshipsEntity.RelationshipId;
+                                                    SaveData = true;
+                                                }
+                                            }
+                                            else if (iTabSetId != 0)
+                                            {
+                                                var resSetTabSetEntity = await _databaseMapService.SetTabSetEntity(iTabSetId, iViewId, pTableName, ConnectionString, iTableTabId);
+
+                                                if (resSetTabSetEntity.Success)
+                                                {
+                                                    iTableTabId = resSetTabSetEntity.TableTabId;
+                                                    SaveData = true;
+                                                }
+                                            }
+                                        }
+
+                                    }
+
+                                }
+                            }
+                            else if (!ReferenceEquals(pOutPutStr, "False"))
+                                throw new Exception(pOutPutStr);
+
+                            if (SaveData)
+                            {
+                                if (iRelId != 0)
+                                {
+                                    sNewNodeId = iTableId.ToString();
+                                }
+                                else if (iTableTabId != 0)
+                                {
+                                    sNewNodeId = Guid.NewGuid().ToString() + "_Tabletabs_" + iTableId.ToString();
+                                }
+
+                                lSecureObjectId = oSecureObjectMain.Register(pTableName, Smead.Security.SecureObject.SecureObjectType.Table, (int)Enums.SecureObjects.Table);
+                                oSecureObjectMain.Register(sViewName, Smead.Security.SecureObject.SecureObjectType.View, lSecureObjectId);
+
+                                var reqAndTransferPermissions = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == lSecureObjectId & (x.PermissionID == (int)Enums.PassportPermissions.Request | x.PermissionID == (int)Enums.PassportPermissions.RequestOnBehalf | x.PermissionID == (int)Enums.PassportPermissions.RequestHigh | x.PermissionID == (int)Enums.PassportPermissions.Transfer)).ToListAsync();
+
+                                context.SecureObjectPermissions.RemoveRange(reqAndTransferPermissions);
+                                await context.SaveChangesAsync();
+
+                            }
+                            else
+                            {
+                                await _databaseMapService.DropTable(pTableName, ConnectionString);
+
+                                model.ErrorType = "e";
+                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                            }
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Table Created Successfully";
+                        }
+                        catch (Exception ex)
+                        {
+                            _commonService.Logger.LogError($"Error:{ex.Message}");
+
+                            await _databaseMapService.DropTable(pTableName, ConnectionString);
+
+                            model.ErrorType = "e";
+                            model.ErrorMessage = ex.Message;
+                            if (ex.Message.ToLower().Contains("incorrect syntax near the keyword"))
+                                model.ErrorMessage = string.Format("Invalid tablename '{0}'. Entered tablename is reserved word of system", pTableName);
+                        }
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = string.Format("You do not have sufficient permissions to create a new table in \"{0}\"", pDatabaseName);
+                    }
+                }
+            }
+
+            return model;
+        }
+
+
+        [Route("RenameTreeNode")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RenameTreeNode(RenameTreeNodeParam renameTreeNodeParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pPrevNodeName = renameTreeNodeParam.PrevNodeName;
+            var pNewNodeName = renameTreeNodeParam.NewNodeName;
+            var pId = renameTreeNodeParam.Id;
+            var pRenameOperation = renameTreeNodeParam.RenameOperation;
+            var passport = renameTreeNodeParam.Passport;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);                    switch (pRenameOperation.Trim().ToUpper())                    {                        case "A":                            {                                var lSystemEntities = await context.Systems.ToListAsync();                                if (lSystemEntities.Any(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.Id != pId) == false)                                {                                    var pSystemEntity = lSystemEntities.Where(x => x.Id == pId).FirstOrDefault();                                    if (pSystemEntity is not null)                                    {                                        pSystemEntity.UserName = pNewNodeName.Trim();
+                                        //_iSystem.Update(pSystemEntity);
+                                        context.Entry(pSystemEntity).State = EntityState.Modified;                                    }                                    model.ErrorMessage = "Application name has been changed Successfully";                                    await context.SaveChangesAsync();                                }                                else                                {                                    model.ErrorType = "w";                                    model.ErrorMessage = string.Format("The Application name \"{0}\" is already used", pNewNodeName.Trim());                                    break;                                }                                break;                            }                        case "W":                            {                                var pOutputSettingsEntities = await context.SecureObjects.ToListAsync();
+
+                                if (await context.TabSets.AnyAsync(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.Id != pId) == false)                                {                                    //_iTabset.BeginTransaction();
+                                    var pTabsetEntity = await context.TabSets.Where(x => x.Id == pId).FirstOrDefaultAsync();                                    string pOldWGName = "";                                    if (pTabsetEntity != null)                                    {                                        pOldWGName = pTabsetEntity.UserName;                                        pTabsetEntity.UserName = pNewNodeName.Trim();
+                                        //_iTabset.Update(pTabsetEntity);
+                                        context.Entry(pTabsetEntity).State = EntityState.Modified;                                        oSecureObjectMain.Rename(pOldWGName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.WorkGroup, pNewNodeName.Trim());
+
+                                    }                                    model.ErrorMessage = "Selected Workgroup has been updated successfully";
+                                    //_iTabset.CommitTransaction();
+                                    await context.SaveChangesAsync();                                }
+                                else                                {                                    model.ErrorType = "w";                                    model.ErrorMessage = string.Format("The Workgroup name \"{0}\" is already used", pNewNodeName.Trim());                                    break;                                }                                break;                            }                        case "T":                            {                                var lTableEntities = await context.Tables.ToListAsync();                                if (lTableEntities.Any(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.TableId != pId) == false)                                {
+                                    //_iTable.BeginTransaction();
+                                    var pTableEntity = lTableEntities.Where(x => x.TableId == pId && (x.UserName.Trim().ToLower()) == (pPrevNodeName.Trim().ToLower())).FirstOrDefault();                                    if (pTableEntity is not null)                                    {                                        pTableEntity.UserName = pNewNodeName.Trim();
+                                        //_iTable.Update(pTableEntity);
+                                        context.Entry(pTableEntity).State = EntityState.Modified;                                    }                                    model.ErrorMessage = "Provided Name reflected on the Selected Table";
+                                    //_iTable.CommitTransaction();
+                                    await context.SaveChangesAsync();                                }                                else                                {                                    model.ErrorType = "w";                                    model.ErrorMessage = string.Format("The Table Name \"{0}\" is already used", pNewNodeName.Trim());                                    break;                                }                                break;                            }                        default:                            {                                model.ErrorType = "e";                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";                                break;                            }                    }
+
+                    model.ErrorType = "s";
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("GetAttachTableList")]
+        [HttpGet]
+        public async Task<string> GetAttachTableList(int iParentTableId, int iTabSetId, string ConnectionString) //completed testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTablesEntities = await context.Tables.ToListAsync();
+
+                    lTablesEntities = await _databaseMapService.GetAttachExistingTableList(lTablesEntities, iParentTableId, iTabSetId, ConnectionString);
+
+                    var Result = from p in lTablesEntities.OrderBy(x => x.TableName)
+                                 select new { p.TableName, p.TableId, p.UserName };
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(Result, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+
+        [Route("ConfirmationForAlreadyExistColumn")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> ConfirmationForAlreadyExistColumn(int iParentTableId, int iTableId, bool ConfAns, string ConnectionString)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            List<SchemaColumns> oSchemaColumns;
+            var pParentTableEntity = new Table();
+            var pTableEntity = new Table();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var bCreateNew = default(bool);
+                    string sExtraStr;
+                    int iExtraValue;
+                    bool SaveData = false;
+                    int iRelId = 0;
+
+                    sExtraStr = "";
+                    iExtraValue = 1;
+                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+                    pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableEntity.TableName, ConnectionString, pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+                    bCreateNew = true;
+                    if (ConfAns)
+                    {
+                        bCreateNew = false;
+                    }
+                    else
+                    {
+                        do
+                        {
+                            sExtraStr = Strings.Format(iExtraValue);
+                            iExtraValue = iExtraValue + 1;
+                            oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableEntity.TableName, ConnectionString, pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName) + sExtraStr);
+                        }
+                        while (oSchemaColumns.Count != 0);
+                    }
+
+                    oSchemaColumns = null;
+                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pParentTableEntity.TableName, ConnectionString, DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+
+                    if (bCreateNew)
+                    {
+                        if ((await _databaseMapService.CreateNewField(pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName) + sExtraStr, (Enums.DataTypeEnum)Convert.ToInt32(Interaction.IIf(oSchemaColumns.Count > 0, oSchemaColumns[0].DataType, Enums.DataTypeEnum.rmInteger)), Convert.ToInt64("0" + Strings.Trim(oSchemaColumns[0].CharacterMaxLength.ToString())), pTableEntity.TableName, ConnectionString) == true))
+                        {
+                            var rtnSetRelationShipEntity = await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId, sExtraStr);
+                            if (rtnSetRelationShipEntity.Success == true)
+                            {
+                                iRelId = rtnSetRelationShipEntity.RelationshipId;
+                                SaveData = true;
+                            }
+                        }
+                    }
+                    else if ((await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId, sExtraStr)).Success == true)
+                    {
+                        SaveData = true;
+                    }
+
+                    if (bCreateNew)
+                    {
+                        await context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        await context.SaveChangesAsync();
+                    }
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Record saved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+
+                oSchemaColumns = null;
+                pParentTableEntity = null;
+                pTableEntity = null;
+            }
+
+            return model;
+        }
+
+
+        [Route("SetAttachTableDetails")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> SetAttachTableDetails(int iParentTableId, int iTableId, int iTabSetId, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            List<SchemaColumns> oSchemaColumns;
+            var pTableEntity = new Table();            var pParentTableEntity = new Table();            var pViewEntity = new View();
+            bool SaveData = false;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var lViewEntities = await context.Views.ToListAsync();
+                    int iTableTabId = 0;
+                    int iRelId = 0;
+
+                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();                    if (pTableEntity is not null)                    {                        pViewEntity = lViewEntities.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntity.TableName.Trim().ToLower())).FirstOrDefault();                    }
+
+                    if (pViewEntity is not null)                    {                        if (pViewEntity.Id != 0)                        {                            if (iParentTableId != 0)                            {
+                                pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+                                oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableEntity.TableName, pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+                                //bCreateNew = true;
+                                if (oSchemaColumns.Count > 0)                                {                                    model.ErrorType = "c";                                    model.ErrorMessage = string.Format("Column \"{0}\" already exists. Reuse this Column?", pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));                                    return model;                                }                                else                                {                                    oSchemaColumns = null;
+                                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pParentTableEntity.TableName, DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));                                    if ((await _databaseMapService.CreateNewField(pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName), (Enums.DataTypeEnum)Convert.ToInt32(Interaction.IIf(oSchemaColumns.Count > 0, oSchemaColumns[0].DataType, Enums.DataTypeEnum.rmInteger)), Convert.ToInt64("0" + Strings.Trim(oSchemaColumns[0].CharacterMaxLength.ToString())), pTableEntity.TableName, ConnectionString)) == true)                                    {                                        if ((await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId)).Success == true)                                        {                                            SaveData = true;                                        }                                    }                                }                            }                            else                            {
+                                if ((await _databaseMapService.SetTabSetEntity(iTabSetId, pViewEntity.Id, pTableEntity.TableName, ConnectionString, iTableTabId)).Success == true)                                {                                    SaveData = true;                                }                            }                        }                    }
+
+                    if (SaveData)                    {                        model.ErrorType = "s";                        model.ErrorMessage = "Selected Table Attached Successfully";                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            oSchemaColumns = null;            pParentTableEntity = null;            pTableEntity = null;            pViewEntity = null;
+
+            return model;
+        }
+
+
+        [Route("DeleteTableFromTableTab")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteTableFromTableTab(int iTabSetId, int iNewTableSetId, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var pTableTabTableEntity = lTableEntities.Where(x => x.TableId == iTabSetId).FirstOrDefault();
+                    var pTableTabsEntity = await context.TableTabs.Where(x => x.TableName.Trim().ToLower().Equals(pTableTabTableEntity.TableName.Trim().ToLower()) && x.TabSet == iNewTableSetId).FirstOrDefaultAsync();
+                    if (pTableTabsEntity.Id != 0)
+                    {
+                        context.TableTabs.Remove(pTableTabsEntity);
+                        await context.SaveChangesAsync();
+                    }
+                    pTableTabsEntity = null;
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected Table Unattached Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("DeleteTableFromRelationship")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteTableFromRelationship(int iParentTableId, int iTableId, string ConnectionString)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var pUpperTableEntity = new Table();
+                    var pLowerTableEntity = new Table();
+                    var lRelationshipsEntites = await context.RelationShips.ToListAsync();
+
+                    pUpperTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+                    pLowerTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+
+                    var oRelationships = lRelationshipsEntites.Where(x => x.UpperTableName.Trim().ToLower().Equals(pUpperTableEntity.TableName.Trim().ToLower()) && x.LowerTableName.Trim().ToLower().Equals(pLowerTableEntity.TableName.Trim().ToLower())).FirstOrDefault();
+                    if (oRelationships.Id != 0)
+                    {
+                        context.RelationShips.Remove(oRelationships);
+                        await context.SaveChangesAsync();
+                    }
+
+                    oRelationships = null;
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected Table Unattached Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("GetDeleteTableNames")]
+        [HttpGet]
+        public async Task<ReturnGetDeleteTableNames> GetDeleteTableNames(int iParentTableId, int iTableId, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnGetDeleteTableNames();
+
+            string sUpperTableName = "";
+            string sLowerTableName = "";
+            var pUpperTableEntity = new Table();
+            var pLowerTableEntity = new TabSet();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var lTabsetEntities = await context.TabSets.ToListAsync();
+
+                    if (iParentTableId != 0 && iTableId != 0)
+                    {
+                        pUpperTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+                        pLowerTableEntity = lTabsetEntities.Where(x => x.Id == iParentTableId).FirstOrDefault();
+
+                        sUpperTableName = pUpperTableEntity.UserName.Trim();
+                        sLowerTableName = pLowerTableEntity.UserName.Trim();
+
+                        model.ErrorType = "s";
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            model.ParentTable = Strings.Trim(pUpperTableEntity.UserName);
+            model.ChildTable = Strings.Trim(pLowerTableEntity.UserName);
+            model.ChildTableId = Strings.Trim(pLowerTableEntity.Id.ToString());
+
+            return model;
+        }
+
+
+        [Route("DeleteTable")]
+        [HttpDelete]
+        public async Task<ReturnDeleteTable> DeleteTable(int iParentTableId, int iTableId, string ConnectionString)
+        {
+            var model = new ReturnDeleteTable();
+
+            string sViewMessage = "";            bool IsUnattached = true;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();                    var pUpperTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();                    var pLowerTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+
+                    sViewMessage = await _databaseMapService.GetTableDependency(lTableEntities, ConnectionString, pUpperTableEntity, pLowerTableEntity, sViewMessage);
+
+                    if (!string.IsNullOrEmpty(sViewMessage))                    {                        sViewMessage = string.Format("The \"{0}\" table is in use in the following places and cannot be removed from the \"{1}\" table:</br></br> {2}", pLowerTableEntity.UserName, Strings.Trim(pUpperTableEntity.UserName), sViewMessage);
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "<html>" + sViewMessage + "</html>";
+                        pUpperTableEntity = null;
+                        pLowerTableEntity = null;
+                        model.IsUnattached = false;                    }                    else                    {                        model.ErrorType = "c";                        model.ErrorMessage = string.Format("Are you sure you want to remove the attachment between \"{0}\" and \"{1}\"?", Strings.Trim(pLowerTableEntity.UserName), Strings.Trim(pUpperTableEntity.UserName));                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("SetAttachExistingTableDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetAttachExistingTableDetails(int iParentTableId, int iTableId, string sIdFieldName, string ConnectionString)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pTableEntity = new Table();            var pParentTableEntity = new Table();            var pViewEntity = new View();            bool SaveData = true;            int iRelId = 0;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.ToListAsync();
+                    var lViewEntities = await context.Views.ToListAsync();
+
+                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();                    if (pTableEntity is not null)                    {                        pViewEntity = lViewEntities.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntity.TableName.Trim().ToLower())).FirstOrDefault();                    }                    if (pViewEntity is not null)                    {                        if (pViewEntity.Id != 0)                        {                            if (iParentTableId != 0)                            {                                pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();                                var rtnSetRelationShipEntity = await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId, sIdFieldName: sIdFieldName);                                if (rtnSetRelationShipEntity.Success)                                {                                    SaveData = true;                                    iRelId = rtnSetRelationShipEntity.RelationshipId;                                }                                pParentTableEntity = null;                            }                        }                    }                    pTableEntity = null;                    pViewEntity = null;                    if (iParentTableId != 0)                    {
+                        //_iRelationShip.CommitTransaction();
+                        model.ErrorType = "s";                        model.ErrorMessage = "Record saved successfully";                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("GetAttachTableFieldsList")]
+        [HttpGet]
+        public async Task<ReturnGetAttachTableFieldsList> GetAttachTableFieldsList(int iParentTableId, int iTableId, string sCurrIdFieldName, string ConnectionString) //completed testing
+        {
+            var model = new ReturnGetAttachTableFieldsList();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTablesEntities = await context.Tables.ToListAsync();
+                    var lTables = new List<string>();
+
+                    var pTableEntity = lTablesEntities.Where(x => x.TableId == iTableId).FirstOrDefault();                    var pParentTableEntity = lTablesEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();                    lTables = await _databaseMapService.GetAttachTableFieldsList(pTableEntity, pParentTableEntity, ConnectionString);                    if (lTables.Count == 0)                    {                        model.ErrorType = "w";                        model.ErrorMessage = string.Format("The \"{0}\" table does not contain any fields matching the same data type as \"{1}\"", pTableEntity.UserName, sCurrIdFieldName);                        model.lstColumnNames = "";                        return model;                    }                    model.ErrorType = "s";
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.lstColumnNames = JsonConvert.SerializeObject(lTables, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("LoadAttachExistingTableScreen")]
+        [HttpGet]
+        public async Task<ReturnLoadAttachExistingTableScreen> LoadAttachExistingTableScreen(int iParentTableId, int iTabSetId, string ConnectionString)
+        {
+            var model = new ReturnLoadAttachExistingTableScreen();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTablesEntities = await context.Tables.ToListAsync();
+                    var pTableNameEntity = lTablesEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+
+                    lTablesEntities = await _databaseMapService.GetAttachExistingTableList(lTablesEntities, iParentTableId, iTabSetId, ConnectionString);
+
+                    var ResultTables = from p in lTablesEntities.OrderBy(x => x.TableName)
+                                       select new { p.TableName, p.TableId, p.UserName };
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    string jsonObjectTableColumns = "";
+                    string jsonObjectTables = JsonConvert.SerializeObject(ResultTables, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.TableName = pTableNameEntity.TableName;
+                    model.IdFieldName = DatabaseMap.RemoveTableNameFromField(pTableNameEntity.IdFieldName);
+                    model.TableIdColumnList = jsonObjectTableColumns;
+                    model.TablesList = jsonObjectTables;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+
+            return model;
+        }
+
+
+        [Route("ChangeNodeOrder")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> ChangeNodeOrder(ChangeNodeOrderParam changeNodeOrderParam) //completed testing  
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pUpperTableId = changeNodeOrderParam.UpperTableId;
+            var pTableName = changeNodeOrderParam.TableName;
+            var pTableId = changeNodeOrderParam.TableId;
+            var pAction = changeNodeOrderParam.Action;
+            var ConnectionString = changeNodeOrderParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    int vOldOrder;
+                    int vNewOrder;
+                    Table oTable;
+                    Table oUpperTable;
+
+                    oTable = await context.Tables.Where(x => x.TableId == pTableId).FirstOrDefaultAsync();
+                    if (oTable == null)
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "Object not found";
+                        return model;
+                    }
+
+                    oUpperTable = await context.Tables.Where(x => x.TableId == pUpperTableId).FirstOrDefaultAsync();
+
+                    switch (pTableName.ToLower())
+                    {
+                        case "tabsets":
+                            {
+                                var oOldTabset = await context.TabSets.FirstOrDefaultAsync(x => x.Id == pTableId);
+                                if (oOldTabset == null)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Object not found";
+                                    return model;
+                                }
+                                vOldOrder = oOldTabset.Id;
+
+                                TabSet oNewTabset = null;
+                                if (Convert.ToString(pAction) == "U")
+                                {
+                                    oNewTabset = await context.TabSets
+                                        .Where(x => x.Id < pTableId)
+                                        .OrderByDescending(x => x.Id)
+                                        .FirstOrDefaultAsync();
+                                }
+                                else if (Convert.ToString(pAction) == "D")
+                                {
+                                    oNewTabset = await context.TabSets
+                                        .Where(x => x.Id > pTableId)
+                                        .OrderBy(x => x.Id)
+                                        .FirstOrDefaultAsync();
+                                }
+                                if (oNewTabset == null)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Object not found";
+                                    return model;
+                                }
+                                vNewOrder = oNewTabset.Id;
+
+                                //_IDBManager.ConnectionString = Keys.get_GetDBConnectionString(null);
+
+                                int iOutPut = 0;
+                                using (var conn = CreateConnection(ConnectionString))
+                                {
+                                    string sSql = $"UPDATE Tabsets SET Id = 9999 WHERE UserName = '{oOldTabset.UserName}'";
+                                    iOutPut = await conn.ExecuteAsync(sSql, commandType: CommandType.Text);
+                                    if (iOutPut > 0)
+                                    {
+                                        sSql = $"UPDATE Tabsets SET Id = {vOldOrder} WHERE UserName = '{oNewTabset.UserName}'";
+                                        iOutPut = await conn.ExecuteAsync(sSql, commandType: CommandType.Text);
+                                        if (iOutPut > 0)
+                                        {
+                                            sSql = $"UPDATE Tabsets SET Id = {vNewOrder} WHERE UserName = '{oOldTabset.UserName}'";
+                                            iOutPut = await conn.ExecuteAsync(sSql, commandType: CommandType.Text);
+                                        }
+                                    }
+                                }
+
+                                var lNewTabletab = await context.TableTabs.Where(x => x.TabSet == vNewOrder).ToListAsync();
+                                foreach (var oTabletab in lNewTabletab)
+                                {
+                                    oTabletab.TabSet = (short?)9999;
+                                    //_iTabletab.Update(oTabletab);
+                                    context.Entry(oTabletab).State = EntityState.Modified;
+                                    await context.SaveChangesAsync();
+                                }
+
+                                var lOldTableTabIds = new List<int>();
+                                var lOldTabletab = await context.TableTabs.Where(x => x.TabSet == vOldOrder).ToListAsync();
+                                foreach (var oTabletab in lOldTabletab)
+                                {
+                                    lOldTableTabIds.Add(oTabletab.Id);
+                                    oTabletab.TabSet = (short?)vNewOrder;
+                                    //_iTabletab.Update(oTabletab);
+                                    context.Entry(oTabletab).State = EntityState.Modified;
+                                    await context.SaveChangesAsync();
+                                }
+
+                                lNewTabletab = await context.TableTabs.Where(x => x.TabSet == vNewOrder || x.TabSet == 9999).ToListAsync();
+                                foreach (var oTabletab in lNewTabletab)
+                                {
+                                    if (!lOldTableTabIds.Contains(oTabletab.Id))
+                                    {
+                                        oTabletab.TabSet = (short?)vOldOrder;
+                                        //_iTabletab.Update(oTabletab);
+                                        context.Entry(oTabletab).State = EntityState.Modified;
+                                        await context.SaveChangesAsync();
+                                    }
+                                }
+
+                                //_IDBManager.Dispose();
+
+                                if (iOutPut <= 0)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Error while changing order, please try again later";
+                                    return model;
+                                }
+
+                                break;
+                            }
+
+                        case "tabletabs":
+                            {
+                                var oOldTabletab = await context.TableTabs
+                                    .FirstOrDefaultAsync(x => x.TableName.ToLower() == oTable.TableName.ToLower() && x.TabSet == pUpperTableId);
+                                if (oOldTabletab == null)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Object not found";
+                                    return model;
+                                }
+                                vOldOrder = (int)oOldTabletab.TabOrder;
+
+                                TableTab oNewTabletab = null;
+                                if (Convert.ToString(pAction) == "U")
+                                {
+                                    oNewTabletab = await context.TableTabs
+                                        .Where(x => x.TabSet == pUpperTableId && x.TabOrder < oOldTabletab.TabOrder)
+                                        .OrderByDescending(x => x.TabOrder)
+                                        .FirstOrDefaultAsync();
+                                }
+                                else if (Convert.ToString(pAction) == "D")
+                                {
+                                    oNewTabletab = await context.TableTabs
+                                        .Where(x => x.TabSet == pUpperTableId && x.TabOrder > oOldTabletab.TabOrder)
+                                        .OrderBy(x => x.TabOrder)
+                                        .FirstOrDefaultAsync();
+                                }
+                                if (oNewTabletab == null)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Object not found";
+                                    return model;
+                                }
+                                vNewOrder = (int)oNewTabletab.TabOrder;
+
+                                oOldTabletab.TabOrder = (short?)vNewOrder;
+                                //_iTabletab.Update(oOldTabletab);
+                                context.Entry(oOldTabletab).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+
+                                oNewTabletab.TabOrder = (short?)vOldOrder;
+                                //_iTabletab.Update(oNewTabletab);
+                                context.Entry(oNewTabletab).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+
+                                break;
+                            }
+
+                        case "relships":
+                            {
+                                var oOldRelationShips = await context.RelationShips
+                                    .FirstOrDefaultAsync(x => x.LowerTableName.ToLower() == oTable.TableName.ToLower() && x.UpperTableName.ToLower() == oUpperTable.TableName.ToLower());
+                                if (oUpperTable == null || oOldRelationShips == null)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Object not found";
+                                    return model;
+                                }
+                                vOldOrder = (int)oOldRelationShips.TabOrder;
+
+                                RelationShip oNewRelationShips = null;
+                                if (Convert.ToString(pAction) == "U")
+                                {
+                                    oNewRelationShips = await context.RelationShips
+                                        .Where(x => x.UpperTableName.ToLower() == oUpperTable.TableName.ToLower() && x.TabOrder < oOldRelationShips.TabOrder)
+                                        .OrderByDescending(x => x.TabOrder)
+                                        .FirstOrDefaultAsync();
+                                }
+                                else if (Convert.ToString(pAction) == "D")
+                                {
+                                    oNewRelationShips = await context.RelationShips
+                                        .Where(x => x.UpperTableName.ToLower() == oUpperTable.TableName.ToLower() && x.TabOrder > oOldRelationShips.TabOrder)
+                                        .OrderBy(x => x.TabOrder)
+                                        .FirstOrDefaultAsync();
+                                }
+                                if (oNewRelationShips == null)
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Object not found";
+                                    return model;
+                                }
+                                vNewOrder = (int)oNewRelationShips.TabOrder;
+
+                                oOldRelationShips.TabOrder = (short?)vNewOrder;
+                                //_iRelationShip.Update(oOldRelationShips);
+                                context.Entry(oOldRelationShips).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+
+                                oNewRelationShips.TabOrder = (short?)vOldOrder;
+                                //_iRelationShip.Update(oNewRelationShips);
+                                context.Entry(oOldRelationShips).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+
+                                break;
+                            }
+
+                        default:
+                            {
+                                break;
+                            }
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Re-ordering has been done successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Table Registration
+
+        [Route("LoadRegisterList")]
+        [HttpGet]
+        public async Task<ReturnLoadRegisterList> LoadRegisterList(string ConnectionString) //completed testing 
+        {
+            var model = new ReturnLoadRegisterList();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var registerList = new List<KeyValuePair<string, string>>();
+                    bool bDoNotAdd;
+                    var pTableEntity = await context.Tables.OrderBy(m => m.TableId).ToListAsync();
+                    var pRelationEntity = await context.RelationShips.OrderBy(m => m.Id).ToListAsync();
+                    var pTableTabEntity = await context.TableTabs.OrderBy(m => m.Id).ToListAsync();
+
+                    foreach (Table tableObj in pTableEntity.ToList())
+                    {
+                        bDoNotAdd = (bool)tableObj.Attachments;
+                        if (!bDoNotAdd)
+                        {
+                            bDoNotAdd = CollectionsClass.IsEngineTable(tableObj.TableName.Trim().ToLower());
+                            if (!bDoNotAdd)
+                            {
+                                bDoNotAdd = CollectionsClass.EngineTablesNotNeededList.Contains(tableObj.TableName.Trim().ToLower());
+                            }
+                            if (!bDoNotAdd)
+                            {
+                                bool lowerTable = pRelationEntity.Any(m => m.LowerTableName.Trim().ToLower().Equals(tableObj.TableName.Trim().ToLower()));
+                                bool upperTable = pRelationEntity.Any(m => m.UpperTableName.Trim().ToLower().Equals(tableObj.TableName.Trim().ToLower()));
+                                bDoNotAdd = lowerTable | upperTable;
+                                if (!bDoNotAdd)
+                                {
+                                    foreach (TableTab tableTabeVar in pTableTabEntity.ToList())
+                                    {
+                                        bDoNotAdd = tableTabeVar.TableName.Trim().ToLower().Equals(tableObj.TableName.Trim().ToLower());
+                                        if (bDoNotAdd)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    if (!bDoNotAdd)
+                                    {
+                                        if (tableObj.DBName is not null)
+                                        {
+                                            registerList.Add(new KeyValuePair<string, string>(tableObj.TableName, tableObj.DBName));
+                                        }
+                                        else
+                                        {
+                                            registerList.Add(new KeyValuePair<string, string>(tableObj.TableName, "TabFusionRMSDemoServer"));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (registerList is null)
+                    {
+                        model.ErrorMessage = "You have not registered any table";
+                        model.ErrorType = "w";
+                    }
+                    else
+                    {
+                        model.ErrorMessage = "Record saved successfully";
+                        model.ErrorType = "s";
+                    }
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.RegisterBlock = JsonConvert.SerializeObject(registerList, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    return model;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                return model;
+            }
+        }
+
+
+        [Route("GetAvailableDatabase")]
+        [HttpGet]
+        public async Task<ReturnGetAvailableDatabase> GetAvailableDatabase(string ConnectionString) //completed testing 
+        {
+            var model = new ReturnGetAvailableDatabase();
+
+            var systemDBList = new List<KeyValuePair<string, string>>();            string ExternalDB = string.Empty;            string systemDB = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystemDatabase = await context.Systems.OrderBy(m => m.Id).FirstOrDefaultAsync();
+                    var pAvailableDatabase = (from t in context.Databases
+                                              select new { t.DBName, t.DBServer }).ToListAsync();
+                    systemDBList.Add(new KeyValuePair<string, string>(pSystemDatabase.UserName, "TabFusionRMSDemoServer"));
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.SystemDB = JsonConvert.SerializeObject(systemDBList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ExternalDB = JsonConvert.SerializeObject(pAvailableDatabase, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ErrorMessage = "Table bind successfully";
+                    model.ErrorType = "s";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("GetAvailableTable")]
+        [HttpPost]
+        public async Task<ReturnGetAvailableTable> GetAvailableTable(GetAvailableTableParam getAvailableTableParam) //completed testing 
+        {
+            var model = new ReturnGetAvailableTable();
+            var dbName = getAvailableTableParam.DbName;
+            var server = getAvailableTableParam.Server;
+            var ConnectionString = getAvailableTableParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var unregisterList = new List<KeyValuePair<string, string>>();
+                    var listUnregister = new List<string>();
+                    var schemaViewList = new List<string>();
+                    var pTableEntity = await context.Tables.OrderBy(m => m.TableId).ToListAsync();
+                    bool flag = false;
+
+                    using (var conn = new SqlConnection(ConnectionString))
+                    {
+                        var View_Table = (await conn.QueryAsync("SELECT * FROM INFORMATION_SCHEMA.TABLES where TABLE_NAME NOT LIKE 'view_%'")).ToList();
+                        foreach (var item in View_Table)
+                        {
+                            string table = item.TABLE_NAME;
+                            var registered = await context.Tables.Where(a => a.TableName.ToLower() == table.ToLower()).FirstOrDefaultAsync();
+                            if (registered == null)
+                            {
+                                if (!CollectionsClass.IsEngineTable(table.Trim().ToLower()))
+                                {
+                                    if (!server.Trim().ToLower().Equals("TabFusionRMSDemoServer".Trim().ToLower()))
+                                    {
+                                        unregisterList.Add(new KeyValuePair<string, string>(table, dbName));
+                                    }
+                                    else
+                                    {
+                                        unregisterList.Add(new KeyValuePair<string, string>(table, server));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.UnregisterList = JsonConvert.SerializeObject(unregisterList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.Flag = flag;
+                    if (unregisterList.Count == 0)
+                    {
+                        model.ErrorType = "w";
+                    }
+                    else
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Table bind successfully";
+                    }
+                    return model;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                return model;
+            }
+        }
+
+
+        [Route("GetPrimaryField")]
+        [HttpGet]
+        public async Task<ReturnGetPrimaryField> GetPrimaryField(string TableName, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnGetPrimaryField();
+
+            var PrimaryFieldList = new List<KeyValuePair<string, string>>();
+            var pSchemaIndexList = new List<SchemaIndex>();
+            var pSchemaIndexEntity = new SchemaIndex();
+            var pSchemaColumnList = new List<SchemaColumns>();
+            bool bUniqueKey = false;
+            long lColumnSize = 0L;
+            long lUserLinkIndexId = 30L;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    pSchemaIndexList = SchemaIndex.GetTableIndexes(TableName, ConnectionString);
+                    for (int iCount = 0, loopTo = pSchemaIndexList.Count - 1; iCount <= loopTo; iCount++)
+                    {
+                        pSchemaIndexEntity = pSchemaIndexList[iCount];
+                        if (Convert.ToBoolean(pSchemaIndexEntity.PrimaryKey) == true & Convert.ToBoolean(pSchemaIndexEntity.Unique) == true)
+                        {
+                            if (iCount < pSchemaIndexList.Count - 1)
+                            {
+                                if ((pSchemaIndexEntity.IndexName) != (pSchemaIndexList[iCount + 1].IndexName))
+                                {
+                                    PrimaryFieldList.Add(new KeyValuePair<string, string>(pSchemaIndexEntity.ColumnName, pSchemaIndexEntity.TableName));
+                                    bUniqueKey = true;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                PrimaryFieldList.Add(new KeyValuePair<string, string>(pSchemaIndexEntity.ColumnName, pSchemaIndexEntity.TableName));
+                                bUniqueKey = true;
+                            }
+                        }
+                    }
+
+                    if (!bUniqueKey)
+                    {
+                        for (int iCount = 0, loopTo1 = pSchemaIndexList.Count - 1; iCount <= loopTo1; iCount++)
+                        {
+                            pSchemaIndexEntity = pSchemaIndexList[iCount];
+                            if (Convert.ToBoolean(pSchemaIndexEntity.Unique) == true)
+                            {
+                                if (iCount < pSchemaIndexList.Count - 1)
+                                {
+                                    if ((pSchemaIndexEntity.IndexName) != (pSchemaIndexList[iCount].IndexName))
+                                    {
+                                        PrimaryFieldList.Add(new KeyValuePair<string, string>(pSchemaIndexEntity.ColumnName, pSchemaIndexEntity.TableName));
+                                        bUniqueKey = true;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    PrimaryFieldList.Add(new KeyValuePair<string, string>(pSchemaIndexEntity.ColumnName, pSchemaIndexEntity.TableName));
+                                    bUniqueKey = true;
+                                }
+                            }
+                        }
+                    }
+
+                    pSchemaColumnList = SchemaInfoDetails.GetSchemaInfo(TableName, ConnectionString);
+                    if (!bUniqueKey)
+                    {
+                        foreach (SchemaColumns pSchemaColumnObj in pSchemaColumnList.ToList())
+                        {
+                            lColumnSize = (long)Convert.ToUInt64("0" + pSchemaColumnObj.CharacterMaxLength);
+                            if (lColumnSize == 0L)
+                            {
+                                lColumnSize = (long)Convert.ToUInt64("0" + pSchemaColumnObj.NumericPrecision);
+                            }
+                            if (lColumnSize == 0L)
+                            {
+                                if (pSchemaColumnObj.IsADate)
+                                {
+                                    lColumnSize = lUserLinkIndexId;
+                                }
+                            }
+                            if (lColumnSize > 0L & lColumnSize <= lUserLinkIndexId)
+                            {
+                                PrimaryFieldList.Add(new KeyValuePair<string, string>(pSchemaColumnObj.ColumnName, pSchemaColumnObj.TableName));
+                            }
+                        }
+                    }
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.PrimaryFieldList = JsonConvert.SerializeObject(PrimaryFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    if (model.PrimaryFieldList.Count() == 0)
+                    {
+                        model.ErrorType = "w";
+                    }
+                    else
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Table bind successfully";
+                    }
+                    return model;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                return model;
+            }
+        }
+
+
+        [Route("SetRegisterTable")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetRegisterTable(SetRegisterTableParam setRegisterTableParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var dbName = setRegisterTableParam.DbName;
+            var tbName = setRegisterTableParam.TableName;
+            var fldName = setRegisterTableParam.FieldName;
+            var passport = setRegisterTableParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var ReportStyle = await context.ReportStyles.OrderBy(m => m.Id).FirstOrDefaultAsync();
+                    var Attribute = await context.Attributes.OrderBy(m => m.Id).FirstOrDefaultAsync();
+                    var TableTypeId = await context.SecureObjects.Where(m => m.Name == "Tables").FirstOrDefaultAsync();
+                    var ViewTypeId = await context.SecureObjects.Where(m => m.Name == "Views").FirstOrDefaultAsync();
+                    var moSecureObjectTable = await context.SecureObjects.Where(m => m.Name.Trim().ToLower().Equals(tbName.Trim().ToLower()) & m.SecureObjectTypeID.Equals(TableTypeId.SecureObjectTypeID)).FirstOrDefaultAsync();
+                    var moSecureObjectView = await context.SecureObjects.Where(m => m.Name.Trim().Trim().ToLower().Equals(("All " + tbName).Trim().ToLower()) & m.SecureObjectTypeID.Equals(ViewTypeId.SecureObjectTypeID)).FirstOrDefaultAsync();
+                    if (moSecureObjectTable != null && moSecureObjectView != null)
+                    {
+                        var moTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).FirstOrDefaultAsync();
+                        var moView = await context.Views.Where(m => m.TableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).FirstOrDefaultAsync();
+                        if (moTable != null)
+                        {
+                            //_iTable.Delete(moTable);
+                            context.Tables.Remove(moTable);
+                            await context.SaveChangesAsync();
+                        }
+                        if (moView != null)
+                        {
+                            //_iView.Delete(moView);
+                            context.Views.Remove(moView);
+                            await context.SaveChangesAsync();
+
+                            var moViewColumn = await context.ViewColumns.Where(m => m.ViewsId == moView.Id).ToListAsync();
+                            if (moViewColumn != null)
+                            {
+                                //_iViewColumn.DeleteRange(moViewColumn);
+                                context.ViewColumns.RemoveRange(moViewColumn);
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                        //_iSecureObject.Delete(moSecureObjectView);
+                        //_iSecureObject.Delete(moSecureObjectTable);
+                        context.SecureObjects.Remove(moSecureObjectView);
+                        context.SecureObjects.Remove(moSecureObjectTable);
+                        await context.SaveChangesAsync();
+
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "Secure Object Name of this type already registered";
+                        //_iView.CommitTransaction();
+                        //_iViewColumn.CommitTransaction();
+                        //_iTable.CommitTransaction();
+                        //_iSecureObject.CommitTransaction();
+                        //break;
+                        return model;
+                    }
+
+                    var viewEntity = new View();
+                    var tableEntity = new Table();
+                    var viewColumnEntity = new ViewColumn();
+                    var tableObjectEntity = new Entities.SecureObject();
+                    var pMaxSearchOrder = (await context.Tables.ToListAsync()).Max(x => x.SearchOrder);
+                    int pSecureObjectID;
+                    int pSecureBaseID;
+
+                    if (Attribute == null)
+                    {
+                        tableEntity.AttributesID = 0;
+                    }
+                    else
+                    {
+                        tableEntity.AttributesID = Attribute.Id;
+                    }
+                    if (!dbName.Trim().ToLower().Equals("TabFusionRMSDemoServer".Trim().ToLower()))
+                    {
+                        tableEntity.DBName = dbName;
+                    }
+                    tableEntity.TableName = tbName;
+                    tableEntity.UserName = tbName;
+                    tableEntity.TrackingStatusFieldName = null;
+                    tableEntity.CounterFieldName = null;
+                    tableEntity.AddGroup = 0;
+                    tableEntity.DelGroup = 0;
+                    tableEntity.EditGroup = 0;
+                    tableEntity.MgrGroup = 0;
+                    tableEntity.ViewGroup = 0;
+                    tableEntity.PCFilesEditGrp = 0;
+                    tableEntity.PCFilesNVerGrp = 0;
+                    tableEntity.Attachments = false;
+                    tableEntity.IdFieldName = tbName + "." + fldName;
+                    tableEntity.TrackingTable = (short?)0;
+                    tableEntity.Trackable = false;
+                    tableEntity.DescFieldPrefixOneWidth = (short?)0;
+                    tableEntity.DescFieldPrefixTwoWidth = (short?)0;
+                    tableEntity.MaxRecordsAllowed = (short?)0;
+                    tableEntity.OutTable = (short?)0;
+                    tableEntity.RestrictAddToTable = (short?)0;
+                    tableEntity.MaxRecsOnDropDown = 0;
+                    tableEntity.ADOServerCursor = Convert.ToBoolean(0);
+                    tableEntity.ADOQueryTimeout = 30;
+                    tableEntity.ADOCacheSize = 1;
+                    tableEntity.DeleteAttachedGroup = 9999;
+                    tableEntity.RecordManageMgmtType = 0;
+                    tableEntity.SearchOrder = pMaxSearchOrder + 1;
+                    //_iTable.Add(tableEntity);
+                    context.Tables.Add(tableEntity);
+                    await context.SaveChangesAsync();
+
+                    if (ReportStyle is not null)
+                    {
+                        viewEntity.ReportStylesId = ReportStyle.Id;
+                    }
+                    viewEntity.AltViewId = 0;
+                    viewEntity.DeleteGridAvail = false;
+                    viewEntity.SearchableView = true;
+                    viewEntity.FiltersActive = false;
+                    viewEntity.SQLStatement = "SELECT * FROM [" + tbName + "]";
+                    viewEntity.SearchableView = true;
+                    viewEntity.RowHeight = (short?)0;
+                    viewEntity.TableName = tbName;
+                    viewEntity.TablesId = 0;
+                    viewEntity.UseExactRowCount = false;
+                    viewEntity.VariableColWidth = true;
+                    viewEntity.VariableFixedCols = false;
+                    viewEntity.VariableRowHeight = true;
+                    viewEntity.ViewGroup = 0;
+                    viewEntity.ViewName = "All " + tbName;
+                    viewEntity.ViewOrder = 1;
+                    viewEntity.ViewType = (short?)0;
+                    viewEntity.Visible = true;
+
+                    viewEntity.MaxRecsPerFetch = viewEntity.MaxRecsPerFetch;
+                    viewEntity.MaxRecsPerFetchDesktop = viewEntity.MaxRecsPerFetchDesktop;
+                    //_iView.Add(viewEntity);
+                    context.Views.Add(viewEntity);
+                    await context.SaveChangesAsync();
+
+                    bool editAllowed = true;
+                    var columInfo = new CoulmnSchemaInfo();
+
+                    if (!string.IsNullOrWhiteSpace(fldName))
+                    {
+                        columInfo = await GetInfoUsingDapper.GetCoulmnSchemaInfo(ConnectionString, tbName, fldName);
+                    }
+                    if (columInfo != null)
+                    {
+                        if (columInfo.IsAutoIncrement)
+                            editAllowed = false;
+                    }
+
+                    //DataSet loutput = null;
+                    //if (!string.IsNullOrWhiteSpace(fldName))
+                    //{
+                    //    string strqry = "SELECT [" + fldName + "] FROM [" + tbName + "] Where 0=1;";
+                    //    _IDBManager.ConnectionString = Keys.get_GetDBConnectionString();
+                    //    loutput = _IDBManager.ExecuteDataSetWithSchema(CommandType.Text, strqry);
+                    //    _IDBManager.Dispose();
+                    //}
+                    //if (loutput is not null)
+                    //{
+                    //    if (loutput.Tables[0].Columns[0].AutoIncrement)
+                    //        editAllowed = false;
+                    //}
+
+                    var View = await context.Views.Where(m => (m.ViewName) == ("All " + tbName)).FirstOrDefaultAsync();
+                    viewColumnEntity.ViewsId = View.Id;
+                    viewColumnEntity.ColumnNum = (short?)0;
+                    viewColumnEntity.ColumnWidth = (short?)3000;
+                    viewColumnEntity.EditAllowed = editAllowed;
+                    viewColumnEntity.FieldName = tbName + "." + fldName;
+                    viewColumnEntity.Heading = fldName;
+                    viewColumnEntity.FilterField = true;
+                    viewColumnEntity.FreezeOrder = 1;
+                    viewColumnEntity.SortOrder = 1;
+                    viewColumnEntity.LookupType = (short?)0;
+                    viewColumnEntity.SortableField = true;
+                    viewColumnEntity.ColumnStyle = (short?)0;
+                    viewColumnEntity.DropDownFlag = (short?)0;
+                    viewColumnEntity.DropDownReferenceColNum = (short?)0;
+                    viewColumnEntity.FormColWidth = 0;
+                    viewColumnEntity.LookupIdCol = (short?)0;
+                    viewColumnEntity.MaskClipMode = false;
+                    viewColumnEntity.MaskInclude = false;
+                    viewColumnEntity.MaskPromptChar = "_";
+                    viewColumnEntity.MaxPrintLines = 1;
+                    viewColumnEntity.PageBreakField = false;
+                    viewColumnEntity.PrinterColWidth = 0;
+                    viewColumnEntity.SortOrderDesc = false;
+                    viewColumnEntity.SuppressDuplicates = false;
+                    viewColumnEntity.SuppressPrinting = false;
+                    viewColumnEntity.VisibleOnForm = true;
+                    viewColumnEntity.VisibleOnPrint = true;
+                    viewColumnEntity.CountColumn = false;
+                    viewColumnEntity.SubtotalColumn = false;
+                    viewColumnEntity.PrintColumnAsSubheader = false;
+                    viewColumnEntity.RestartPageNumber = false;
+                    viewColumnEntity.LabelJustify = 1;
+                    viewColumnEntity.LabelLeft = -1;
+                    viewColumnEntity.LabelTop = -1;
+                    viewColumnEntity.LabelWidth = -1;
+                    viewColumnEntity.LabelHeight = -1;
+                    viewColumnEntity.ControlLeft = -1;
+                    viewColumnEntity.ControlTop = -1;
+                    viewColumnEntity.ControlWidth = -1;
+                    viewColumnEntity.ControlHeight = -1;
+                    viewColumnEntity.TabOrder = -1;
+                    viewColumnEntity.ColumnOrder = (short?)0;
+                    //_iViewColumn.Add(viewColumnEntity);
+                    context.ViewColumns.Add(viewColumnEntity);
+                    await context.SaveChangesAsync();
+
+
+                    if (TableTypeId != null)
+                    {
+                        tableObjectEntity.SecureObjectTypeID = TableTypeId.SecureObjectTypeID;
+                        tableObjectEntity.BaseID = TableTypeId.SecureObjectTypeID;
+                    }
+                    tableObjectEntity.Name = tbName;
+                    //_iSecureObject.Add(tableObjectEntity);
+                    //_iSecureObject.CommitTransaction();
+                    context.SecureObjects.Add(tableObjectEntity);
+                    await context.SaveChangesAsync();
+
+                    pSecureObjectID = (await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(tbName)).FirstOrDefaultAsync()).SecureObjectID;
+                    pSecureBaseID = (await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(tbName)).FirstOrDefaultAsync()).BaseID;
+                    await AddSecureObjectPermissionsBySecureObjectType(pSecureObjectID, pSecureBaseID, (int)Enums.SecureObjects.Table, ConnectionString);
+                    pSecureObjectID = default;
+                    //_iSecureObject.BeginTransaction();
+
+
+                    var RecentTableBaseId = await context.SecureObjects.Where(m => (m.Name) == (tbName)).FirstOrDefaultAsync();
+                    var viewObjectEntity = new Entities.SecureObject();
+
+                    if (ViewTypeId != null)
+                    {
+                        viewObjectEntity.SecureObjectTypeID = ViewTypeId.SecureObjectTypeID;
+                    }
+
+                    if (RecentTableBaseId != null)
+                    {
+                        viewObjectEntity.BaseID = RecentTableBaseId.SecureObjectID;
+                    }
+                    viewObjectEntity.Name = "All " + tbName;
+                    context.SecureObjects.Add(viewObjectEntity);
+                    await context.SaveChangesAsync();
+                    //_iSecureObject.Add(viewObjectEntity);
+                    //_iSecureObject.CommitTransaction();
+
+                    pSecureObjectID = (await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals("All " + tbName)).FirstOrDefaultAsync()).SecureObjectID;
+                    pSecureBaseID = (await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals("All " + tbName)).FirstOrDefaultAsync()).BaseID;
+                    await AddSecureObjectPermissionsBySecureObjectType(pSecureObjectID, pSecureBaseID, (int)Enums.SecureObjects.View, ConnectionString);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Record saved successfully";
+
+                    passport.FillSecurePermissions();
+
+                    //CollectionsClass.ReloadPermissionDataSet(passport);
+                    //_iView.CommitTransaction();
+                    //_iViewColumn.CommitTransaction();
+                    //_iTable.CommitTransaction();
+
+                    //_iReportStyle.CommitTransaction();
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("UnRegisterTable")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> UnRegisterTable(UnRegisterTableParam unRegisterTableParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var dbName = unRegisterTableParam.DbName;
+            var tbName = unRegisterTableParam.TableName;
+            var passport = unRegisterTableParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+
+            Table tableEntity;
+            int vSecureObjectId;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var oTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).FirstOrDefaultAsync();
+                    if (oTable != null)
+                    {
+                        if (oTable.TrackingTable != 0)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("\"{0}\" Table is in use as a container level in Tracking hence it cannot be unregistered", oTable.TableName);
+                            return model;
+                        }
+                    }
+
+                    var viewsEntity = await context.Views.Where(m => (m.TableName.Trim().ToLower()) == (tbName.Trim().ToLower())).ToListAsync();
+                    foreach (View viewVar in viewsEntity.ToList())
+                    {
+                        //_iView.Delete(viewVar);
+                        context.Views.Remove(viewVar);
+                        await context.SaveChangesAsync();
+                        var viewColumnsEntity = await context.ViewColumns.Where(m => m.ViewsId == viewVar.Id).ToListAsync();
+                        foreach (ViewColumn viewColumnVar in viewColumnsEntity.ToList())
+                        {
+                            context.ViewColumns.Remove(viewColumnVar);
+                            await context.SaveChangesAsync();
+                        }
+                        var secureViewObject = await context.SecureObjects.Where(m => (m.Name.Trim().ToLower()) == (viewVar.ViewName.Trim().ToLower())).FirstOrDefaultAsync();
+                        if (secureViewObject != null)
+                        {
+                            //_iSecureObject.Delete(secureViewObject);
+                            context.SecureObjects.Remove(secureViewObject);
+                            await context.SaveChangesAsync();
+                        }
+
+                    }
+
+                    if (dbName.Trim().ToLower().Equals("TabFusionRMSDemoServer".Trim().ToLower()))
+                    {
+                        tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).FirstOrDefaultAsync();
+                    }
+                    else
+                    {
+                        tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tbName.Trim().ToLower()) && m.DBName.Trim().ToLower().Equals(dbName.Trim().ToLower())).FirstOrDefaultAsync();
+                    }
+
+                    if (tableEntity != null)
+                    {
+                        //_iTable.Delete(tableEntity);
+                        context.Tables.Remove(tableEntity);
+                        await context.SaveChangesAsync();
+                        var secureTableObject = await context.SecureObjects.Where(m => (m.Name.Trim().ToLower()) == (tbName.Trim().ToLower())).FirstOrDefaultAsync();
+                        vSecureObjectId = (await context.SecureObjects.Where(m => (m.Name.Trim().ToLower()) == (tbName.Trim().ToLower())).FirstOrDefaultAsync()).SecureObjectID;
+                        if (secureTableObject != null)
+                        {
+                            context.SecureObjects.Remove(secureTableObject);
+                            await context.SaveChangesAsync();
+                            
+                            var pSecureObjPermissions = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == vSecureObjectId).ToListAsync();
+                            if (pSecureObjPermissions.Count > 0)
+                            {
+                                context.SecureObjectPermissions.RemoveRange(pSecureObjPermissions);
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                    }
+
+                    //CollectionsClass.ReloadPermissionDataSet(passport);
+                    passport.FillSecurePermissions();
+
+                    //_iView.CommitTransaction();
+                    //_iViewColumn.CommitTransaction();
+                    //_iTable.CommitTransaction();
+                    //// _iSecureObject.CommitTransaction()
+                    //_iSecureObjectPermission.CommitTransaction();
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Table unregistered Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("DropTable")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> DropTable(DropTableParam dropTableParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var dbName = dropTableParam.DbName;
+            var tbName = dropTableParam.TableName;
+            var passport = dropTableParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if ((oTable != null) && (oTable.TrackingTable != 0))
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("\"{0}\" Table is in use as a container level in Tracking hence it cannot be dropped", oTable.TableName);
+                        return model;
+                    }
+
+                    var param = new UnRegisterTableParam();
+                    param.DbName = dbName;
+                    param.TableName = tbName;
+                    param.Passport = passport;
+
+                    var jsonVar = await UnRegisterTable(param);
+
+                    bool unregisterSuccessful = jsonVar.ErrorMessage.ToLower().Contains("Table unregistered Successfully".ToLower());
+
+                    var bFoundCounter = default(bool);
+                    string DatabaseName = string.Empty;
+                    string ServerInstance = string.Empty;
+                    var pDatabaseEntity = new Databas();
+
+                    if (unregisterSuccessful)
+                    {
+                        pDatabaseEntity = await context.Databases.Where(m => m.DBName.Trim().ToLower().Equals(dbName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                        if (pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+
+                        var conStrList = new List<KeyValuePair<string, string>>();
+                        conStrList = CommonFunctions.GetParamFromConnString(ConnectionString, pDatabaseEntity);
+
+                        foreach (KeyValuePair<string, string> conList in conStrList)
+                        {
+                            if (conList.Key.Equals("DBDatabase"))
+                            {
+                                DatabaseName = conList.Value;
+                            }
+                            else if (conList.Key.Equals("DBServer"))
+                            {
+                                ServerInstance = conList.Value;
+                            }
+                        }
+
+                        if ((await _databaseMapService.DropTable(tbName, ConnectionString)))
+                        {
+                            var indexerEntity = await context.SLIndexers.Where(m => m.IndexTableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).ToListAsync();
+                            context.SLIndexers.RemoveRange(indexerEntity);
+                            await context.SaveChangesAsync();
+                            var indexerCacheEntity = await context.SLIndexerCaches.Where(m => m.IndexTableName.Trim().ToLower().Equals(tbName.Trim().ToLower())).ToListAsync();
+                            context.SLIndexerCaches.RemoveRange(indexerCacheEntity);
+                            await context.SaveChangesAsync();
+                            var schemaInfoEntity = SchemaInfoDetails.GetSchemaInfo("System", ConnectionString);
+
+                            if (schemaInfoEntity != null)
+                            {
+                                for (int iCount = 0, loopTo = schemaInfoEntity.Count - 1; iCount <= loopTo; iCount++)
+                                {
+                                    bFoundCounter = schemaInfoEntity[iCount].ColumnName.Trim().ToLower().Equals((tbName + "Counter").Trim().ToLower());
+                                    if (bFoundCounter)
+                                        break;
+                                }
+
+                                if (bFoundCounter)
+                                {
+                                    using (var con = new SqlConnection(ConnectionString))
+                                    {
+                                        try
+                                        {
+                                            con.Open();
+                                            if (Convert.ToBoolean(con.State))
+                                            {
+                                                string sSql = "ALTER TABLE System DROP COLUMN [" + tbName + "Counter]";
+                                                //_IDBManager.ConnectionString = Keys.get_GetDBConnectionString(null);
+                                                //_IDBManager.ExecuteNonQuery(CommandType.Text, sSql);
+                                                //_IDBManager.Dispose();
+                                                await con.ExecuteAsync(sSql, CommandType.Text);
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            if (Convert.ToBoolean(~con.State))
+                                            {
+                                                model.ErrorType = "e";
+                                                model.ErrorMessage = string.Format("{0} {1} {2}", "The SQL Server", ServerInstance, "could not be opened");
+                                            }
+                                            else
+                                            {
+                                                model.ErrorType = "e";
+                                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Table Dropped successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #endregion
+
         [Route("BindAccordian")]
         [HttpPost]
         public async Task<string> BindAccordian(Passport passport) //completed testing 
@@ -10761,7 +13025,7 @@ namespace MSRecordsEngine.Controllers
 
         [Route("GetTablesView")]
         [HttpPost]
-        public async Task<ReturnGetTablesView> GetTablesView(GetTablesViewParams getTablesViewParams) //not working   
+        public async Task<ReturnGetTablesView> GetTablesView(GetTablesViewParams getTablesViewParams) //not working 
         {
             var model = new ReturnGetTablesView();
             var lstViews = new List<KeyValuePair<string, string>>();

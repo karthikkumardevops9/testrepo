@@ -18,6 +18,7 @@ namespace MSRecordsEngine.Services
             services.AddTransient<IBackgroundStatusService, BackgroundStatusService>();
             services.AddTransient<IDashboardService, DashboardService>();
             services.AddTransient<ILayoutModelService,LayoutModelService>();
+            services.AddTransient<IDatabaseMapService, DatabaseMapService>();
             services.AddTransient<ILayoutDataService, LayoutDataService>();
             services.AddTransient<IDataGridService,  DataGridService>();
         }
