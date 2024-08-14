@@ -1,19 +1,16 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using System.Data.SqlClient;
-using System.Net.Http;
-using Newtonsoft.Json;
-using System.Collections.Generic;
-using System.Data;
-using System;
-using Microsoft.Extensions.Logging;
-using MSRecordsEngine.Controllers;
 using MSRecordsEngine.Services;
-using Leadtools.ImageProcessing.Core;
 using Smead.Security;
-using System.Data.Entity.Validation;
+using System.Threading.Tasks;
+using MSRecordsEngine.Models.FusionModels;
+using MSRecordsEngine.Services.Interface;
+using MSRecordsEngine.Controllers;
+using Microsoft.Extensions.Logging;
+using System;
+using MSRecordsEngine.Models;
+using Leadtools.Barcode;
 namespace FusionWebApi.Controllers
 {
     [Route("[controller]")]
@@ -25,35 +22,66 @@ namespace FusionWebApi.Controllers
     public class DataController : ControllerBase
     {
         private readonly CommonControllersService<DataController> _commonService;
-        public DataController(CommonControllersService<DataController> commonControllersService)
+        private readonly ILayoutDataService _layoutService;
+        private readonly IDataGridService _datagridService;
+        public DataController(CommonControllersService<DataController> commonControllersService, ILayoutDataService layoutservice, IDataGridService datagridService)
         {
             _commonService = commonControllersService;
+            _layoutService = layoutservice;
+            _datagridService = datagridService;
         }
-
         [HttpPost]
-        [Route("test")]
-        public void test(MicroArguments model)
+        [Route("DataLayout")]
+        public async Task<LayoutModel> DataLayout(Passport passport)
         {
-            var pass = model.passport;
+            var model = new LayoutModel();
             try
             {
-                throw new Exception("hello this is an error message!");
+                await _layoutService.BindUserAccessMenu(passport, model);
+                await _layoutService.HandleAdminMenu(passport, model);
+                await _layoutService.BackgroundStatusNotifications(passport, model);
+                await _layoutService.LoadTasks(passport, model);
+                await _layoutService.GetTaskLightValues(passport, model);
+                await _layoutService.LoadNews(passport, model);
+                await _layoutService.GetFooter(passport, model);
             }
             catch (Exception ex)
             {
                 _commonService.Logger.LogError(ex.Message);
                 throw;
             }
+        
+            return model;
         }
-
-    }
-
-    public class MicroArguments
-    {
-        public object model { get; set; }
-        public Passport passport { get; set; }
-        public List<string> liststring { get; set; }
-        public List<int> listints { get; set; }
-        public List<object> listobject { get; set; }
+        [HttpPost]
+        [Route("SaveNewsURL")]
+        public async Task SaveNewsURL(NewUrlprops model)
+        {
+            try
+            {
+                await _datagridService.SaveNewsURL(model);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+            
+        }
+        [HttpPost]
+        [Route("LoadQueryWindow")]
+        public async Task<ViewQueryWindow> LoadQueryWindow(ViewQueryWindowProps props)
+        {
+            try
+            {
+                return await _datagridService.DrawQuery(props);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+          
+        }
     }
 }
