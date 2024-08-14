@@ -10,6 +10,8 @@ using System.Net.Mail;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
+using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
@@ -47,6 +49,7 @@ namespace MSRecordsEngine.RecordsManager
         public int Id;
         public string ViewName;
 
+        public ViewItem() { }
         public ViewItem(int Id, string viewName)
         {
             this.Id = Id;
@@ -348,12 +351,47 @@ namespace MSRecordsEngine.RecordsManager
                 }
             }
         }
+        public static async Task SetSettingAsync(string section, string item, string value, SqlConnection conn)
+        {
+            using (var cmd = new SqlCommand("SELECT COUNT(*) FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
+            {
+                cmd.Parameters.AddWithValue("@section", section);
+                cmd.Parameters.AddWithValue("@item", item);
+                cmd.Parameters.AddWithValue("@value", value);
+
+                if (Conversions.ToInteger(await cmd.ExecuteScalarAsync()) == 0)
+                {
+                    cmd.CommandText = "INSERT INTO [Settings] ([Section], [Item], [ItemValue]) VALUES (@section, @item, @value)";
+                }
+                else
+                {
+                    cmd.CommandText = "UPDATE [Settings] SET [ItemValue] = @value WHERE [Section] = @section AND [Item] = @item";
+                }
+
+                try
+                {
+                   await cmd.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+            }
+        }
 
         public static void SetSetting(string section, string item, string value, Passport passport)
         {
             using (var conn = passport.Connection())
             {
                 SetSetting(section, item, value, conn);
+            }
+        }
+        public static async Task SetSettingAsync(string section, string item, string value, Passport passport)
+        {
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                await SetSettingAsync(section, item, value, conn);
             }
         }
 
@@ -667,6 +705,30 @@ namespace MSRecordsEngine.RecordsManager
 
             return list;
         }
+        public static async Task<List<int>> GetTaskLightValuesAsync(Passport passport)
+        {
+            //if (!passport.CheckLicense(SecureObject.SecureObjectType.Application))
+            //    return null;
+            if (!passport.CheckPermission(" Requestor", SecureObject.SecureObjectType.Reports, Permissions.Permission.View))
+                return null;
+
+            var list = new List<int>();
+            string sql = "SELECT COUNT(*) AS TotalCount FROM [SLRequestor] WHERE [SLRequestor].[Status] = 'New'";
+
+            using (var conn = passport.Connection())
+            {
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    list.Add(Conversions.ToInteger(cmd.ExecuteScalar()));
+                    cmd.CommandText = "SELECT COUNT(*) AS TotalCount FROM [SLRequestor] LEFT JOIN SLPullLists ON SLRequestor.SLPullListsId = SLPullLists.Id" + " WHERE ((SLPullLists.BatchPullList <> 0) AND (SLPullLists.BatchPullList IS NOT NULL)" + " AND ((SLPullLists.BatchPrinted = 0) OR (SLPullLists.BatchPrinted IS NULL)))";
+                    list.Add(Conversions.ToInteger(cmd.ExecuteScalar()));
+                    cmd.CommandText = "SELECT COUNT(*) AS TotalCount FROM [SLRequestor] WHERE [SLRequestor].[Status] = 'Exception'";
+                    list.Add(Conversions.ToInteger(await cmd.ExecuteScalarAsync()));
+                }
+            }
+
+            return list;
+        }
 
         public static DataTable GetViewSortFields(int viewID, Passport passport)
         {
@@ -778,7 +840,7 @@ namespace MSRecordsEngine.RecordsManager
         {
             using (var views = new RecordsManageTableAdapters.ViewsTableAdapter())
             {
-                using (var conn = passport.Connection())
+                using (var conn = new SqlConnection(passport.ConnectionString))
                 {
                     views.Connection = conn;
                     var list = new List<ViewItem>();
@@ -793,6 +855,27 @@ namespace MSRecordsEngine.RecordsManager
                     return list;
                 }
             }
+        }
+        public static async Task<List<ViewItem>> GetViewsByTableNameAsync(string tableName, Passport passport)
+        {
+            var sql = "SELECT Id, SQLStatement, TableName, TaskListDisplayString, ViewName, MaxRecsPerFetch FROM Views WHERE \r\n(TableName = @tableName) AND (Printable = 0) ORDER BY ViewOrder";
+            var list = new List<ViewItem>();
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+
+                var getviews = await conn.QueryAsync<ViewItem>(sql, new { @tableName = tableName });
+                foreach (ViewItem row in getviews)
+                {
+                    if (passport.CheckPermission(row.ViewName, SecureObject.SecureObjectType.View, Permissions.Permission.View))
+                    {
+                        list.Add(new ViewItem(row.Id, row.ViewName));
+                    }
+                }
+
+
+                return list;
+            }
+
         }
 
         public static string GetViewItemName(int ViewId, string KeyValue, Passport passport)
@@ -824,7 +907,7 @@ namespace MSRecordsEngine.RecordsManager
         public static List<ListOfviews> GetAllUserViews(Passport passport)
         {
             var lst = new List<ListOfviews>();
-            
+
             var subMenu = new List<TableItem>();
             foreach (WorkGroupItem workGroupItem in GetWorkGroups(passport))
             {
@@ -835,11 +918,11 @@ namespace MSRecordsEngine.RecordsManager
 
                     foreach (var V in lstViewItems)
                     {
-                        if(lst.Where(a => a.viewId == V.Id).Count() == 0)
+                        if (lst.Where(a => a.viewId == V.Id).Count() == 0)
                         {
                             lst.Add(new ListOfviews() { viewName = V.ViewName, viewId = V.Id, userName = table.UserName, tableName = table.TableName });
                         }
-                        
+
                     }
                 }
             }
@@ -1666,7 +1749,7 @@ namespace MSRecordsEngine.RecordsManager
             using (var viewAdapter = new RecordsManageTableAdapters.ViewsTableAdapter())
             {
                 viewAdapter.Connection = conn;
-                var res =  viewAdapter.GetViewTableName(viewId);
+                var res = viewAdapter.GetViewTableName(viewId);
                 return res[0]["TableName"].ToString();
             }
         }
@@ -3351,7 +3434,7 @@ namespace MSRecordsEngine.RecordsManager
                 {
                     var httpcontext = new HttpContextAccessor().HttpContext;
                     strLanguages = httpcontext.Request.Headers["Accept-Language"].ToString().Split(",");
-                   
+
                     var ci = new CultureInfo(strLanguage);
 
                     // ' Set browser preference
