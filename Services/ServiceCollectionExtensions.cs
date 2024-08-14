@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using MSRecordsEngine.Services.Interface;
 
 namespace MSRecordsEngine.Services
@@ -17,6 +18,8 @@ namespace MSRecordsEngine.Services
             services.AddTransient<IBackgroundStatusService, BackgroundStatusService>();
             services.AddTransient<IDashboardService, DashboardService>();
             services.AddTransient<ILayoutModelService,LayoutModelService>();
+            services.AddTransient<ILayoutDataService, LayoutDataService>();
+            services.AddTransient<IDataGridService,  DataGridService>();
         }
     }
 }
