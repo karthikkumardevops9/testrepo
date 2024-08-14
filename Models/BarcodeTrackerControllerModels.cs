@@ -1,18 +1,19 @@
-﻿using MSRecordsEngine.RecordsManager;
-using Smead.Security;
+﻿using Smead.Security;
 
 namespace MSRecordsEngine.Models
 {
-     
-        public class DetectDestinationChangeParam
-        {
-            public Passport passport { get; set; }
-            public string txtDestination { get; set; }
-            public string txtObject { get; set; }
-            public string hdnPrefixes { get; set; }
-            public BarcodeTrackerModel barcodemodel { get; set; }
-        }
-        public class BarcodeTrackerModel
+
+    public class DetectDestinationChangeParam
+    {
+        public Passport passport { get; set; }
+        public string txtDestination { get; set; }
+        public string txtObject { get; set; }
+        public string hdnPrefixes { get; set; }
+        public string shortDateFormat { get; set; }
+        public string timeoffSet { get; set; }
+        public BarcodeTrackerModel barcodemodel { get; set; }
+    }
+    public class BarcodeTrackerModel
         {
             public string lblAdditional1 { get; set; }
             // Public Property trlblAdditional1_1 As Boolean 
@@ -40,6 +41,7 @@ namespace MSRecordsEngine.Models
             public string txtObject { get; set; }
             public string hdnPrefixes { get; set; }
             public string txtDueBackDate { get; set; }
+            public string userName {  get; set; }
             public string? additional1 { get; set; }
             public string? additional2 { get; set; }
         }

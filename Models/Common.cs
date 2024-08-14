@@ -315,6 +315,25 @@ namespace MSRecordsEngine.Models
             ServiceNotEnabled,
             NoSelection
         }
+        public enum geOfficialRecordConversonType
+        {
+            orcNoConversion = 0,
+            orcFirstVersionConversion = 1,
+            orcLastVersionConversion = 2,
+            orcConversionToNothing = 4
+        }
+        public enum meTableFieldTypes
+        {
+            ftLong = 0,
+            ftCounter = 1,
+            ftText = 2,
+            ftInteger = 3,
+            ftBoolean = 4,
+            ftDouble = 5,
+            ftDate = 6,
+            ftMemo = 7,
+            ftSmeadCounter = 8
+        }
     }
 
     public class CollectionsClass

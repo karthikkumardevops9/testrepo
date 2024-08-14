@@ -1,15 +1,21 @@
 ﻿using Dapper;
+using Leadtools.Document.Unstructured.Highlevel;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
+using Microsoft.VisualBasic.FileIO;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models;
 using MSRecordsEngine.Models.FusionModels;
 using MSRecordsEngine.RecordsManager;
+using MSRecordsEngine.Repository;
 using MSRecordsEngine.Services;
 using MSRecordsEngine.Services.Interface;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Smead.Security;
 using System;
 using System.Collections;
@@ -20,12 +26,16 @@ using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.Entity.Validation;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Xml;
+using static System.Data.Entity.Infrastructure.Design.Executor;
 
 namespace MSRecordsEngine.Controllers
 {
@@ -51,6 +61,33 @@ namespace MSRecordsEngine.Controllers
         }
 
         #region Attachments All methods are moved
+
+        [Route("LoadAttachmentParticalView")]
+        [HttpPost]
+        public async Task<List<vwGetOutputSetting>> LoadAttachmentParticalView(Passport passport) //completed testing 
+        {
+            var pFilterdVolums = new List<vwGetOutputSetting>();
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var pVolumeList = await context.vwGetOutputSettings.Where(x => x.Active == true).ToListAsync();
+                    foreach (var pvwGetOutputSetting in pVolumeList)
+                    {
+                        if (passport.CheckPermission(pvwGetOutputSetting.Name, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Volumes, Permissions.Permission.Access))
+                        {
+                            pFilterdVolums.Add(pvwGetOutputSetting);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return pFilterdVolums;
+        }
 
         [Route("GetOutputSettingList")]
         [HttpPost]
@@ -3114,7 +3151,7 @@ namespace MSRecordsEngine.Controllers
                                         if (!(await context.SecureObjectPermissions.AnyAsync(x => (x.GroupID == 0 && x.SecureObjectID == pSecurableID) & x.PermissionID == pPermissionId)))
                                         {
                                             // 'Assigned new permission
-                                            AddNewSecureObjectPermission(pSecurableID, pPermissionId, connectionString);
+                                            await AddNewSecureObjectPermission(pSecurableID, pPermissionId, connectionString);
                                         }
                                     }
                                 }
@@ -4904,7 +4941,7 @@ namespace MSRecordsEngine.Controllers
                     {
                         fields = SchemaInfoDetails.GetColumnsSchema(TableName, ConnectionString).ToList();
                     }
-                    
+
                     var keyfield = fields.Where(a => a.COLUMN_NAME.ToLower() == FieldName.Split(".")[1].ToLower()).FirstOrDefault();
                     lError = arglError;
                     if (fields.Count > 0)
@@ -6147,7 +6184,7 @@ namespace MSRecordsEngine.Controllers
                                     }
 
                                     var pviewcol = pViewColObj;
-                                    pviewcol =  AddUpdateViewColumn(pviewcol, tempViewCol);
+                                    pviewcol = AddUpdateViewColumn(pviewcol, tempViewCol);
                                     context.Entry(pviewcol).State = EntityState.Modified;
                                     lViewColumns.Remove(tempViewCol);
                                     await context.SaveChangesAsync();
@@ -6173,7 +6210,7 @@ namespace MSRecordsEngine.Controllers
                         }
                     }
 
-                    await _viewService.SQLViewDelete(viewIdVar, passport);
+                    await _viewService.SQLViewDelete(viewIdVar, passport.ConnectionString);
 
                     var vwFilterData = await context.ViewFilters.Where(m => m.ViewsId == viewIdVar).ToListAsync();
                     var Setting = new JsonSerializerSettings();
@@ -6398,11 +6435,4152 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
+
         #endregion
 
+        #region Directories Module All methods moved
+
+        #region Drive Details All Methods Moved
+
+        [Route("GetSystemAddressList")]
+        [HttpGet]
+        public string GetSystemAddressList(string sord, int page, int rows, string ConnectionString) //complete testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystemAddressEntities = from t in context.SystemAddresses
+                                                 select new { t.Id, t.DeviceName, t.PhysicalDriveLetter };
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSystemAddressEntities.GetJsonListForGrid(sord, page, rows, "DeviceName"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("SetSystemAddressDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetSystemAddressDetails(SetSystemAddressDetailsParam setSystemAddressDetailsParam) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pSystemAddress = setSystemAddressDetailsParam.SystemAddress;
+            try
+            {
+                using (var context = new TABFusionRMSContext(setSystemAddressDetailsParam.ConnectionString))
+                {
+                    if (pSystemAddress.Id > 0)
+                    {
+                        if (await context.SystemAddresses.AnyAsync(x => (x.DeviceName.Trim().ToLower()) == (pSystemAddress.DeviceName.Trim().ToLower()) && x.Id != pSystemAddress.Id) == false)
+                        {
+                            pSystemAddress.PhysicalDriveLetter = pSystemAddress.PhysicalDriveLetter.ToUpper();
+                            context.Entry(pSystemAddress).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The Device Name \"{0}\" is already in use. Please select a different Device Name", pSystemAddress.DeviceName);
+                        }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Directory/Drive updated successfully";
+                    }
+                    else
+                    {
+                        if (await context.SystemAddresses.AnyAsync(x => (x.DeviceName.Trim().ToLower()) == (pSystemAddress.DeviceName.Trim().ToLower())) == false)
+                        {
+                            pSystemAddress.PhysicalDriveLetter = pSystemAddress.PhysicalDriveLetter.ToUpper();
+                            context.SystemAddresses.Add(pSystemAddress);
+                            await context.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The Device Name \"{0}\" is already in use. Please select a different Device Name", pSystemAddress.DeviceName);
+                        }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Directory/Drive added successfully";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("EditSystemAddress")]
+        [HttpGet]
+        public async Task<string> EditSystemAddress(int SystemAddressId, string ConnectionString) //complete testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystemAddressEntity = await context.SystemAddresses.Where(x => x.Id == SystemAddressId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pSystemAddressEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("DeleteSystemAddress")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteSystemAddress(int SystemAddressId, string ConnectionString) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oSystemAddressEntity = await context.SystemAddresses.Where(x => x.Id == SystemAddressId).FirstOrDefaultAsync();
+                    if (oSystemAddressEntity != null)
+                    {
+                        var oVolumns = await context.Volumes.Where(x => x.SystemAddressesId == SystemAddressId).FirstOrDefaultAsync();
 
 
+                        if (oVolumns != null)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "Row Has Volumes Assigned. Deletion Is Not Allowed";
+                        }
+                        else
+                        {
+                            context.SystemAddresses.Remove(oSystemAddressEntity);
+                            await context.SaveChangesAsync();
 
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Directory/Drive deleted successfully";
+                        }
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "There is no record found for delete";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Volumes Details All Methods Moved
+
+        [Route("GetVolumesList")]
+        [HttpPost]
+        public string GetVolumesList(GetVolumesListParams getVolumesListParams) //complete testing 
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(getVolumesListParams.ConnectionString))
+                {
+                    var pVolumeEntities = from t in context.Volumes
+                                          select new { t.Id, t.Name, t.PathName, t.DirDiskMBLimitation, t.DirCountLimitation, t.Active, t.ImageTableName, t.SystemAddressesId };
+
+                    if (!string.IsNullOrEmpty(getVolumesListParams.pId))
+                    {
+                        int intpId = Convert.ToInt32(getVolumesListParams.pId);
+                        pVolumeEntities = pVolumeEntities.Where(p => p.SystemAddressesId == intpId);
+                    }
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pVolumeEntities.GetJsonListForGrid(getVolumesListParams.sord, getVolumesListParams.page, getVolumesListParams.rows, "Name"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("SetVolumeDetails")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetVolumeDetails(SetVolumeDetailsParam setVolumeDetailsParam) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var pVolume = setVolumeDetailsParam.Volume;
+            var pActive = setVolumeDetailsParam.Active;
+            var passport = setVolumeDetailsParam.Passport;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var oSecureObject = new Smead.Security.SecureObject(passport);
+                    pVolume.Active = pActive;
+                    pVolume.Active = pActive;
+
+
+                    if (pVolume.Id > 0)
+                    {
+                        var pVolumnEntity = await context.Volumes.Where(x => x.Id == pVolume.Id).FirstOrDefaultAsync();
+                        string oldVolumnName = pVolumnEntity.Name;
+
+                        if (await context.Volumes.AnyAsync(x => (x.Name.Trim().ToLower()) == (pVolume.Name.Trim().ToLower()) && x.Id != pVolume.Id) == false)
+                        {
+                            if (pVolume.PathName.Substring(0, 1) != @"\")
+                            {
+                                pVolume.PathName = @"\" + pVolume.PathName;
+                            }
+                            pVolumnEntity.Name = pVolume.Name;
+                            pVolumnEntity.PathName = pVolume.PathName;
+                            pVolumnEntity.DirDiskMBLimitation = pVolume.DirDiskMBLimitation;
+                            pVolumnEntity.DirCountLimitation = pVolume.DirCountLimitation;
+                            pVolumnEntity.Active = pVolume.Active;
+                            pVolumnEntity.ImageTableName = pVolume.ImageTableName;
+
+                            if (!string.Equals(oldVolumnName.Trim(), pVolume.Name.Trim(), StringComparison.OrdinalIgnoreCase))
+                            {
+                                var oSecureObjectOld = await context.SecureObjects
+                                    .Where(x => x.Name.Trim().ToLower() == oldVolumnName.Trim().ToLower())
+                                    .FirstOrDefaultAsync();
+
+                                if (oSecureObjectOld != null)
+                                {
+                                    oSecureObjectOld.Name = pVolume.Name;
+                                    context.Entry(oSecureObjectOld).State = EntityState.Modified;
+                                    await context.SaveChangesAsync();
+                                }
+                            }
+
+                            context.Entry(pVolumnEntity).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Selected Volume updated Successfully";
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The Volume Name \"{0}\" is already in use. Please select a different Volume Name", pVolume.Name);
+                            return model;
+                        }
+                    }
+                    else if (await context.Volumes.AnyAsync(x => (x.Name.Trim().ToLower()) == (pVolume.Name.Trim().ToLower())) == false)
+                    {
+                        if (pVolume.PathName.Substring(0, 1) != @"\")
+                        {
+                            pVolume.PathName = @"\" + pVolume.PathName;
+                        }
+
+                        int lCounter;
+                        lCounter = oSecureObject.GetSecureObjectID(pVolume.Name, Smead.Security.SecureObject.SecureObjectType.Volumes);
+                        if (lCounter == 0L)
+                            lCounter = oSecureObject.Register(pVolume.Name, Smead.Security.SecureObject.SecureObjectType.Volumes, (int)Enums.SecureObjects.Volumes);
+                        var oSecureObjectPermission = new SecureObjectPermission();
+                        oSecureObjectPermission.GroupID = -1;
+                        oSecureObjectPermission.SecureObjectID = Convert.ToInt32(lCounter.ToString());
+                        oSecureObjectPermission.PermissionID = 3;
+                        if (await context.SecureObjectPermissions.AnyAsync(x => x.GroupID == oSecureObjectPermission.GroupID & x.SecureObjectID == oSecureObjectPermission.SecureObjectID & x.PermissionID == oSecureObjectPermission.PermissionID) == false)
+                        {
+                            context.SecureObjectPermissions.Add(oSecureObjectPermission);
+                            await context.SaveChangesAsync();
+                        }
+                        context.Volumes.Add(pVolume);
+                        await context.SaveChangesAsync();
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Volume added Successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The Volume Name \"{0}\" is already in use. Please select a different Volume Name", pVolume.Name);
+                        return model;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("EditVolumeDetails")]
+        [HttpGet]
+        public async Task<string> EditVolumeDetails(string ConnectionString, int VolumeId) //complete testing 
+        {
+            var jsonObject = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pVolumeEntity = await context.Volumes.Where(x => x.Id == VolumeId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pVolumeEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+
+            return jsonObject;
+        }
+
+        [Route("DeleteVolumesEntity")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteVolumesEntity(string ConnectionString, int VolumeId) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    bool lOutputSettings = await context.OutputSettings.AnyAsync();
+                    if (await context.OutputSettings.AnyAsync(x => x.VolumesId == VolumeId) == true)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "Volume cannot be removed. Volume is in use by one of the Default settings";
+                        return model;
+                    }
+                    var oVolumeEntity = await context.Volumes.Where(x => x.Id == VolumeId).FirstOrDefaultAsync();
+                    if (oVolumeEntity != null)
+                    {
+                        var oDirectory = await context.Directories.Where(x => x.VolumesId == VolumeId).FirstOrDefaultAsync();
+
+                        object oImagePointers = null;
+                        object oPCFilesPointer = null;
+                        if (oDirectory != null)
+                        {
+                            oImagePointers = await context.ImagePointers.Where(x => x.ScanDirectoriesId == oDirectory.Id).FirstOrDefaultAsync();
+                            oPCFilesPointer = await context.PCFilesPointers.Where(x => x.ScanDirectoriesId == oDirectory.Id).FirstOrDefaultAsync();
+                        }
+
+                        if (oImagePointers != null || oPCFilesPointer != null)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "Row Has Attachments Assigned.  Deletion Is Not Allowed";
+                        }
+                        else
+                        {
+                            context.Volumes.Remove(oVolumeEntity);
+                            await context.SaveChangesAsync();
+
+                            var oSecureObjEntity = await context.SecureObjects.Where(m => (m.Name) == (oVolumeEntity.Name) & m.SecureObjectTypeID == (int)Enums.SecureObjectType.Volumes).FirstOrDefaultAsync();
+                            int SecureObjectId = oSecureObjEntity.SecureObjectID;
+                            context.SecureObjects.Remove(oSecureObjEntity);
+                            await context.SaveChangesAsync();
+
+                            var oSecureObjPermissions = await context.SecureObjectPermissions.Where(m => m.SecureObjectID == SecureObjectId).ToListAsync();
+
+                            context.SecureObjectPermissions.RemoveRange(oSecureObjPermissions);
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Selected Volume deleted Successfully";
+                        }
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "There is no record found for delete";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Table All methods Moved
+
+        [Route("LoadAccordianTable")]
+        [HttpPost]
+        public async Task<string> LoadAccordianTable(Passport passport) //completed testing 
+        {
+            var pTablesList = new List<Table>();
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var pTablesEntities = await context.Tables.Where(m => (m.TableName.Trim().ToLower()) != ("Operators".Trim().ToLower())).OrderBy(m => m.TableName).ToListAsync();
+                    var lAllTables = await context.vwTablesAlls.Select(x => x.TABLE_NAME).ToListAsync();
+
+                    foreach (var oTable in pTablesEntities)
+                    {
+                        if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Models.Enums.SecureObjects.Table, (Permissions.Permission)Models.Enums.PassportPermissions.Configure))
+                        {
+                            pTablesList.Add(oTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
+            }
+
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            string jsonObject = JsonConvert.SerializeObject(pTablesList.OrderBy(m => m.UserName), Newtonsoft.Json.Formatting.Indented, Setting);
+            return jsonObject;
+
+        }
+
+        #region General
+
+        [Route("GetGeneralDetails")]
+        [HttpPost]
+        public async Task<ReturnGetGeneralDetails> GetGeneralDetails(GetGeneralDetailsParam getGeneralDetailsParam) //completed testing 
+        {
+            var model = new ReturnGetGeneralDetails();
+            var tableName = getGeneralDetailsParam.TableName;
+            var ConnectionString = getGeneralDetailsParam.ConnectionString;
+            var ServerPath = getGeneralDetailsParam.ServerPath;
+            var AttachmentPermission = getGeneralDetailsParam.AttachmentPermission;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntity = await context.Tables.ToListAsync();
+                    var pSelectTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    object DBUserName;
+                    if (pSelectTable.DBName == null)
+                    {
+
+                        DBUserName = (await context.Systems.OrderBy(m => m.Id).FirstOrDefaultAsync()).UserName;
+                    }
+                    else
+                    {
+                        DBUserName = pSelectTable.DBName;
+                    }
+                    Databas dbObj = null;
+                    var auditFlag = default(bool);
+                    var cursorFlag = default(bool);
+                    var displayFieldList = new List<KeyValuePair<string, string>>();
+                    object DatabaseName = null;
+                    var loutput = new CoulmnSchemaInfo();
+                    var schemaColumnList = new List<SchemaColumns>();
+
+                    if (pSelectTable != null)
+                    {
+                        if (!string.IsNullOrEmpty(pSelectTable.DBName))
+                        {
+                            dbObj = await context.Databases.Where(m => m.DBName.Trim().ToLower().Equals(pSelectTable.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                            if (dbObj == null)
+                            {
+                                model.ErrorType = "e";
+                                model.ErrorMessage = "Something is wrong in your external database configuration.";
+                                return model;
+                            }
+                            //sAdoConn = DataServices.DBOpen(pSelectTable, _iDatabas.All());
+                        }
+                    }
+
+                    schemaColumnList = SchemaInfoDetails.GetSchemaInfo(pSelectTable.TableName, ConnectionString);
+                    if (schemaColumnList != null)
+                    {
+                        // Dim bAddColumn As Boolean = False
+                        foreach (SchemaColumns colObject in schemaColumnList)
+                        {
+                            bool bAddColumn = false;
+                            if (!SchemaInfoDetails.IsSystemField(colObject.ColumnName))
+                            {
+                                if (!string.IsNullOrWhiteSpace(pSelectTable.RetentionFieldName))
+                                {
+                                    if (Convert.ToBoolean(DatabaseMap.RemoveTableNameFromField(Convert.ToString(pSelectTable.RetentionFieldName.Trim().ToLower().Equals(colObject.ColumnName.Trim().ToLower())))))
+                                    {
+                                        bAddColumn = true;
+                                    }
+                                    else
+                                    {
+                                        bAddColumn = true;
+                                    }
+                                }
+                                else
+                                {
+                                    bAddColumn = true;
+                                }
+                                if (bAddColumn)
+                                {
+                                    bool bIsMemoCol = colObject.IsString & (colObject.CharacterMaxLength <= 0 | colObject.CharacterMaxLength > 8000);
+                                    if (!bIsMemoCol)
+                                    {
+                                        displayFieldList.Add(new KeyValuePair<string, string>(colObject.ColumnName, colObject.ColumnName));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    //// Get Current URI and icon name  take this value as a param form ui 
+                    //string ServerPath = Common.GetAbsoluteUri(httpContext).ToString();
+                    //ServerPath = this.Url.Content("~/Images/icons/");
+
+                    if (!string.IsNullOrWhiteSpace(pSelectTable.IdFieldName))
+                    {
+                        loutput = await GetInfoUsingDapper.GetCoulmnSchemaInfo(ConnectionString, pSelectTable.TableName, DatabaseMap.RemoveTableNameFromField(pSelectTable.IdFieldName.Trim().ToLower()));
+                    }
+                    if (loutput != null)
+                    {
+                        bool IdentityVal = loutput.IsAutoIncrement;
+                        if (IdentityVal)
+                        {
+                            cursorFlag = true;
+                        }
+                        else
+                        {
+                            cursorFlag = false;
+                        }
+                    }
+
+                    // Check whether selected table has any child table or not
+                    var relationObject = await context.RelationShips.Where(m => m.UpperTableName.Trim().ToLower().Equals(pSelectTable.TableName.Trim().ToLower())).ToListAsync();
+                    if (relationObject != null)
+                    {
+                        if (relationObject.Count() <= 0)
+                        {
+                            auditFlag = false;
+                        }
+                        else
+                        {
+                            auditFlag = true;
+                        }
+                    }
+
+                    //check for attachment license
+                    bool HasAttachmentLicense = true;
+                    if (!AttachmentPermission)
+                    {
+                        HasAttachmentLicense = false;
+                    }
+
+                    string UserTableIcon = Convert.ToString((await context.Systems.FirstOrDefaultAsync()).UseTableIcons);
+
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.CursorFlagJSON = JsonConvert.SerializeObject(cursorFlag, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.AuditflagJSON = JsonConvert.SerializeObject(auditFlag, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.SelectTableJSON = JsonConvert.SerializeObject(pSelectTable, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.DisplayFieldListJSON = JsonConvert.SerializeObject(displayFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ServerPathJSON = JsonConvert.SerializeObject(ServerPath, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.DBUserNameJSON = JsonConvert.SerializeObject(DBUserName, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.UserTableIconJSON = JsonConvert.SerializeObject(UserTableIcon.ToLower(), Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.AttachmentLicenseJSON = JsonConvert.SerializeObject(HasAttachmentLicense, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "All Data Get successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("SetGeneralDetails")]
+        [HttpPost]
+        public async Task<ReturnSetGeneralDetails> SetGeneralDetails(SetGeneralDetailsParam setGeneralDetailsParam) //completed testing 
+        {
+            var tableForm = setGeneralDetailsParam.Table;
+            var Attachments = setGeneralDetailsParam.Attachments;
+            var miOfficialRecord = setGeneralDetailsParam.OfficialRecord;
+            var passport = setGeneralDetailsParam.Passport;
+
+            var model = new ReturnSetGeneralDetails();
+
+            string warnMsgJSON = "'";
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var tableObj = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableForm.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    var tableEntity = await context.Tables.OrderBy(m => m.SearchOrder).ToListAsync();
+                    int LimitVar = (int)tableForm.SearchOrder;
+                    var SearchOrderList = new List<Table>();
+                    bool flagSecure = false;
+                    var SecureAnnotation = await context.SecureObjects.Where(m => m.Name.Trim().ToLower().Equals(tableForm.TableName.Trim().ToLower()) & m.SecureObjectTypeID.Equals((int)Enums.SecureObjects.Annotations)).FirstOrDefaultAsync();
+                    var SecureAttachment = await context.SecureObjects.Where(m => m.Name.Trim().ToLower().Equals(tableForm.TableName.Trim().ToLower()) & m.SecureObjectTypeID.Equals((int)Enums.SecureObjects.Attachments)).FirstOrDefaultAsync();
+                    if (passport.LicenseFeature.FAttachment)
+                    {
+                        if (tableForm.Attachments == true)
+                        {
+                            if (SecureAnnotation == null)
+                            {
+                                flagSecure = Convert.ToBoolean(await RegisterSecureObject(tableForm.TableName, Enums.SecureObjects.Annotations, passport.ConnectionString));
+                                await RegisterSecureObject(tableForm.TableName, Enums.SecureObjects.Attachments, passport.ConnectionString);
+                            }
+                        }
+                        else if (SecureAnnotation != null)
+                        {
+                            flagSecure = await UnRegisterSecureObject(SecureAnnotation, passport.ConnectionString);
+                            await UnRegisterSecureObject(SecureAttachment, passport.ConnectionString);
+                        }
+
+                    }
+
+                    await UpdateOfficialRecord(miOfficialRecord, tableObj.TableName, passport.ConnectionString);
+                    tableObj.BarCodePrefix = tableForm.BarCodePrefix;
+                    tableObj.IdStripChars = tableForm.IdStripChars;
+                    tableObj.IdMask = tableForm.IdMask;
+                    tableObj.DescFieldPrefixOne = tableForm.DescFieldPrefixOne;
+                    tableObj.DescFieldPrefixTwo = tableForm.DescFieldPrefixTwo;
+                    tableObj.DescFieldNameOne = tableForm.DescFieldNameOne;
+                    tableObj.DescFieldNameTwo = tableForm.DescFieldNameTwo;
+                    tableObj.Attachments = Attachments;
+                    tableObj.OfficialRecordHandling = tableForm.OfficialRecordHandling;
+                    tableObj.CanAttachToNewRow = tableForm.CanAttachToNewRow;
+                    tableObj.AuditAttachments = tableForm.AuditAttachments;
+                    tableObj.AuditConfidentialData = tableForm.AuditConfidentialData;
+                    tableObj.AuditUpdate = tableForm.AuditUpdate;
+                    if (tableForm.MaxRecsOnDropDown == null)
+                    {
+                        tableObj.MaxRecsOnDropDown = 0;
+                    }
+                    else
+                    {
+                        tableObj.MaxRecsOnDropDown = tableForm.MaxRecsOnDropDown;
+                    }
+                    if (tableForm.ADOQueryTimeout == null)
+                    {
+                        tableObj.ADOQueryTimeout = 0;
+                    }
+                    else
+                    {
+                        tableObj.ADOQueryTimeout = tableForm.ADOQueryTimeout;
+                    }
+                    if (tableForm.ADOCacheSize == null)
+                    {
+                        tableObj.ADOCacheSize = 0;
+                    }
+                    else
+                    {
+                        tableObj.ADOCacheSize = tableForm.ADOCacheSize;
+                    }
+                    tableObj.ADOServerCursor = tableForm.ADOServerCursor;
+
+                    if (LimitVar != 0 && tableObj.SearchOrder != tableForm.SearchOrder)
+                    {
+
+                        foreach (Table tb in tableEntity.Where(m => m.SearchOrder <= LimitVar))
+                        {
+                            if (tb.SearchOrder is not null)
+                            {
+                                if ((tb.SearchOrder <= LimitVar) && (!tableObj.TableName.Trim().ToLower().Equals(tb.TableName.Trim().ToLower())))
+                                {
+                                    SearchOrderList.Add(tb);
+                                }
+                            }
+                            else
+                            {
+                                SearchOrderList.Add(tb);
+                            }
+                        }
+
+                        if (tableObj.SearchOrder < LimitVar)
+                        {
+                            SearchOrderList.Add(tableObj);
+                        }
+                        else
+                        {
+                            var LastObject = SearchOrderList.Last();
+                            SearchOrderList.RemoveAt(SearchOrderList.Count - 1);
+                            SearchOrderList.Add(tableObj);
+                            SearchOrderList.Add(LastObject);
+                        }
+                        foreach (Table tb in tableEntity.Where(m => m.SearchOrder > LimitVar))
+                        {
+                            if (tb.SearchOrder is not null)
+                            {
+                                if ((tb.SearchOrder > LimitVar) && (!tableObj.TableName.Trim().ToLower().Equals(tb.TableName.Trim().ToLower())))
+                                {
+                                    SearchOrderList.Add(tb);
+                                }
+                            }
+                        }
+
+                        int iLevel = 1;
+
+                        foreach (Table tb in SearchOrderList)
+                        {
+                            tb.SearchOrder = iLevel;
+                            iLevel = iLevel + 1;
+                        }
+
+                        foreach (Table tb in SearchOrderList)
+                        {
+                            context.Entry(tb).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                        }
+                    }
+
+                    else
+                    {
+                        context.Entry(tableObj).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+                    }
+
+                    warnMsgJSON = await VerifyRetentionDispositionTypesForParentAndChildren(tableObj.TableId, passport.ConnectionString);
+                    var searchValue = (await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableForm.TableName.Trim().ToLower())).FirstOrDefaultAsync()).SearchOrder;
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.SearchValueJSON = JsonConvert.SerializeObject(searchValue, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.WarnMsgJSON = warnMsgJSON;
+
+                    passport.FillSecurePermissions();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Table Properties are applied Successfully";
+
+                    return model;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                return model;
+            }
+        }
+
+        [Route("LoadIconWindow")]
+        [HttpGet]
+        public async Task<string> LoadIconWindow(string ConnectionString, string tableName) //completed testing 
+        {
+            var PictureName = string.Empty;
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var oTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                PictureName = oTable.Picture;
+            }
+            return PictureName;
+        }
+
+        [Route("OfficialRecordWarning")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> OfficialRecordWarning(bool recordStatus, string tableName, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    string argsSql = "SELECT TOP 1 * FROM [UserLinks] WHERE [IndexTable] ='" + tableName + "'";
+                    int countRecord = 0;
+                    using (var conn = new SqlConnection(ConnectionString))
+                    {
+                        countRecord = (await conn.QueryAsync(argsSql)).Count();
+                    }
+                    if (recordStatus == true)
+                    {
+                        if (tableEntity.OfficialRecordHandling == false)
+                        {
+                            if (countRecord > 0)
+                            {
+                                model.ErrorType = "w";
+                                model.ErrorMessage = string.Format("The {0} table already contains records.{1}How would you like to set the \"Official Record\" for any attachments?{1} NOTE: If you are re-enabling the \"Official Record\" feature and retained the settings for existing records then choose \"Do not set\".", tableName, @"\n\n");
+                            }
+                        }
+                    }
+                    else if (tableEntity.OfficialRecordHandling == true)
+                    {
+                        if (countRecord > 0)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("The {0} table already contains records.{1} Would you like to remove the \"Official Record\" flag from any existing records in the table or retain them in case the \"Official Record\" feature is enabled at a later time?", tableName, @"\n\n");
+                        }
+                    }
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "You have No record";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("SetSearchOrder")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> SetSearchOrder(string ConnectionString) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new SqlConnection(ConnectionString))
+                {
+                    var searchOrderList = new List<KeyValuePair<int, string>>();
+                    string argsSql = "SELECT DISTINCT t.TableName, t.UserName, t.SearchOrder, s.IndexTableName FROM [Tables] t LEFT OUTER JOIN SLTextSearchItems s ON s.IndexTableName = t.TableName ORDER BY t.SearchOrder";
+                    string arglError = "";
+
+                    foreach (var field in (await context.QueryAsync(argsSql)).ToList())
+                    {
+                        string sSql = "[] ";
+
+                        if (field.IndexTableName == null || field.IndexTableName.ToString().Trim().Equals(""))
+                        {
+                            sSql = "[not part of Full Text Index]";
+                        }
+                        else
+                        {
+                            sSql = " ";
+                        }
+                        var tableStr = "(" + field.SearchOrder.ToString() + ")" + "    " + field.UserName.ToString() + "   " + sSql;
+                        if (field.SearchOrder is DBNull)
+                        {
+                            searchOrderList.Add(new KeyValuePair<int, string>(0, Convert.ToString(tableStr)));
+                        }
+                        else
+                        {
+                            searchOrderList.Add(new KeyValuePair<int, string>(Convert.ToInt32(field.SearchOrder), Convert.ToString(tableStr)));
+                        }
+                    }
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    string searchOrderListJSON = JsonConvert.SerializeObject(searchOrderList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "All Data Get successfully";
+                    model.stringValue1 = searchOrderListJSON;
+                    return model;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                return model;
+            }
+        }
+
+        private async Task<bool> UpdateOfficialRecord(int miOfficialRecord, string tableName, string connectionString) //completed testing 
+        {
+            try
+            {
+                var miOfficialRecordConversion = Enums.geOfficialRecordConversonType.orcNoConversion;
+                switch (miOfficialRecord)
+                {
+                    case 0:
+                        {
+                            miOfficialRecordConversion = Enums.geOfficialRecordConversonType.orcNoConversion;
+                            break;
+                        }
+                    case 1:
+                        {
+                            miOfficialRecordConversion = Enums.geOfficialRecordConversonType.orcFirstVersionConversion;
+                            break;
+                        }
+                    case 2:
+                        {
+                            miOfficialRecordConversion = Enums.geOfficialRecordConversonType.orcLastVersionConversion;
+                            break;
+                        }
+                    case 4:
+                        {
+                            miOfficialRecordConversion = Enums.geOfficialRecordConversonType.orcConversionToNothing;
+                            break;
+                        }
+
+                    default:
+                        {
+                            miOfficialRecordConversion = Enums.geOfficialRecordConversonType.orcNoConversion;
+                            break;
+                        }
+                }
+                if (miOfficialRecordConversion != Enums.geOfficialRecordConversonType.orcNoConversion)
+                {
+                    string sSQL = null;
+                    if (miOfficialRecordConversion == Enums.geOfficialRecordConversonType.orcFirstVersionConversion)
+                    {
+                        sSQL = "UPDATE [Trackables] SET [OfficialRecord] = 1 FROM [Trackables] INNER JOIN [UserLinks] ON ([UserLinks].[TrackablesId] = [Trackables].[Id]) WHERE [UserLinks].[IndexTable] ='" + tableName + "' AND [Trackables].[RecordVersion] = 1";
+                        await GetInfoUsingDapper.ProcessADOCommand(sSQL, connectionString, false);
+                    }
+                    else if (miOfficialRecordConversion == Enums.geOfficialRecordConversonType.orcLastVersionConversion)
+                    {
+                        sSQL = " UPDATE [Trackables] SET [OfficialRecord] = 1 FROM [Trackables] a INNER JOIN (SELECT [id], MAX([RecordVersion]) AS MaxVersion FROM [Trackables] GROUP BY [Id]) b ON (a.Id = b.Id AND a.RecordVersion = b.MaxVersion) INNER JOIN [Userlinks] ON ([Userlinks].[TrackablesId] = [a].[Id]) WHERE [Userlinks].[IndexTable] ='" + tableName + "'";
+                        await GetInfoUsingDapper.ProcessADOCommand(sSQL, connectionString, false);
+                    }
+                    else if (miOfficialRecordConversion == Enums.geOfficialRecordConversonType.orcConversionToNothing)
+                    {
+                        sSQL = " UPDATE [Trackables] SET [OfficialRecord] = 0 FROM [Trackables] a INNER JOIN (SELECT [id], MAX([RecordVersion]) AS MaxVersion FROM [Trackables] GROUP BY [Id]) b ON (a.Id = b.Id AND a.RecordVersion = b.MaxVersion) INNER JOIN [Userlinks] ON ([Userlinks].[TrackablesId] = [a].[Id]) WHERE [Userlinks].[IndexTable] ='" + tableName + "'";
+                        await GetInfoUsingDapper.ProcessADOCommand(sSQL, connectionString, false);
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<int> RegisterSecureObject(string tableName, Enums.SecureObjects secureObjTypeId, string ConnectionString) //completed testing 
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var secureObjEntity = new MSRecordsEngine.Entities.SecureObject();
+                    int returnSecureObjId = 0;
+                    if (tableName != null)
+                    {
+                        var baseId = await context.SecureObjects.Where(m => m.SecureObjectTypeID.Equals((int)Enums.SecureObjects.Table) & m.Name.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                        if (baseId != null)
+                        {
+                            secureObjEntity.Name = tableName;
+                            secureObjEntity.SecureObjectTypeID = (int)secureObjTypeId;
+                            secureObjEntity.BaseID = baseId.SecureObjectID;
+                            context.SecureObjects.Add(secureObjEntity);
+                            await context.SaveChangesAsync();
+
+                            returnSecureObjId = (await context.SecureObjects.Where(m => m.SecureObjectTypeID.Equals((int)secureObjTypeId) & m.Name.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync()).SecureObjectID;
+                            await AddSecureObjectPermissionsBySecureObjectType(returnSecureObjId, (int)secureObjTypeId, (int)secureObjTypeId, ConnectionString);
+                        }
+                    }
+                    return returnSecureObjId;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                return 0;
+            }
+        }
+
+        private async Task<bool> UnRegisterSecureObject(MSRecordsEngine.Entities.SecureObject secureObjId, string ConnectionString) //completed testing 
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    if (secureObjId != null)
+                    {
+                        context.SecureObjects.Remove(secureObjId);
+                        await context.SaveChangesAsync();
+                        var secureObjPermissions = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == secureObjId.SecureObjectID).ToListAsync();
+                        context.SecureObjectPermissions.RemoveRange(secureObjPermissions);
+                        await context.SaveChangesAsync();
+                    }
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Fields 
+
+        [Route("LoadFieldData")]
+        [HttpPost]
+        public async Task<string> LoadFieldData(LoadFieldDataParam loadFieldDataParam) //completed testing 
+        {
+            var jsonObject = string.Empty;
+
+            var pTableName = loadFieldDataParam.TableName;
+            var sidx = loadFieldDataParam.sidx;
+            var sord = loadFieldDataParam.sord;
+            var page = loadFieldDataParam.page;
+            var rows = loadFieldDataParam.rows;
+            var ConnectionString = loadFieldDataParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    bool bAddColumn;
+                    int lIndex;
+                    var fieldsDT = new DataTable();
+                    DataColumn column;
+                    DataRow row;
+                    Table pTableEntity;
+                    string sFieldSize = "";
+                    string sFieldType = "";
+                    var lDatabase = await context.Databases.ToListAsync();
+
+                    column = new DataColumn();
+                    column.DataType = Type.GetType("System.String");
+                    column.ColumnName = "Field_Name";
+                    fieldsDT.Columns.Add(column);
+
+                    column = new DataColumn();
+                    column.DataType = Type.GetType("System.String");
+                    column.ColumnName = "Field_Type";
+                    fieldsDT.Columns.Add(column);
+
+                    column = new DataColumn();
+                    column.DataType = Type.GetType("System.String");
+                    column.ColumnName = "Field_Size";
+                    fieldsDT.Columns.Add(column);
+
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (!string.IsNullOrEmpty(pTableName))
+                    {
+
+                        pTableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(pTableName)).FirstOrDefaultAsync();
+
+
+                        foreach (var col in SchemaInfoDetails.GetColumnsSchema(pTableName, ConnectionString))
+                        {
+
+                            bAddColumn = !SchemaInfoDetails.IsSystemField(col.COLUMN_NAME);
+
+                            if (bAddColumn)
+                            {
+                                if (col.DATA_TYPE == "datetime")
+                                {
+                                    sFieldType = Common.FT_DATE;
+                                    sFieldSize = Common.FT_DATE_SIZE;
+                                }
+                                else if (col.DATA_TYPE == "varchar" || col.DATA_TYPE == "nvarchar")
+                                {
+                                    var length = Convert.ToInt32(col.CHARACTER_MAXIMUM_LENGTH);
+                                    if (length <= 0 | length >= 2000000)
+                                    {
+                                        sFieldType = Common.FT_MEMO;
+                                        sFieldSize = Common.FT_MEMO_SIZE;
+                                    }
+                                    else if (!string.IsNullOrEmpty(pTableEntity.CounterFieldName) & Strings.StrComp(DatabaseMap.RemoveTableNameFromField(col.COLUMN_NAME), DatabaseMap.RemoveTableNameFromField(pTableEntity.IdFieldName), Constants.vbTextCompare) == 0)
+                                    {
+                                        sFieldType = Common.FT_SMEAD_COUNTER;
+
+                                        if (Convert.ToInt32(col.CHARACTER_MAXIMUM_LENGTH) < Convert.ToInt64(Common.FT_SMEAD_COUNTER_SIZE))
+                                        {
+                                            sFieldSize = Common.FT_SMEAD_COUNTER_SIZE;
+                                        }
+                                        else
+                                        {
+                                            sFieldSize = col.CHARACTER_MAXIMUM_LENGTH;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        sFieldType = Common.FT_TEXT;
+                                        sFieldSize = col.CHARACTER_MAXIMUM_LENGTH;
+                                    }
+                                }
+                                else
+                                {
+                                    switch (col.DATA_TYPE)
+                                    {
+                                        case "bit":
+                                        case "tinyint":
+                                            {
+                                                sFieldType = Common.FT_BOOLEAN;
+                                                sFieldSize = Common.FT_BOOLEAN_SIZE;
+                                                break;
+                                            }
+                                        case "float":
+                                        case "money":
+                                        case "decimal":
+                                        case "numeric":
+                                            {
+                                                sFieldType = Common.FT_DOUBLE;
+                                                sFieldSize = Common.FT_DOUBLE_SIZE;
+                                                break;
+                                            }
+                                        case "bigint":
+                                        case "int":
+                                            {
+                                                if (col.IsAutoIncrement == "yes")
+                                                {
+                                                    sFieldType = Common.FT_AUTO_INCREMENT;
+                                                    sFieldSize = Common.FT_AUTO_INCREMENT_SIZE;
+                                                }
+                                                else if (!string.IsNullOrEmpty(pTableEntity.CounterFieldName) & Strings.StrComp(DatabaseMap.RemoveTableNameFromField(col.COLUMN_NAME), DatabaseMap.RemoveTableNameFromField(pTableEntity.IdFieldName), Constants.vbTextCompare) == 0)
+                                                {
+                                                    sFieldType = Common.FT_SMEAD_COUNTER;
+                                                    sFieldSize = Common.FT_SMEAD_COUNTER_SIZE;
+                                                }
+                                                else
+                                                {
+                                                    sFieldType = Common.FT_LONG_INTEGER;
+                                                    sFieldSize = Common.FT_LONG_INTEGER_SIZE;
+                                                }
+
+                                                break;
+                                            }
+                                        case "binary":
+                                            {
+                                                sFieldType = Common.FT_BINARY;
+                                                sFieldSize = Common.FT_MEMO_SIZE;
+                                                break;
+                                            }
+                                        case "smallint":
+                                            {
+                                                sFieldType = Common.FT_SHORT_INTEGER;
+                                                sFieldSize = Common.FT_SHORT_INTEGER_SIZE;
+                                                break;
+                                            }
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(sFieldType) & !string.IsNullOrEmpty(sFieldSize))
+                                {
+                                    row = fieldsDT.NewRow();
+                                    row["Field_Name"] = col.COLUMN_NAME;
+                                    row["Field_Type"] = sFieldType;
+                                    row["Field_Size"] = sFieldSize;
+                                    fieldsDT.Rows.Add(row);
+                                }
+                            }
+                        }
+
+                        foreach (var i in await context.Views.Where(a => a.TableName == pTableName).ToListAsync())
+                        {
+                            using (var conn = new SqlConnection(ConnectionString))
+                            {
+                                var isExists = Convert.ToInt32(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME = 'view__{i.Id}'"));
+                                if (isExists > 0)
+                                {
+                                    await conn.ExecuteAsync($"sp_refreshview 'view__{i.Id}'", commandType: CommandType.StoredProcedure);
+                                }
+                            }
+                        }
+
+                    }
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(ConvertDataTableToJQGridResult(fieldsDT, sidx, sord, page, rows));
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("GetFieldTypeList")]
+        [HttpGet]
+        public async Task<ReturnGetFieldTypeList> GetFieldTypeList(string tableName, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnGetFieldTypeList();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lstFieldTypes = new List<KeyValuePair<string, string>>();
+                    bool bAutoCompensator;
+                    var bHasAutoIncrement = default(bool);
+                    Table pTableEntity;
+
+                    Databas pDatabaseEntity = null;
+                    pTableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName)).FirstOrDefaultAsync();
+                    if (pTableEntity != null)
+                    {
+                        if (pTableEntity.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTableEntity.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                            var conn = _commonService.GetConnectionString(pDatabaseEntity, false);
+                            var columnSchema = await GetInfoUsingDapper.GetCoulmnSchemaInfo(conn, tableName);
+                            foreach (var item in columnSchema)
+                            {
+                                if (item.IsAutoIncrement)
+                                {
+                                    bHasAutoIncrement = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        bAutoCompensator = true;
+
+                        if (!bHasAutoIncrement)
+                        {
+                            bAutoCompensator = false;
+                            lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftCounter).ToString(), Common.FT_AUTO_INCREMENT));
+                        }
+
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftLong).ToString(), Common.FT_LONG_INTEGER));
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftText).ToString(), Common.FT_TEXT));
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftInteger).ToString(), Common.FT_SHORT_INTEGER));
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftBoolean).ToString(), Common.FT_BOOLEAN));
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftDouble).ToString(), Common.FT_DOUBLE));
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftDate).ToString(), Common.FT_DATE));
+                        lstFieldTypes.Add(new KeyValuePair<string, string>(((int)Enums.meTableFieldTypes.ftMemo).ToString(), Common.FT_MEMO));
+
+                        var Setting = new JsonSerializerSettings();
+                        Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                        model.FieldTypesList = JsonConvert.SerializeObject(lstFieldTypes, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Retreived data";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return model;
+        }
+
+        [Route("CheckBeforeRemoveFieldFromTable")]
+        [HttpGet]
+        public async Task<ReturnCheckBeforeRemoveFieldFromTable> CheckBeforeRemoveFieldFromTable(string pTableName, string pFieldName, string ConnectionString) //completed testing 
+        {
+            var bDeleteIndexes = default(bool);
+            string sMessage = "";
+            Table pTableEntity;
+            List<SchemaIndex> oSchemaList;
+            string FieldName;
+
+            var model = new ReturnCheckBeforeRemoveFieldFromTable();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    FieldName = pFieldName.Trim();
+                    sMessage = await CheckIfInUse(pTableName, FieldName, ConnectionString);
+
+                    pTableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(pTableName)).FirstOrDefaultAsync();
+
+                    if (string.IsNullOrEmpty(sMessage))
+                    {
+                        sMessage = await CheckIfIndexesExist(pTableName, FieldName, true, ConnectionString);
+                    }
+
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    oSchemaList = SchemaIndex.GetTableIndexes(pTableName, ConnectionString);
+
+                    if (!string.IsNullOrEmpty(sMessage))
+                    {
+                        sMessage = string.Format("The \"{0}\" field is in use in the following places and cannot be removed from the \"{1}\" table:</br></br>{2}", FieldName, pTableEntity.UserName.Trim(), sMessage);
+                        bDeleteIndexes = true;
+                    }
+                    else
+                    {
+                        sMessage = string.Format("Are you sure you want to remove \"{0}\" from the \"{1}\" table?", pFieldName, pTableEntity.UserName.Trim());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            if (!string.IsNullOrEmpty(sMessage))
+            {
+                model.ErrorType = "e";
+                model.ErrorMessage = sMessage;
+            }
+            model.DeleteIndexes = bDeleteIndexes;
+
+            return model;
+        }
+
+        [Route("RemoveFieldFromTable")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveFieldFromTable(RemoveFieldFromTableParam removeFieldFromTableParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pTableName = removeFieldFromTableParam.TableName;
+            var pFieldName = removeFieldFromTableParam.FieldName;
+            var ConnectionString = removeFieldFromTableParam.ConnectionString;
+            var pDeleteIndexes = removeFieldFromTableParam.DeleteIndexes;
+
+            List<SchemaIndex> oSchemaList;
+            string sSQL;
+            bool bSuccess;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (pDeleteIndexes)
+                    {
+                        oSchemaList = SchemaIndex.GetTableIndexes(pTableName, ConnectionString);
+
+                        foreach (var oSchema in oSchemaList)
+                        {
+                            if (FieldsMatch(pTableName, pFieldName, oSchema.ColumnName))
+                            {
+                                sSQL = "DROP INDEX [" + pTableName + "].[" + Strings.Trim(Strings.UCase(oSchema.IndexName)) + "]";
+                                await GetInfoUsingDapper.ProcessADOCommand(sSQL, ConnectionString, false);
+                            }
+                        }
+                    }
+
+                    var fieldDataType = await GetInfoUsingDapper.GetCoulmnSchemaInfo(ConnectionString, pTableName, pFieldName);
+
+                    if (fieldDataType.DATA_TYPE == "bit")
+                    {
+                        var constraintName = $"DF_{pTableName}_{pFieldName}";
+
+                        using (var conn = new SqlConnection(ConnectionString))
+                        {
+                            conn.Open();
+                            var dropConstraint = new SqlCommand($"ALTER TABLE [{pTableName}] DROP CONSTRAINT IF EXISTS [{constraintName}]", conn);
+                            dropConstraint.ExecuteNonQuery();
+                            conn.Close();
+                        }
+                    }
+
+                    sSQL = "ALTER TABLE [" + pTableName + "] DROP COLUMN [" + pFieldName + "] ";
+                    bSuccess = await GetInfoUsingDapper.ProcessADOCommand(sSQL, ConnectionString, false);
+
+                    var pSLTableFileRoomOrderEntity = await context.SLTableFileRoomOrders.Where(x => (x.TableName) == (pTableName) & (x.FieldName) == (pFieldName)).ToListAsync();
+                    context.SLTableFileRoomOrders.RemoveRange(pSLTableFileRoomOrderEntity);
+                    await context.SaveChangesAsync();
+
+                    if (bSuccess == true)
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Field Removed successfully.";
+                        await DeleteSQLViewWithNoViewColumnExists(pTableName, ConnectionString);
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "Sorry cannot remove field.";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("CheckFieldBeforeEdit")]
+        [HttpGet]
+        public async Task<ReturnCheckFieldBeforeEdit> CheckFieldBeforeEdit(string tableName, string fieldName, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnCheckFieldBeforeEdit();
+            try
+            {
+                model.Message = await CheckIfInUse(tableName, fieldName, ConnectionString);
+                model.IndexMessage = await CheckIfIndexesExist(tableName, fieldName, false, ConnectionString);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return model;
+        }
+
+        [Route("CheckBeforeUpdate")]
+        [HttpPost]
+        public string CheckBeforeUpdate(CheckBeforeUpdatepParam checkBeforeUpdatepParam) //completed testing 
+        {
+            var pNewFieldSize = checkBeforeUpdatepParam.NewFieldSize;
+            var pNewFieldType = checkBeforeUpdatepParam.NewFieldType;
+            var pOrigFieldSize = checkBeforeUpdatepParam.OrigFieldSize;
+            var pFieldName = checkBeforeUpdatepParam.FieldName;
+            var pOrigFieldType = checkBeforeUpdatepParam.OrigFieldType;
+            var Message = string.Empty;
+
+            if (pNewFieldType != (int)Enums.meTableFieldTypes.ftMemo && (pOrigFieldSize > pNewFieldSize || pOrigFieldType != pNewFieldType))
+            {
+                Message = string.Format("You have chosen to either change the type or decrease the size of the \"{0}\" field. {1} It is possible that existing data could be truncated or lost. {1} {1} Do you wish to continue?", pFieldName, Environment.NewLine);
+            }
+            return Message;
+        }
+
+        [Route("AddEditField")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> AddEditField(AddEditFieldParam addEditFieldParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pOperationName = addEditFieldParam.OperationName ;
+            var pTableName = addEditFieldParam.TableName ;
+            var pNewInternalName = addEditFieldParam.NewInternalName ;
+            var pOriginalInternalName = addEditFieldParam.OriginalInternalName ;
+            var pFieldType = addEditFieldParam.FieldType ;
+            var pOriginalFieldType = addEditFieldParam.OriginalFieldType ;
+            var pFieldSize = addEditFieldParam.FieldSize ;
+            var pOriginalFieldSize = addEditFieldParam.OriginalFieldSize;
+            var ConnectionString = addEditFieldParam.ConnectionString;
+
+            try
+            {
+                string sSQLStr;
+                int iFieldMaxSize;
+                string ErrMsg = "";
+                bool isError = false;
+                bool bFieldCreated;
+                bool bFieldUpdate;
+                string FieldName;
+                int iFieldSize;
+
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    FieldName = pNewInternalName.Trim();
+
+                    if (string.Compare(pFieldSize, Common.FT_MEMO_SIZE, StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        iFieldSize = 0;
+                    }
+                    else
+                    {
+                        iFieldSize = Convert.ToInt32("0" + pFieldSize);
+                    }
+
+                    if (string.IsNullOrEmpty(FieldName))
+                    {
+                        ErrMsg = "Internal Name is Required";
+                        isError = true;
+                    }
+
+                    if ("_0123456789%".IndexOf(FieldName[0]) >= 0 && !isError)
+                    {
+                        ErrMsg = "Internal Name cannot begin with \"0123456789\" or \"_\"";
+                        isError = true;
+                    }
+
+                    if ((string.Compare(FieldName, "SLFileRoomOrder", StringComparison.OrdinalIgnoreCase) == 0 ||
+                         string.Compare(FieldName, "SLTrackedDestination", StringComparison.OrdinalIgnoreCase) == 0) && !isError)
+                    {
+                        ErrMsg = "Internal Name cannot be \"SLFileRoomOrder\" or \"SLTrackedDestination\"";
+                        isError = true;
+                    }
+
+                    if (Convert.ToDouble(pFieldType) == (double)Enums.meTableFieldTypes.ftText)
+                    {
+                        iFieldMaxSize = 8000;
+
+                        if ((iFieldSize < 0 || iFieldSize > iFieldMaxSize) && !isError)
+                        {
+                            ErrMsg = $"Field Size must be a value between 1 to {iFieldMaxSize}";
+                            isError = true;
+                        }
+                    }
+
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    var dbRecordSet = SchemaInfoDetails.GetTableSchemaInfo(pTableName, ConnectionString);
+
+                    if ((!string.IsNullOrEmpty(pNewInternalName) ? pNewInternalName.ToLower() : "") != (!string.IsNullOrEmpty(pOriginalInternalName) ? pOriginalInternalName.ToLower() : "") && string.IsNullOrEmpty(ErrMsg) && pOperationName == "EDIT")
+                    {
+                        if (dbRecordSet.Any(x => x.ColumnName.ToLower() == pNewInternalName.ToLower()))
+                        {
+                            ErrMsg = "Provided name of the field already exists in the Table";
+                            isError = true;
+                        }
+                    }
+
+                    if (dbRecordSet.Any(x => x.ColumnName.ToLower() == pNewInternalName.ToLower()) && string.IsNullOrEmpty(ErrMsg) && pOperationName == "ADD")
+                    {
+                        ErrMsg = "Provided name of the field already exists in the Table";
+                        isError = true;
+                    }
+
+                    if (isError == false & pOperationName == "ADD")
+                    {
+                        // create the new field
+                        sSQLStr = "ALTER TABLE [" + pTableName + "]";
+
+                        sSQLStr = sSQLStr + " ADD [" + pNewInternalName + "] ";
+
+                        switch (pFieldType)
+                        {
+                            case "0":
+                            case "8":
+                                {
+                                    sSQLStr = sSQLStr + "INT NULL";
+                                    break;
+                                }
+
+                            case "1":
+                                {
+                                    sSQLStr = sSQLStr + "INT IDENTITY(1,1) NOT NULL";
+                                    break;
+                                }
+
+                            case "2":
+                                {
+                                    sSQLStr = sSQLStr + "VARCHAR(" + iFieldSize + ") NULL";
+                                    break;
+                                }
+
+                            case "3":
+                                {
+                                    sSQLStr = sSQLStr + "SMALLINT NULL";
+                                    break;
+                                }
+
+                            case "4":
+                                {
+                                    sSQLStr = sSQLStr + "BIT NULL";
+                                    // If (Not bTemporary) Then sSQLStr = sSQLStr & " DEFAULT 0"
+                                    sSQLStr = sSQLStr + " CONSTRAINT DF_" + pTableName + "_" + pNewInternalName + " DEFAULT (0) WITH VALUES";
+                                    break;
+                                }
+
+                            case "5":
+                                {
+                                    sSQLStr = sSQLStr + "FLOAT NULL";
+                                    break;
+                                }
+
+                            case "6":
+                                {
+                                    sSQLStr = sSQLStr + "DATETIME NULL";
+                                    break;
+                                }
+
+                            case "7":
+                                {
+                                    sSQLStr = sSQLStr + "TEXT NULL";
+                                    break;
+                                }
+
+                            default:
+                                {
+                                    break;
+                                }
+                        }
+
+                        bFieldCreated = await GetInfoUsingDapper.ProcessADOCommand(sSQLStr, ConnectionString, false);
+
+                        if (bFieldCreated)
+                        {
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "New Field created successfully.";
+                            await DeleteSQLViewWithNoViewColumnExists(pTableName, ConnectionString);
+                        }
+                        else
+                        {
+                            model.ErrorType = "e";
+                            model.ErrorMessage = "Sorry Some Issues with creating new field.";
+                        }
+                    }
+                    else if (isError == false & pOperationName == "EDIT")
+                    {
+                        bFieldUpdate = await UpdateNewField(pNewInternalName, pOriginalInternalName, pTableName, (Enums.meTableFieldTypes)Convert.ToInt32(pOriginalFieldType), iFieldSize, Convert.ToInt32(pFieldType), ConnectionString);
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Field updated successfully";
+                    }
+                    else
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = ErrMsg;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        private bool FieldsMatch(string sFileName, string sFieldName, string sCompareName, string sCompareTable = "")
+        {
+            bool fieldsMatchRet = default;
+
+            fieldsMatchRet = false;
+
+            sFileName = sFileName?.Trim() ?? "";
+            sFieldName = sFieldName?.Trim() ?? "";
+            sCompareName = sCompareName?.Trim() ?? "";
+
+            if (sCompareName.Contains("."))
+            {
+                if (string.Compare(sCompareName, sFileName + "." + sFieldName, StringComparison.OrdinalIgnoreCase) == 0)
+                    fieldsMatchRet = true;
+            }
+            else if (string.IsNullOrEmpty(sCompareTable) || string.Compare(sCompareTable, sFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                if (string.Compare(sCompareName, sFieldName, StringComparison.OrdinalIgnoreCase) == 0)
+                    fieldsMatchRet = true;
+            }
+
+            return fieldsMatchRet;
+        }
+
+        private async Task<string> CheckIfInUse(string pTableName, string sFieldName, string ConnectionString)
+        {
+            string sMessage = "";
+            List<ImportLoad> oImportLoads;
+            List<ImportField> oImportFields;
+            List<OneStripJob> oOneStripJobs;
+            List<OneStripJobField> oOneStripJobFields;
+            List<SLTextSearchItem> oSLTextSearchItem;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var moTable = await context.Tables.Where(x => x.TableName.Equals(pTableName)).FirstOrDefaultAsync();
+                oOneStripJobs = await context.OneStripJobs.Where(x => x.TableName.Equals(pTableName)).ToListAsync();
+                oOneStripJobFields = await context.OneStripJobFields.ToListAsync();
+                oImportFields = await context.ImportFields.ToListAsync();
+                oImportLoads = await context.ImportLoads.Where(x => x.FileName.Equals(pTableName)).ToListAsync();
+                oSLTextSearchItem = await context.SLTextSearchItems.Where(x => x.IndexTableName.Equals(pTableName)).ToListAsync();
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.CounterFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"CounterFieldName\"</br>", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.DefaultDescriptionField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"DefaultDescriptionField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.DescFieldNameOne))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"DescFieldNameOne\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.DescFieldNameTwo))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"DescFieldNameTwo\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.IdFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"IdFieldName\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.IdFieldName2))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"IdFieldName2\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.RuleDateField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"RuleDateField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.TrackingACTIVEFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"TrackingActiveFieldName\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.TrackingOUTFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"TrackingOutFieldName\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.InactiveLocationField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"InactiveLocationField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.RetentionFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"RetentionFieldName\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.RetentionDateOpenedField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"RetentionOpenDateField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.RetentionDateCreateField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"RetentionCreateDateField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.RetentionDateClosedField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"RetentionDateClosedField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.RetentionDateOtherField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"RetentionOtherDateField\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.TrackingPhoneFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"TrackingPhoneFieldName\"", moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.TrackingMailStopFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"TrackingMailStopFieldName\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.TrackingRequestableFieldName))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"TrackingRequestableFieldName\"", sMessage, moTable.UserName);
+                }
+
+                if (FieldsMatch(pTableName, sFieldName, moTable.OperatorsIdField))
+                {
+                    sMessage = string.Format("{0} Used in the \"{1}\" record of the \"Tables\" Table, Field \"OperatorsIdField\"", sMessage, moTable.UserName);
+                }
+
+                if (!string.IsNullOrEmpty(sMessage))
+                    sMessage = sMessage + "</br>";
+
+                var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (moTable.TableName)).ToListAsync();
+                var lstRelatedChildTable = await context.RelationShips.Where(x => (x.UpperTableName) == (moTable.TableName)).ToListAsync();
+
+                foreach (var oParentRelationships in lstRelatedTables)
+                {
+                    if (FieldsMatch(pTableName, sFieldName, oParentRelationships.UpperTableFieldName, oParentRelationships.UpperTableName))
+                    {
+                        sMessage = string.Format("{0} Down to Table\t{1} \"{2}\", Field \"{3}\"<br/>", sMessage, "\t", oParentRelationships.LowerTableName, Strings.StrConv(DatabaseMap.RemoveTableNameFromField(oParentRelationships.LowerTableFieldName), VbStrConv.ProperCase));
+                    }
+
+                    if (FieldsMatch(pTableName, sFieldName, oParentRelationships.LowerTableFieldName, oParentRelationships.LowerTableName))
+                    {
+                        sMessage = string.Format("{0} Up to Table\t{1} \"{2}\", Field \"{3}\" {4}", sMessage, "\t", oParentRelationships.UpperTableName, Strings.StrConv(DatabaseMap.RemoveTableNameFromField(oParentRelationships.UpperTableFieldName), VbStrConv.ProperCase), Environment.NewLine);
+                    }
+                }
+
+                foreach (var oParentRelationships in lstRelatedChildTable)
+                {
+                    if (FieldsMatch(pTableName, sFieldName, oParentRelationships.LowerTableFieldName, oParentRelationships.LowerTableName))
+                    {
+                        sMessage = string.Format("{0} Down to Table\t{1} \"{2}\", Field \"{3}\"<br/>", sMessage, "\t", oParentRelationships.UpperTableName, Strings.StrConv(DatabaseMap.RemoveTableNameFromField(oParentRelationships.UpperTableFieldName), VbStrConv.ProperCase));
+                    }
+                }
+
+                foreach (var oOneStripJob in oOneStripJobs)
+                {
+                    if (string.Compare(pTableName, oOneStripJob.TableName, StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        foreach (var oOneStripJobField in oOneStripJobFields)
+                        {
+                            if (FieldsMatch(pTableName, sFieldName, oOneStripJobField.FieldName, oOneStripJob.TableName))
+                            {
+                                sMessage = string.Format("{0} Used in \"OneStripJobFields\" (label printing table)</br>", sMessage);
+                                //oOneStripJobField = null; // This line is commented out as per your request
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                foreach (var oImportLoad in oImportLoads)
+                {
+                    if (string.Compare(pTableName, oImportLoad.FileName, StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        foreach (var oImportField in oImportFields)
+                        {
+                            if (FieldsMatch(pTableName, sFieldName, oImportField.FieldName, oImportLoad.FileName))
+                            {
+                                sMessage = string.Format("{0} Used in \"ImportFields\" (import table)</br>", sMessage);
+                                //oImportField = null; // This line is commented out as per your request
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                var lViewEntities = await context.Views.ToListAsync();
+                var lViewColumnEntities = await context.ViewColumns.ToListAsync();
+
+                var lLoopViewEntities = lViewEntities.Where(x => (x.TableName.Trim().ToLower()) == (moTable.TableName.Trim().ToLower()));
+
+                foreach (var oViews in lLoopViewEntities)
+                {
+                    var lInViewColumnEntities = lViewColumnEntities.Where(x => x.ViewsId == oViews.Id);
+                    foreach (var oViewColumns in lInViewColumnEntities)
+                    {
+                        if (this.FieldsMatch(pTableName, sFieldName, oViewColumns.FieldName, moTable.TableName))
+                        {
+                            if (oViewColumns.Id != 0)
+                            {
+                                sMessage = string.Format("{0} Used in View\t{1} \"{2}\" </br>", sMessage, "\t", oViews.ViewName);
+                            }
+                            else
+                            {
+                                sMessage = string.Format("{0} Used in View\t{1} \"{2}\" </br>", sMessage, "\t", oViews.ViewName);
+                            }
+                        }
+                    }
+                }
+            }
+            return sMessage;
+        }
+
+        private async Task<string> CheckIfIndexesExist(string sTableName, string sFieldName, bool bAsk, string ConnectionString)
+        {
+            string sMessage = "";
+            List<SchemaIndex> oSchemaList;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(sTableName.Trim().ToLower())).FirstOrDefaultAsync();
+                oSchemaList = SchemaIndex.GetTableIndexes(sTableName, ConnectionString);
+
+                foreach (var oSchema in oSchemaList)
+                {
+                    if (FieldsMatch(sTableName, sFieldName, oSchema.ColumnName))
+                    {
+                        if (bAsk)
+                        {
+                            sMessage = string.Format("{0}. {1} Removing the field will remove all Indexes containing it. {2} {2} Do you wish to continue?", sMessage, Environment.NewLine, Environment.NewLine);
+                        }
+                        else
+                        {
+                            sMessage = string.Format("{0} and cannot be modified", sMessage);
+                        }
+                    }
+                }
+            }
+            return sMessage;
+        }
+
+        private async Task DeleteSQLViewWithNoViewColumnExists(string tableName, string ConnectionString)
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        var tableViews = await context.Views.Where(x => (x.TableName) == (tableName)).ToListAsync();
+                        foreach (var vView in tableViews)
+                        {
+                            var viewColumns = await context.ViewColumns.Where(x => x.ViewsId == vView.Id).ToListAsync();
+                            if (!(viewColumns == null))
+                            {
+                                if (viewColumns.Count() == 0)
+                                {
+                                    await _viewService.SQLViewDelete(vView.Id, ConnectionString);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+        }
+
+        private async Task<bool> UpdateNewField(string sNewFieldName, string sOldFieldName, string sTableName, Enums.meTableFieldTypes eFieldType, int iFieldSize, int iNewFieldType, string ConnectionString)
+        {
+            string sSQLStr;
+            string sFieldType = "";
+            int lError = 0;
+            string sErrorMsg = "";
+            bool bFieldUpdate = false;
+            string eStrFieldType = "";
+            string FieldType = "";
+            string sSQLAddToTEMP = "";
+            string sSQLCopyToTEMP = "";
+            string sSQLDropOriginal = "";
+            string sSQLCreateNew = "";
+            string sSQLAddToNew = "";
+            string sSQLDropTEMP = "";
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                switch (iNewFieldType)
+                {
+                    case (int)Enums.meTableFieldTypes.ftLong:
+                    case (int)Enums.meTableFieldTypes.ftSmeadCounter:
+                        {
+                            sFieldType = "INT";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftCounter:
+                        {
+                            sFieldType = "INT";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftText:
+                        {
+                            sFieldType = "VARCHAR(" + iFieldSize + ")";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftInteger:
+                        {
+                            sFieldType = "SMALLINT";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftBoolean:
+                        {
+                            sFieldType = "BIT";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftDouble:
+                        {
+                            sFieldType = "FLOAT";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftDate:
+                        {
+                            sFieldType = "DATETIME";
+                            break;
+                        }
+                    case (int)Enums.meTableFieldTypes.ftMemo:
+                        {
+                            sFieldType = "TEXT";
+                            break;
+                        }
+
+                    default:
+                        {
+                            break;
+                        }
+                }
+
+                if ((sOldFieldName) != (sNewFieldName))
+                {
+                    sSQLStr = "EXEC SP_RENAME '" + sTableName + "." + sOldFieldName + "','" + sNewFieldName + "'," + "'COLUMN'";
+                    bFieldUpdate = await GetInfoUsingDapper.ProcessADOCommand(sSQLStr, ConnectionString, false);
+
+                    if (bFieldUpdate)
+                    {
+                        sOldFieldName = sNewFieldName;
+                    }
+                }
+
+                sSQLAddToTEMP = "ALTER TABLE [" + sTableName + "] " + "ADD TEMP___ ";
+
+                switch (eFieldType)
+                {
+                    case Enums.meTableFieldTypes.ftLong:
+                    case Enums.meTableFieldTypes.ftSmeadCounter:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "INT NULL";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftCounter:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "INT IDENTITY(1,1) NOT NULL";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftText:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "VARCHAR(" + iFieldSize + ") NULL";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftInteger:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "SMALLINT NULL";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftBoolean:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "BIT NULL";
+                            //sSQLAddToTEMP = sSQLAddToTEMP + " CONSTRAINT DF_" + sTableName + "_" + sNewFieldName + " DEFAULT (0) WITH VALUES";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftDouble:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "FLOAT NULL";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftDate:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "DATETIME NULL";
+                            break;
+                        }
+                    case Enums.meTableFieldTypes.ftMemo:
+                        {
+                            sSQLAddToTEMP = sSQLAddToTEMP + "TEXT NULL";
+                            break;
+                        }
+
+                    default:
+                        {
+                            break;
+                        }
+                }
+
+                var fieldDataType = await GetInfoUsingDapper.GetCoulmnSchemaInfo(ConnectionString, sTableName, sOldFieldName);
+
+                if (fieldDataType.DATA_TYPE == "bit")
+                {
+                    var constraintName = $"DF_{sTableName}_{sOldFieldName}";
+
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var cmd = $"ALTER TABLE [{sTableName}] DROP CONSTRAINT IF EXISTS [{constraintName}]";
+                        await conn.ExecuteAsync(cmd, commandType: CommandType.Text);
+                    }
+                }
+
+                await GetInfoUsingDapper.ProcessADOCommand(sSQLAddToTEMP, ConnectionString, true);
+
+                sSQLCopyToTEMP = "UPDATE [" + sTableName + "] " + "SET TEMP___ = [" + sOldFieldName + "]";
+                await GetInfoUsingDapper.ProcessADOCommand(sSQLCopyToTEMP, ConnectionString, true);
+
+                sSQLDropOriginal = "ALTER TABLE [" + sTableName + "] " + "DROP COLUMN [" + sOldFieldName + "] ";
+                await GetInfoUsingDapper.ProcessADOCommand(sSQLDropOriginal, ConnectionString, true);
+
+                if (sFieldType.ToLower() == "bit")
+                {
+                    sSQLCreateNew = "ALTER TABLE [" + sTableName + "] " + "ADD [" + sOldFieldName + "] " + sFieldType + " CONSTRAINT [DF_" + sTableName + "_" + sOldFieldName + "] DEFAULT 0";
+                }
+                else
+                {
+                    sSQLCreateNew = "ALTER TABLE [" + sTableName + "] " + "ADD [" + sOldFieldName + "] " + sFieldType;
+                }
+                
+                await GetInfoUsingDapper.ProcessADOCommand(sSQLCreateNew, ConnectionString, true);
+
+                sSQLAddToNew = "UPDATE [" + sTableName + "] " + "SET [" + sOldFieldName + "] =" + "[TEMP___]";
+                var bUpdate = await GetInfoUsingDapper.ProcessADOCommand(sSQLAddToNew, ConnectionString, true);
+
+                sSQLDropTEMP = "ALTER TABLE [" + sTableName + "] " + "DROP COLUMN [TEMP___]";
+                await GetInfoUsingDapper.ProcessADOCommand(sSQLDropTEMP, ConnectionString, true);
+
+                return Convert.ToBoolean(bUpdate);
+            }
+
+        }
+
+
+        #endregion
+
+        #region Tracking
+
+        [Route("GetTableTrackingProperties")]
+        [HttpGet]
+        public async Task<ReturnGetTableTrackingProperties> GetTableTrackingProperties(string tableName, string ConnectionString) //completed testing  
+        {
+            var model = new ReturnGetTableTrackingProperties();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntity = await context.Tables.ToListAsync();
+                    var pContainerTables = pTableEntity.Where(m => m.TrackingTable > 0).OrderBy(m => m.TrackingTable);
+                    var pSystemEntities = await context.Systems.OrderBy(m => m.Id).FirstOrDefaultAsync();
+                    var pRelationShipEntity = await context.RelationShips.OrderBy(m => m.Id).ToListAsync();
+                    var pSelectTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    var Container1Table = await context.Tables.Where(m => m.TrackingTable == 1).FirstOrDefaultAsync();
+                    string DBConName = pSelectTable.DBName;
+                    //var sADOConn = DataServices.DBOpen();
+                    var schemaColumnList = SchemaInfoDetails.GetSchemaInfo(tableName, ConnectionString);
+                    var containerList = new List<KeyValuePair<int, string>>();
+                    var OutFieldList = new List<KeyValuePair<string, string>>();
+                    var DueBackFieldList = new List<KeyValuePair<string, string>>();
+                    var ActiveFieldList = new List<KeyValuePair<string, string>>();
+                    var EmailAddressList = new List<KeyValuePair<string, string>>();
+                    var RequesFieldList = new List<KeyValuePair<string, string>>();
+                    var InactiveFieldList = new List<KeyValuePair<string, string>>();
+                    var ArchiveFieldList = new List<KeyValuePair<string, string>>();
+                    var UserIdFieldList = new List<KeyValuePair<string, string>>();
+                    var PhoneFieldList = new List<KeyValuePair<string, string>>();
+                    var MailSTopFieldList = new List<KeyValuePair<string, string>>();
+                    var SignatureFieldList = new List<KeyValuePair<string, string>>();
+                    var defaultTracking = new List<KeyValuePair<string, string>>();
+                    string lblDestination = null;
+
+
+                    containerList.Add(new KeyValuePair<int, string>(0, "{ Not a container }"));
+                    OutFieldList.Add(new KeyValuePair<string, string>("0", "{No Out Field}"));
+                    DueBackFieldList.Add(new KeyValuePair<string, string>("0", "{No Due Back Days Field}"));
+                    ActiveFieldList.Add(new KeyValuePair<string, string>("0", "{No Active Field}"));
+                    EmailAddressList.Add(new KeyValuePair<string, string>("0", "{No Email Address Field}"));
+                    RequesFieldList.Add(new KeyValuePair<string, string>("0", "{No Requestable Field}"));
+                    InactiveFieldList.Add(new KeyValuePair<string, string>("0", "{No Inactive Storage Field}"));
+                    ArchiveFieldList.Add(new KeyValuePair<string, string>("0", "{No Archive Storage Field}"));
+                    UserIdFieldList.Add(new KeyValuePair<string, string>("0", "{No User Id Field}"));
+                    PhoneFieldList.Add(new KeyValuePair<string, string>("0", "{No Phone Field}"));
+                    MailSTopFieldList.Add(new KeyValuePair<string, string>("0", "{No MailStop Field}"));
+                    SignatureFieldList.Add(new KeyValuePair<string, string>("0", "{No Signature Required Field}"));
+                    defaultTracking.Add(new KeyValuePair<string, string>("0", ""));
+
+                    if (!(pContainerTables.Count() == 0))
+                    {
+                        foreach (Table tableObj in pContainerTables.ToList())
+                        {
+                            string containerVal = Convert.ToString(tableObj.TrackingTable) + " (" + tableObj.UserName + ")";
+                            containerList.Add(new KeyValuePair<int, string>((int)tableObj.TrackingTable, containerVal));
+                        }
+                    }
+
+                    int countValue = pContainerTables.Count() + 1;
+                    containerList.Add(new KeyValuePair<int, string>(countValue, Convert.ToString(countValue) + " { Unused }"));
+
+                    if (schemaColumnList != null)
+                    {
+                        // Out Field DropDown List
+                        OutFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainField(ConnectionString, tableName, schemaColumnList, "Out", OutFieldList);
+
+                        // Due Back Days Field
+                        var bHasAField = default(bool);
+                        bool bIsSystemAdmin;
+                        foreach (SchemaColumns schemaColumnObj in schemaColumnList)
+                        {
+                            if (schemaColumnObj.ColumnName.Trim().ToLower().Equals("DueBackDays".Trim().ToLower()))
+                            {
+                                bHasAField = true;
+                                break;
+                            }
+                        }
+                        bIsSystemAdmin = CommonFunctions.IsSysAdmin(tableName, ConnectionString);
+                        if (!bHasAField & bIsSystemAdmin)
+                        {
+                            DueBackFieldList.Add(new KeyValuePair<string, string>("DueBackDays", "DueBackDays"));
+                            bHasAField = false;
+                        }
+                        foreach (SchemaColumns oSchemaColumnObj in schemaColumnList)
+                        {
+                            switch (oSchemaColumnObj.DataType)
+                            {
+                                case Enums.DataTypeEnum.rmInteger:
+                                case Enums.DataTypeEnum.rmUnsignedInt:
+                                case Enums.DataTypeEnum.rmBigInt:
+                                case Enums.DataTypeEnum.rmUnsignedBigInt:
+                                case Enums.DataTypeEnum.rmSingle:
+                                case Enums.DataTypeEnum.rmDouble:
+                                    {
+                                        bHasAField = oSchemaColumnObj.ColumnName.Trim().ToLower().Equals(DatabaseMap.RemoveTableNameFromField(pSelectTable.IdFieldName.Trim().ToLower()));
+                                        if (!bHasAField)
+                                        {
+                                            foreach (RelationShip oRelationshipObj in pRelationShipEntity)
+                                            {
+                                                if (oSchemaColumnObj.ColumnName.Trim().ToLower().Equals(DatabaseMap.RemoveTableNameFromField(oRelationshipObj.UpperTableFieldName.Trim().ToLower())))
+                                                {
+                                                    bHasAField = true;
+                                                    break;
+                                                }
+                                            }
+
+                                            if (!bHasAField)
+                                            {
+                                                foreach (RelationShip oRelationshipObj in pRelationShipEntity)
+                                                {
+                                                    if (oSchemaColumnObj.ColumnName.Trim().ToLower().Equals(DatabaseMap.RemoveTableNameFromField(oRelationshipObj.LowerTableFieldName.Trim().ToLower())))
+                                                    {
+                                                        bHasAField = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (!bHasAField)
+                                        {
+                                            DueBackFieldList.Add(new KeyValuePair<string, string>(oSchemaColumnObj.ColumnName, oSchemaColumnObj.ColumnName));
+                                        }
+
+                                        break;
+                                    }
+
+                                default:
+                                    {
+                                        break;
+                                    }
+                            }
+                        }
+
+
+                        // Active Field List
+                        ActiveFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainField(ConnectionString, tableName, schemaColumnList, "Active", ActiveFieldList);
+
+                        // Email Address List
+                        EmailAddressList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainStringField(ConnectionString, tableName, schemaColumnList, "EmailAddress", EmailAddressList);
+
+                        // Requestable Field List
+                        RequesFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainField(ConnectionString, tableName, schemaColumnList, "Requestable", RequesFieldList);
+
+                        // Inactive Storage Field List
+                        InactiveFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainField(ConnectionString, tableName, schemaColumnList, "InactiveStorage", InactiveFieldList);
+
+                        // Archive Storage Field List
+                        ArchiveFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainField(ConnectionString, tableName, schemaColumnList, "ArchiveStorage", ArchiveFieldList);
+
+                        // User Id Field List
+                        var bHasAUserField = default(bool);
+                        bool userIdIsSysAdmin;
+                        foreach (SchemaColumns oSchemaColumnObj in schemaColumnList)
+                        {
+                            if (oSchemaColumnObj.ColumnName.Trim().ToLower().Equals("OperatorsId".Trim().ToLower()))
+                            {
+                                bHasAUserField = true;
+                            }
+                            else if (oSchemaColumnObj.ColumnName.Trim().ToLower().Equals("UserId".Trim().ToLower()))
+                            {
+                                bHasAUserField = true;
+                            }
+
+                            if (bHasAUserField)
+                            {
+                                break;
+                            }
+                        }
+
+                        userIdIsSysAdmin = CommonFunctions.IsSysAdmin(tableName, ConnectionString);
+                        if (!bHasAUserField & userIdIsSysAdmin)
+                        {
+                            UserIdFieldList.Add(new KeyValuePair<string, string>("UserId", "UserId"));
+                        }
+
+                        foreach (SchemaColumns oSchemaColumnObj in schemaColumnList)
+                        {
+                            if (!SchemaInfoDetails.IsSystemField(oSchemaColumnObj.ColumnName) & oSchemaColumnObj.IsString & oSchemaColumnObj.CharacterMaxLength == 30)
+                            {
+                                UserIdFieldList.Add(new KeyValuePair<string, string>(oSchemaColumnObj.ColumnName, oSchemaColumnObj.ColumnName));
+                            }
+                        }
+
+                        // Phone Field List
+                        PhoneFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainStringField(ConnectionString, tableName, schemaColumnList, "Phone", PhoneFieldList);
+
+                        // Mail Stop Field List
+                        MailSTopFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainStringField(ConnectionString, tableName, schemaColumnList, "MailStop", MailSTopFieldList);
+
+                        // Signature Required Field LIst
+                        SignatureFieldList = (List<KeyValuePair<string, string>>)CommonFunctions.IsContainField(ConnectionString, tableName, schemaColumnList, "SignatureRequired", SignatureFieldList);
+
+                    }
+
+                    if (Container1Table != null)
+                    {
+                        lblDestination = Container1Table.UserName;
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.ContainerList = JsonConvert.SerializeObject(containerList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.SystemEntities = JsonConvert.SerializeObject(pSystemEntities, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.SelectTable = JsonConvert.SerializeObject(pSelectTable, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.OutFieldList = JsonConvert.SerializeObject(OutFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.DueBackFieldList = JsonConvert.SerializeObject(DueBackFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ActiveFieldList = JsonConvert.SerializeObject(ActiveFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.EmailAddressList = JsonConvert.SerializeObject(EmailAddressList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.RequesFieldList = JsonConvert.SerializeObject(RequesFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.InactiveFieldList = JsonConvert.SerializeObject(InactiveFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ArchiveFieldList = JsonConvert.SerializeObject(ArchiveFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.UserIdFieldList = JsonConvert.SerializeObject(UserIdFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.PhoneFieldList = JsonConvert.SerializeObject(PhoneFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.MailSTopFieldList = JsonConvert.SerializeObject(MailSTopFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.SignatureFieldList = JsonConvert.SerializeObject(SignatureFieldList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.LabelDestination = JsonConvert.SerializeObject(lblDestination, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "All Data Get successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("SetTableTrackingDetails")]
+        [HttpPost]
+        public async Task<ReturnSetTableTrackingDetails> SetTableTrackingDetails(SetTableTrackingDetailsParams setTableTrackingDetailsParams) //completed testing 
+        {
+            var model = new ReturnSetTableTrackingDetails();
+
+            var ConnectionString = setTableTrackingDetailsParams.Passport.ConnectionString;
+            var trackingForm = setTableTrackingDetailsParams.TrackingForm;
+            var FieldFlag = setTableTrackingDetailsParams.FieldFlag;
+            var pAutoAddNotification = setTableTrackingDetailsParams.AutoAddNotification;
+            var pAllowBatchRequesting = setTableTrackingDetailsParams.AllowBatchRequesting;
+            var pTrackable = setTableTrackingDetailsParams.Trackable;
+            string warnMsgJSON = "";
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var ptableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(trackingForm.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    var ptableByLevel = await context.Tables.Where(m => m.TrackingTable > 0).OrderBy(m => m.TrackingTable).ToListAsync();
+
+                    if (!string.IsNullOrEmpty(trackingForm.DefaultTrackingId))
+                    {
+                        var location = await context.Locations.Where(loc => loc.Id.ToString() == trackingForm.DefaultTrackingId).FirstOrDefaultAsync();
+                        if (Convert.ToBoolean(location.ArchiveStorage) && ptableEntity.RetentionFinalDisposition == 1)
+                        {
+                            model.ErrorMessage = "The location selected is already assigned for Retention Disposition";
+                            throw new Exception(model.ErrorMessage);
+                        }
+                    }
+
+                    var modifyTable = new List<Table>();
+                    //var sADOConnDefault = DataServices.DBOpen();
+                    short newLevel;
+                    int UserLinkIndexIdSize = 30;
+                    var oTrackingTable = await context.Tables.Where(m => m.TrackingTable == 1).FirstOrDefaultAsync();
+                    //var mbADOCon = DataServices.DBOpen(ptableEntity, _iDatabas.All());
+                    trackingForm.AutoAddNotification = pAutoAddNotification;
+                    trackingForm.AllowBatchRequesting = pAllowBatchRequesting;
+                    trackingForm.Trackable = pTrackable;
+
+                    if (trackingForm.TrackingTable > 0)
+                    {
+                        newLevel = (short)trackingForm.TrackingTable;
+                    }
+                    else
+                    {
+                        newLevel = 0;
+                    }
+
+                    if (ptableEntity.TrackingTable != trackingForm.TrackingTable)
+                    {
+                        ptableEntity.TrackingTable = default;
+                        foreach (Table tbObject in ptableByLevel)
+                        {
+                            if (tbObject.TrackingTable <= (short)newLevel && tbObject.TableName != trackingForm.TableName)
+                            {
+                                modifyTable.Add(tbObject);
+                            }
+                        }
+                        if (!Equals(newLevel, 0))
+                        {
+                            modifyTable.Add(ptableEntity);
+                        }
+                        else
+                        {
+                            ptableEntity.TrackingTable = (short?)0;
+                        }
+                        foreach (Table tbObject in ptableByLevel)
+                        {
+                            if (tbObject.TrackingTable > newLevel && tbObject.TrackingTable != trackingForm.TrackingTable)
+                            {
+                                modifyTable.Add(tbObject);
+                            }
+                        }
+                        int iLevel = 1;
+                        foreach (Table tbObject in modifyTable)
+                        {
+                            tbObject.TrackingTable = (short?)iLevel;
+                            iLevel = iLevel + 1;
+                        }
+                        foreach (Table tbObject in modifyTable)
+                        {
+                            if (!tbObject.TableName.Trim().ToLower().Equals(trackingForm.TableName.Trim().ToLower()))
+                            {
+                                //_iTable.Update(tbObject);
+                                context.Entry(tbObject).State = EntityState.Modified;
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                    }
+
+                    bool mbIsSysAdmin = CommonFunctions.IsSysAdmin(ptableEntity.TableName, ConnectionString);
+
+                    if (mbIsSysAdmin)
+                    {
+                        if (trackingForm.TrackingOUTFieldName is not null & trackingForm.TrackingOUTFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingOUTFieldName, ptableEntity, "BIT", ConnectionString);
+                        }
+                        if (trackingForm.TrackingDueBackDaysFieldName is not null & trackingForm.TrackingDueBackDaysFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingDueBackDaysFieldName, ptableEntity, "INT", ConnectionString);
+                        }
+                        if (trackingForm.TrackingACTIVEFieldName is not null & trackingForm.TrackingACTIVEFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingACTIVEFieldName, ptableEntity, "BIT", ConnectionString);
+                        }
+                        if (trackingForm.TrackingRequestableFieldName is not null & trackingForm.TrackingRequestableFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingRequestableFieldName, ptableEntity, "BIT", ConnectionString);
+                        }
+                        if (trackingForm.InactiveLocationField is not null & trackingForm.InactiveLocationField != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.InactiveLocationField, ptableEntity, "BIT", ConnectionString);
+                        }
+                        if (trackingForm.ArchiveLocationField is not null & trackingForm.ArchiveLocationField != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.ArchiveLocationField, ptableEntity, "BIT", ConnectionString);
+                        }
+                        if (trackingForm.OperatorsIdField is not null & trackingForm.OperatorsIdField != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.OperatorsIdField, ptableEntity, "VARCHAR(30)", ConnectionString);
+                        }
+                        if (trackingForm.TrackingPhoneFieldName is not null & trackingForm.TrackingPhoneFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingPhoneFieldName, ptableEntity, "VARCHAR(30)", ConnectionString);
+                        }
+                        if (trackingForm.TrackingMailStopFieldName is not null & trackingForm.TrackingMailStopFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingMailStopFieldName, ptableEntity, "VARCHAR(30)", ConnectionString);
+                        }
+                        if (trackingForm.TrackingEmailFieldName is not null & trackingForm.TrackingEmailFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.TrackingEmailFieldName, ptableEntity, "VARCHAR(320)", ConnectionString);
+                        }
+                        if (trackingForm.SignatureRequiredFieldName is not null & trackingForm.SignatureRequiredFieldName != "0")
+                        {
+                            await AddFieldIfNeeded(trackingForm.SignatureRequiredFieldName, ptableEntity, "VARCHAR(320)", ConnectionString);
+                        }
+
+                    }
+
+                    bool IsSysAdminTracking = CommonFunctions.IsSysAdmin("TrackingStatus", ConnectionString);
+                    IsSysAdminTracking = IsSysAdminTracking & CommonFunctions.IsSysAdmin("AssetStatus", ConnectionString);
+                    IsSysAdminTracking = IsSysAdminTracking & CommonFunctions.IsSysAdmin("TrackingHistory", ConnectionString);
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingStatusFieldName))
+                    {
+                        if (!string.IsNullOrEmpty(ptableEntity.TrackingStatusFieldName))
+                        {
+                            if (IsSysAdminTracking & !trackingForm.TrackingStatusFieldName.Trim().ToLower().Equals(ptableEntity.TrackingStatusFieldName.Trim().ToLower()))
+                            {
+                                bool boolSQLVal;
+                                string indexStatusSQL = "EXEC sp_rename N'TrackingStatus." + ptableEntity.TrackingStatusFieldName + "',N'" + trackingForm.TrackingStatusFieldName + "',N'INDEX'";
+                                boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(indexStatusSQL, ConnectionString, false);
+                                if (Convert.ToBoolean(boolSQLVal))
+                                {
+                                    string indexHistorySQL = "EXEC sp_rename N'TrackingHistory." + ptableEntity.TrackingStatusFieldName + "',N'" + trackingForm.TrackingStatusFieldName + "',N'INDEX'";
+                                    boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(indexHistorySQL, ConnectionString, false);
+                                }
+                                if (Convert.ToBoolean(boolSQLVal))
+                                {
+                                    string indexAssetSQL = "EXEC sp_rename N'AssetStatus." + ptableEntity.TrackingStatusFieldName + "',N'" + trackingForm.TrackingStatusFieldName + "',N'INDEX'";
+                                    boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(indexAssetSQL, ConnectionString, false);
+                                }
+                                if (Convert.ToBoolean(boolSQLVal))
+                                {
+                                    string updateStatusSQL = "EXEC sp_rename N'TrackingStatus." + ptableEntity.TrackingStatusFieldName + "',N'" + trackingForm.TrackingStatusFieldName + "',N'COLUMN'";
+                                    boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(updateStatusSQL, ConnectionString, false);
+                                }
+                                if (Convert.ToBoolean(boolSQLVal))
+                                {
+                                    string updateHistorySQL = "EXEC sp_rename N'TrackingHistory." + ptableEntity.TrackingStatusFieldName + "',N'" + trackingForm.TrackingStatusFieldName + "',N'COLUMN'";
+                                    boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(updateHistorySQL, ConnectionString, false);
+                                }
+                                if (Convert.ToBoolean(boolSQLVal))
+                                {
+                                    string updateAssetSQL = "EXEC sp_rename N'AssetStatus." + ptableEntity.TrackingStatusFieldName + "',N'" + trackingForm.TrackingStatusFieldName + "',N'COLUMN'";
+                                    boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(updateAssetSQL, ConnectionString, false);
+                                }
+                                if (Convert.ToBoolean(!boolSQLVal))
+                                {
+                                    model.ErrorType = "e";
+                                    model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                                }
+
+                            }
+                        }
+                        else if (IsSysAdminTracking)
+                        {
+                            object boolProcessSQL;
+                            string trackingStatusSQL = "ALTER TABLE [TrackingStatus] ADD [" + trackingForm.TrackingStatusFieldName + "] VARCHAR(30) NULL";
+                            boolProcessSQL = await GetInfoUsingDapper.ProcessADOCommand(trackingStatusSQL, ConnectionString, false);
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                string trackingHistorySQL = "ALTER TABLE [TrackingHistory] ADD [" + trackingForm.TrackingStatusFieldName + "] VARCHAR(30) NULL";
+                                boolProcessSQL = await GetInfoUsingDapper.ProcessADOCommand(trackingHistorySQL, ConnectionString, false);
+                            }
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                string assetStatusSQL = "ALTER TABLE [AssetStatus] ADD [" + trackingForm.TrackingStatusFieldName + "] VARCHAR(30) NULL";
+                                boolProcessSQL = await GetInfoUsingDapper.ProcessADOCommand(assetStatusSQL, ConnectionString, false);
+                            }
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                string iStatusSQL = "CREATE UNIQUE INDEX " + trackingForm.TrackingStatusFieldName + " ON [TrackingStatus] ([" + trackingForm.TrackingStatusFieldName + "], [Id])";
+                                boolProcessSQL = await GetInfoUsingDapper.ProcessADOCommand(iStatusSQL, ConnectionString, false);
+                            }
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                string iHistorySQL = "CREATE UNIQUE INDEX " + trackingForm.TrackingStatusFieldName + " ON [TrackingHistory] ([" + trackingForm.TrackingStatusFieldName + "], [Id])";
+                                boolProcessSQL = await GetInfoUsingDapper.ProcessADOCommand(iHistorySQL, ConnectionString, false);
+                            }
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                string iAssetSQL = "CREATE UNIQUE INDEX " + trackingForm.TrackingStatusFieldName + " ON [AssetStatus] ([" + trackingForm.TrackingStatusFieldName + "], [Id])";
+                                boolProcessSQL = await GetInfoUsingDapper.ProcessADOCommand(iAssetSQL, ConnectionString, false);
+                            }
+                            if (!Convert.ToBoolean(boolProcessSQL))
+                            {
+                                model.ErrorType = "e";
+                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                            }
+
+                        }
+                    }
+
+                    else if (FieldFlag)
+                    {
+                        if (IsSysAdminTracking & ptableEntity.TrackingStatusFieldName is not null)
+                        {
+                            object boolProcessSQL;
+                            boolProcessSQL = CommonFunctions.RemoveTrackingStatusField(ConnectionString, "TrackingStatus", ptableEntity.TrackingStatusFieldName);
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                boolProcessSQL = CommonFunctions.RemoveTrackingStatusField(ConnectionString, "TrackingHistory", ptableEntity.TrackingStatusFieldName);
+                            }
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                boolProcessSQL = CommonFunctions.RemoveTrackingStatusField(ConnectionString, "AssetStatus", ptableEntity.TrackingStatusFieldName);
+                            }
+                            if (Convert.ToBoolean(boolProcessSQL))
+                            {
+                                model.ErrorType = "e";
+                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                            }
+                        }
+
+                    }
+                    if (trackingForm.TrackingTable == 0)
+                    {
+                        ptableEntity.TrackingTable = 0;
+                    }
+                    ptableEntity.TrackingStatusFieldName = trackingForm.TrackingStatusFieldName;
+                    if (trackingForm.OutTable is null)
+                    {
+                        ptableEntity.OutTable = 0; // Set Default Use out Field
+                    }
+                    else
+                    {
+                        ptableEntity.OutTable = (short)trackingForm.OutTable;
+                    }
+                    // ' Condition changed by hasmukh for fix [FUS-1914]
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingDueBackDaysFieldName) & trackingForm.TrackingDueBackDaysFieldName != "0")
+                    {
+                        ptableEntity.TrackingDueBackDaysFieldName = trackingForm.TrackingDueBackDaysFieldName;
+                    }
+                    else if (trackingForm.TrackingDueBackDaysFieldName == "0")
+                    {
+                        ptableEntity.TrackingDueBackDaysFieldName = null;
+                    }
+
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingOUTFieldName) & trackingForm.TrackingOUTFieldName != "0")
+                    {
+                        ptableEntity.TrackingOUTFieldName = trackingForm.TrackingOUTFieldName;
+                    }
+                    else if (trackingForm.TrackingOUTFieldName == "0")
+                    {
+                        ptableEntity.TrackingOUTFieldName = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingACTIVEFieldName) & trackingForm.TrackingACTIVEFieldName != "0")
+                    {
+                        ptableEntity.TrackingACTIVEFieldName = trackingForm.TrackingACTIVEFieldName;
+                    }
+                    else if (trackingForm.TrackingACTIVEFieldName == "0")
+                    {
+                        ptableEntity.TrackingACTIVEFieldName = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingEmailFieldName) & trackingForm.TrackingEmailFieldName != "0")
+                    {
+                        ptableEntity.TrackingEmailFieldName = trackingForm.TrackingEmailFieldName;
+                    }
+                    else if (trackingForm.TrackingEmailFieldName == "0")
+                    {
+                        ptableEntity.TrackingEmailFieldName = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingRequestableFieldName) & trackingForm.TrackingRequestableFieldName != "0")
+                    {
+                        ptableEntity.TrackingRequestableFieldName = trackingForm.TrackingRequestableFieldName;
+                    }
+                    else if (trackingForm.TrackingRequestableFieldName == "0")
+                    {
+                        ptableEntity.TrackingRequestableFieldName = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingPhoneFieldName) & trackingForm.TrackingPhoneFieldName != "0")
+                    {
+                        ptableEntity.TrackingPhoneFieldName = trackingForm.TrackingPhoneFieldName;
+                    }
+                    else if (trackingForm.TrackingPhoneFieldName == "0")
+                    {
+                        ptableEntity.TrackingPhoneFieldName = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.InactiveLocationField) & trackingForm.InactiveLocationField != "0")
+                    {
+                        ptableEntity.InactiveLocationField = trackingForm.InactiveLocationField;
+                    }
+                    else if (trackingForm.InactiveLocationField == "0")
+                    {
+                        ptableEntity.InactiveLocationField = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.TrackingMailStopFieldName) & trackingForm.TrackingMailStopFieldName != "0")
+                    {
+                        ptableEntity.TrackingMailStopFieldName = trackingForm.TrackingMailStopFieldName;
+                    }
+                    else if (trackingForm.TrackingMailStopFieldName == "0")
+                    {
+                        ptableEntity.TrackingMailStopFieldName = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.ArchiveLocationField) & trackingForm.ArchiveLocationField != "0")
+                    {
+                        ptableEntity.ArchiveLocationField = trackingForm.ArchiveLocationField;
+                    }
+                    else if (trackingForm.ArchiveLocationField == "0")
+                    {
+                        ptableEntity.ArchiveLocationField = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.OperatorsIdField) & trackingForm.OperatorsIdField != "0")
+                    {
+                        ptableEntity.OperatorsIdField = trackingForm.OperatorsIdField;
+                    }
+                    else if (trackingForm.OperatorsIdField == "0")
+                    {
+                        ptableEntity.OperatorsIdField = null;
+                    }
+
+                    if (!string.IsNullOrEmpty(trackingForm.SignatureRequiredFieldName) & trackingForm.SignatureRequiredFieldName != "0")
+                    {
+                        ptableEntity.SignatureRequiredFieldName = trackingForm.SignatureRequiredFieldName;
+                    }
+                    else if (trackingForm.SignatureRequiredFieldName == "0")
+                    {
+                        ptableEntity.SignatureRequiredFieldName = null;
+                    }
+
+                    if (trackingForm.DefaultTrackingId is not null)
+                    {
+                        ptableEntity.DefaultTrackingId = trackingForm.DefaultTrackingId;
+                        if (oTrackingTable is not null)
+                        {
+                            ptableEntity.DefaultTrackingTable = oTrackingTable.TableName.Trim();
+                        }
+                    }
+                    else
+                    {
+                        ptableEntity.DefaultTrackingTable = null;
+                        ptableEntity.DefaultTrackingId = null;
+                    }
+
+                    var bRequestObj = await context.SecureObjects.Where(m => m.Name.Trim().ToLower().Equals(trackingForm.TableName.Trim().ToLower()) & m.SecureObjectTypeID == (int)Enums.SecureObjects.Table).FirstOrDefaultAsync();
+                    var bTransferObj = await context.SecureObjects.Where(m => m.Name.Trim().ToLower().Equals(trackingForm.TableName.Trim().ToLower()) & m.SecureObjectTypeID == (int)Enums.SecureObjects.Table).FirstOrDefaultAsync();
+                    if ((bool)trackingForm.Trackable)
+                    {
+                        await AddSecureObjectPermission(bTransferObj.SecureObjectID, Enums.PassportPermissions.Transfer, ConnectionString);
+                    }
+                    else
+                    {
+                        var bTransferPermissionId = await GetSecureObjPermissionId(bTransferObj.SecureObjectID, Enums.PassportPermissions.Transfer, ConnectionString);
+                        await RemoveSecureObjectPermission(bTransferPermissionId, ConnectionString);
+                    }
+                    ptableEntity.Trackable = trackingForm.Trackable;
+                    ptableEntity.AllowBatchRequesting = trackingForm.AllowBatchRequesting;
+                    if ((bool)trackingForm.AllowBatchRequesting)
+                    {
+                        await AddSecureObjectPermission(bRequestObj.SecureObjectID, Enums.PassportPermissions.Request, ConnectionString);
+                    }
+                    else
+                    {
+                        var bRequestPermissionId = await GetSecureObjPermissionId(bRequestObj.SecureObjectID, Enums.PassportPermissions.Request, ConnectionString);
+                        await RemoveSecureObjectPermission(bRequestPermissionId, ConnectionString);
+                    }
+
+                    setTableTrackingDetailsParams.Passport.FillSecurePermissions();
+                    ptableEntity.AutoAddNotification = trackingForm.AutoAddNotification;
+
+                    context.Entry(ptableEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+
+                    await AddTrackableInScanList(ptableEntity, ConnectionString);
+                    warnMsgJSON = await VerifyRetentionDispositionTypesForParentAndChildren(ConnectionString, ptableEntity.TableId);
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Table Properties are applied Successfully";
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+
+            }
+            model.WarningMessage = warnMsgJSON;
+            return model;
+        }
+
+        [Route("GetTableEntity")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> GetTableEntity(GetTableEntityParam getTableEntityParam) //completed testing 
+        {
+
+            var tableName = getTableEntityParam.TableName;
+            var statusFieldText = getTableEntityParam.StatusFieldText;
+            var containerInfo = getTableEntityParam.ContainerInfo;
+            var ConnectionString = getTableEntityParam.ConnectionString;
+
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tableEntity = await context.Tables.OrderBy(m => m.TableId).ToListAsync();
+                    var schemaColumnList = new List<SchemaColumns>();
+                    var oTable = tableEntity.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefault();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "";
+
+                    if (containerInfo.Equals(0))
+                    {
+                        if (oTable.TrackingStatusFieldName != null)
+                        {
+                            model.ErrorType = "r";
+                            model.ErrorMessage = string.Format("Remove '{0}'?", oTable.TrackingStatusFieldName);
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(statusFieldText))
+                    {
+                        switch (statusFieldText.Trim().ToUpper())
+                        {
+                            case "USERNAME":
+                            case "DATEDUE":
+                            case "ID":
+                            case "TRACKEDTABLEID":
+                            case "TRACKEDTABLE":
+                            case "TRANSACTIONDATETIME":
+                            case "PROCESSEDDATETIME":
+                            case "OUT":
+                            case "TRACKINGADDITIONALFIELD1":
+                            case "TRACKINGADDITIONALFIELD2":
+                            case "ISACTUALSCAN":
+                            case "BATCHID":
+                                model.ErrorMessage = $"\"{statusFieldText}\" is a system-defined field name and cannot be used.";
+                                model.ErrorType = "w";
+                                break;
+
+                            default:
+                                var tsTable = await context.Tables.Where(m => m.TrackingStatusFieldName.Trim().ToLower().Equals(statusFieldText.Trim().ToLower())).FirstOrDefaultAsync();
+                                if (tsTable != null && !tsTable.TableName.Trim().Equals(tableName.Trim(), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    model.ErrorMessage = $"\"{statusFieldText}\" is already used as a Tracking Status Field in the \"{tsTable.TableName}\" table";
+                                    model.ErrorType = "w";
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("GetTrackingDestination")]
+        [HttpPost]
+        public async Task<ReturnGetTrackingDestination> GetTrackingDestination(GetTrackingDestinationParam getTrackingDestinationParam) //completed testing 
+        {
+            var model = new ReturnGetTrackingDestination();
+
+            var tableName = getTrackingDestinationParam.TableName;
+            var passport = getTrackingDestinationParam.Passport;
+            var ConfigureTransfer = getTrackingDestinationParam.ConfigureTransfer;
+            var TransferValue = getTrackingDestinationParam.TransferValue;
+            var RequestVal = getTrackingDestinationParam.RequestVal;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+
+                    var tableTracking = new Table();
+                    var tableEntity = new Table();
+                    var bRequestPermission = default(bool);
+                    var bTransferPermission = default(bool);
+                    bool bOrderByField;
+                    string sSQL;
+                    string sNoRecordMsg;
+                    string sOrderByFieldName = string.Empty;
+
+                    tableTracking = await context.Tables.Where(m => m.TrackingTable == 1).FirstOrDefaultAsync();
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    }
+                    if (ConfigureTransfer)
+                    {
+                        bRequestPermission = RequestVal;
+                        bTransferPermission = TransferValue;
+                    }
+                    else if (passport is not null)
+                    {
+                        bRequestPermission = passport.CheckSetting(tableName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Request);
+                        bTransferPermission = passport.CheckSetting(tableName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    string bRequestPermissionJSON = JsonConvert.SerializeObject(bRequestPermission, Newtonsoft.Json.Formatting.Indented, Setting);
+                    string bTransferPermissionJSON = JsonConvert.SerializeObject(bTransferPermission, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    var conn = passport.Connection();
+
+                    if (tableEntity != null)
+                    {
+                        if (tableEntity.TrackingTable != 1)
+                        {
+                            if (bTransferPermission)
+                            {
+                                if (tableTracking != null)
+                                {
+
+                                    if (string.IsNullOrEmpty(tableTracking.DescFieldNameOne) & string.IsNullOrEmpty(tableTracking.DescFieldNameTwo))
+                                    {
+                                        bOrderByField = true;
+                                    }
+                                    else
+                                    {
+                                        bOrderByField = false;
+                                    }
+                                    sSQL = "Select * from [" + tableTracking.TableName + "]";
+                                    string arglError = "";
+
+                                    var records = conn.Query<dynamic>(sSQL).ToList();
+
+                                    if (records.Count != 0)
+                                    {
+                                        if (!string.IsNullOrEmpty(tableTracking.TrackingACTIVEFieldName))
+                                        {
+                                            sSQL = "Select * From [" + tableTracking.TableName + "] Where [" + DatabaseMap.RemoveTableNameFromField(tableTracking.TrackingACTIVEFieldName) + "] <> 0";
+                                        }
+                                        else
+                                        {
+                                            sSQL = "Select * from [" + tableTracking.TableName + "]";
+                                        }
+                                        if (bOrderByField)
+                                        {
+                                            sOrderByFieldName = DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName);
+                                        }
+                                        else if (!string.IsNullOrEmpty(tableTracking.DescFieldNameOne))
+                                        {
+                                            sOrderByFieldName = DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameOne);
+                                        }
+                                        else if (!string.IsNullOrEmpty(tableTracking.DescFieldNameTwo))
+                                        {
+                                            sOrderByFieldName = DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameTwo);
+                                        }
+                                        sSQL = sSQL + " Order By [" + sOrderByFieldName + "]";
+                                        string arglError1 = "";
+                                        records = conn.Query<dynamic>(sSQL).ToList();
+                                    }
+
+                                    if (records.Count != 0)
+                                    {
+                                        bool colVisible = false;
+                                        bool col1Visible = false;
+                                        bool col2Visible = false;
+                                        string col1DataField = "";
+                                        string col2DataField = "";
+                                        var table = new DataTable();
+                                        string colDataField = DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName);
+                                        string colDataFieldJSON = "";
+                                        string col1DataFieldJSON = "";
+                                        string col2DataFieldJSON = "";
+                                        colVisible = string.IsNullOrEmpty(col1DataField);
+                                        var record = records[0] as IDictionary<string, object>;
+                                        var field = DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName);
+
+                                        if (tableTracking.IdFieldName is not null & !string.IsNullOrEmpty(tableTracking.IdFieldName))
+                                        {
+                                            if (!string.IsNullOrEmpty(tableTracking.DescFieldNameOne))
+                                            {
+                                                col1Visible = !(Strings.StrComp(DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName), DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameOne)) == 0);
+                                                if (col1Visible)
+                                                {
+                                                    col1DataField = ((object[])record.Keys)[1].ToString();
+                                                    if (!string.IsNullOrEmpty(tableTracking.DescFieldNameTwo))
+                                                    {
+                                                        col2Visible = !(Strings.StrComp(DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameTwo), DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameOne)) == 0);
+                                                        if (col2Visible)
+                                                        {
+                                                            col2Visible = !(Strings.StrComp(DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameTwo), DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName)) == 0);
+                                                            if (col2Visible)
+                                                            {
+                                                                col2DataField = ((object[])record.Keys)[2].ToString();
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                else if (!string.IsNullOrEmpty(tableTracking.DescFieldNameTwo))
+                                                {
+                                                    col2Visible = !(Strings.StrComp(DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameTwo), DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName)) == 0);
+                                                    if (col2Visible)
+                                                    {
+                                                        col2DataField = ((object[])record.Keys)[1].ToString();
+                                                    }
+                                                }
+                                            }
+                                            else if (!string.IsNullOrEmpty(tableTracking.DescFieldNameTwo))
+                                            {
+                                                col2Visible = !(Strings.StrComp(DatabaseMap.RemoveTableNameFromField(tableTracking.DescFieldNameTwo), DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName)) == 0);
+                                                if (col2Visible)
+                                                {
+                                                    col2DataField = DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName);
+                                                }
+                                            }
+                                        }
+
+                                        if (!string.IsNullOrEmpty(colDataField))
+                                        {
+                                            table.Columns.Add(new DataColumn(colDataField));
+                                            if (col1Visible)
+                                            {
+                                                if (!table.Columns.Contains(col1DataField))
+                                                {
+                                                    table.Columns.Add(new DataColumn(col1DataField));
+                                                }
+                                            }
+                                            if (col2Visible)
+                                            {
+                                                if (!table.Columns.Contains(col2DataField))
+                                                {
+                                                    table.Columns.Add(new DataColumn(col2DataField));
+                                                }
+                                            }
+                                        }
+
+                                        foreach (var rrow in records)
+                                        {
+                                            var rowObj = table.NewRow();
+                                            var row = (IDictionary<string, object>)rrow;
+
+                                            if (!string.IsNullOrEmpty(colDataField))
+                                            {
+
+                                                if (row[$"{colDataField}"].GetType().FullName.ToLower() == "System.binary".ToLower())
+                                                {
+                                                    rowObj[colDataField] = "";
+                                                }
+                                                else if (row[$"{colDataField}"] == null)
+                                                {
+                                                    rowObj[colDataField] = "";
+                                                }
+                                                else
+                                                {
+                                                    rowObj[colDataField] = row[$"{colDataField}"];
+                                                }
+                                            }
+                                            if (col1Visible)
+                                            {
+                                                if (row[$"{col1DataField}"].GetType().FullName.ToLower() == "System.binary".ToLower())
+                                                {
+                                                    rowObj[col1DataField] = "";
+                                                }
+                                                else if (row[$"{col1DataField}"] == null)
+                                                {
+                                                    rowObj[col1DataField] = "";
+                                                }
+                                                else
+                                                {
+                                                    rowObj[col1DataField] = row[$"{col1DataField}"];
+                                                }
+                                            }
+                                            if (col2Visible)
+                                            {
+                                                if (row[$"{col2DataField}"].GetType().FullName.ToLower() == "System.binary")
+                                                {
+                                                    rowObj[col2DataField] = "";
+                                                }
+                                                else if (row[$"{col2DataField}"] == null)
+                                                {
+                                                    rowObj[col2DataField] = "";
+                                                }
+                                                else
+                                                {
+                                                    rowObj[col2DataField] = row[$"{col2DataField}"];
+                                                }
+                                            }
+                                            table.Rows.Add(rowObj);
+                                        }
+
+                                        if (!string.IsNullOrEmpty(colDataField))
+                                        {
+                                            colDataFieldJSON = JsonConvert.SerializeObject(colDataField, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                                        }
+                                        if (col1Visible)
+                                        {
+                                            col1DataFieldJSON = JsonConvert.SerializeObject(col1DataField, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                                        }
+                                        if (col2Visible)
+                                        {
+                                            col2DataFieldJSON = JsonConvert.SerializeObject(col2DataField, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                                        }
+                                        // rs.Fields(DatabaseMap.RemoveTableNameFromField(tableTracking.IdFieldName))
+
+                                        string colVisibleJSON = JsonConvert.SerializeObject(colVisible, Newtonsoft.Json.Formatting.Indented, Setting);
+                                        string col1VisibleJSON = JsonConvert.SerializeObject(col1Visible, Newtonsoft.Json.Formatting.Indented, Setting);
+                                        string col2VisibleJSON = JsonConvert.SerializeObject(col2Visible, Newtonsoft.Json.Formatting.Indented, Setting);
+                                        string sRecordJSON = JsonConvert.SerializeObject(table, Newtonsoft.Json.Formatting.Indented, Setting);
+                                        string tableObjectJSON = JsonConvert.SerializeObject(tableEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                                        model.ErrorMessage = "";
+                                        model.ErrorType = "s";
+                                        
+                                        model.RecordJSON = sRecordJSON;
+                                        model.ColVisibleJSON = colVisibleJSON;
+                                        model.Col1VisibleJSON = col1VisibleJSON;
+                                        model.Col2VisibleJSON = col2VisibleJSON;
+                                        model.ColDataFieldJSON = colDataFieldJSON;
+                                        model.Col1DataFieldJSON = col1DataFieldJSON;
+                                        model.Col2DataFieldJSON = col2DataFieldJSON;
+                                        model.BRequestPermissionJSON = bRequestPermissionJSON;
+                                        model.BTransferPermissionJSON = bTransferPermissionJSON;
+                                        model.TableObjectJSON = tableObjectJSON;
+
+                                        return model;
+                                    }
+                                    else
+                                    {
+                                        model.ErrorType = "w";
+                                        model.ErrorMessage = "";
+                                        sNoRecordMsg = "The Level One Tracking Table has no records";
+                                        string sNoRecordMsgJSON = JsonConvert.SerializeObject(sNoRecordMsg, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                                        model.NoRecordMsgJSON = sNoRecordMsgJSON;
+                                        model.BRequestPermissionJSON = bRequestPermissionJSON;
+                                        model.BTransferPermissionJSON = bTransferPermissionJSON;
+
+                                        return model;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    model.ErrorMessage = "";
+                    model.ErrorType = "r";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                return model;
+            }
+            return model;
+        }
+
+        private async Task AddTrackableInScanList(Table ptableEntity, string ConnectionString)
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+
+                    if (ptableEntity.Trackable == true || ptableEntity.TrackingTable > 0)
+                    {
+                        var oScanList = await context.ScanLists.ToListAsync();
+                        string oTableIdFieldName = DatabaseMap.RemoveTableNameFromField(ptableEntity.IdFieldName.Trim().ToLower());
+                        bool containScanObj = oScanList.Any(m => m.TableName.Trim().ToLower().Equals(ptableEntity.TableName.Trim().ToLower()) & m.FieldName.Trim().ToLower().Equals(oTableIdFieldName));
+
+                        if (!containScanObj)
+                        {
+                            var oScanObject = new ScanList();
+                            oScanObject.TableName = ptableEntity.TableName.Trim();
+                            oScanObject.FieldName = DatabaseMap.RemoveTableNameFromField(ptableEntity.IdFieldName);
+                            //var conObj = DataServices.DBOpen(ptableEntity, _iDatabas.All());
+                            var oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(ptableEntity.TableName, oScanObject.FieldName);
+                            oScanObject.FieldType = Convert.ToInt16(oSchemaColumns[0].DataType);
+                            oScanObject.IdMask = ptableEntity.IdMask;
+                            oScanObject.IdStripChars = ptableEntity.IdStripChars;
+                            if (oScanList.Count() > 0)
+                            {
+                                oScanObject.ScanOrder = (short?)(oScanList.Count() + 1);
+                            }
+                            else
+                            {
+                                oScanObject.ScanOrder = (short?)1;
+                            }
+                            //_iScanList.Add(oScanObject);
+                            context.ScanLists.Add(oScanObject);
+                            await context.SaveChangesAsync();
+                        }
+                    }
+                    else
+                    {
+                        var oScanListOfCurrentTable = await context.ScanLists.Where(m => m.TableName.Trim().ToLower().Equals(ptableEntity.TableName.Trim().ToLower())).ToListAsync();
+                        if (oScanListOfCurrentTable != null)
+                        {
+                            //_iScanList.DeleteRange(oScanListOfCurrentTable);
+                            context.ScanLists.RemoveRange(oScanListOfCurrentTable);
+                            await context.SaveChangesAsync();
+                        }
+                        var oScanListAll = await context.ScanLists.OrderBy(x => x.ScanOrder).ToListAsync();
+                        int oScanOrder = 1;
+                        foreach (ScanList oScanObj in oScanListAll)
+                        {
+                            oScanObj.ScanOrder = (short?)oScanOrder;
+                            oScanOrder = oScanOrder + 1;
+                            //_iScanList.Update(oScanObj);
+                            context.Entry(oScanObj).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+        }
+
+        private async Task AddFieldIfNeeded(string fieldName, Table ptableEntity, string Dtype, string ConnectionString)
+        {
+            string sSQLStr;
+            bool FieldExist;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var schemaColumnList = SchemaInfoDetails.GetSchemaInfo(ptableEntity.TableName, ConnectionString);
+                FieldExist = schemaColumnList.Any(x => (x.ColumnName) == (fieldName));
+
+                if (!FieldExist)
+                {
+                    sSQLStr = "ALTER TABLE [" + ptableEntity.TableName + "]";
+                    sSQLStr = sSQLStr + " ADD [" + fieldName.Trim() + "] " + Dtype + " NULL";
+                    switch (Dtype)
+                    {
+                        case "BIT":
+                        case "TINYINT":
+                            {
+                                sSQLStr = sSQLStr + " DEFAULT 0";
+                                break;
+                            }
+
+                        default:
+                            {
+                                break;
+                            }
+                    }
+                    bool boolSQLVal = await GetInfoUsingDapper.ProcessADOCommand(sSQLStr, ConnectionString, false);
+                }
+                return;
+            }
+        }
+
+        private async Task<bool> AddSecureObjectPermission(int secureObjId, Enums.PassportPermissions SecurePermissionId, string ConnectionString)
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    if (!(await context.SecureObjectPermissions.AnyAsync(x => (x.GroupID == 0 && x.SecureObjectID == secureObjId) & x.PermissionID == (int)SecurePermissionId)))
+                    {
+                        await AddNewSecureObjectPermission(secureObjId, (int)SecurePermissionId, ConnectionString);
+                    }
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private async Task<bool> RemoveSecureObjectPermission(SecureObjectPermission secureObjPermission, string ConnectionString)
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    if (secureObjPermission != null)
+                    {
+                        context.SecureObjectPermissions.Remove(secureObjPermission);
+                        await context.SaveChangesAsync();
+                    }
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private async Task<SecureObjectPermission> GetSecureObjPermissionId(int secureObjId, Enums.PassportPermissions SecurePermissionId, string ConnectionString)
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var secoreObjPermissionObj = await context.SecureObjectPermissions.Where(m => m.SecureObjectID == secureObjId & m.PermissionID == (int)SecurePermissionId).FirstOrDefaultAsync();
+                    return secoreObjPermissionObj;
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region File Room Order
+
+        [Route("GetListOfFileRoomOrders")]
+        [HttpGet]
+        public string GetListOfFileRoomOrders(string sord, int page, int rows, string pTableName, string ConnectionString) //complete testing
+        {
+            var jsonData = string.Empty;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pFileRoomOrderEntities = from t in context.SLTableFileRoomOrders.Where(x => (x.TableName) == (pTableName))
+                                                 select new { t.Id, t.FieldName, t.StartFromFront, t.StartingPosition, t.NumberofCharacters };
+
+                    var setting = new JsonSerializerSettings();
+                    setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonData = JsonConvert.SerializeObject(pFileRoomOrderEntities.GetJsonListForGrid(sord, page, rows, "FieldName"), Newtonsoft.Json.Formatting.Indented, setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return jsonData;
+        }
+
+        [Route("GetListOfFieldNames")]
+        [HttpGet]
+        public async Task<string> GetListOfFieldNames(string pTableName, string ConnectionString) //complete testing
+        {
+            var lstFieldNamesObj = string.Empty;
+
+            try
+            {
+                var lstFieldNames = new List<string>();
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    var schemaColumnList = SchemaInfoDetails.GetSchemaInfo(pTableName, ConnectionString);
+
+                    foreach (SchemaColumns schemaColumnObj in schemaColumnList)
+                    {
+                        if (!SchemaInfoDetails.IsSystemField(schemaColumnObj.ColumnName))
+                        {
+                            if (SchemaInfoDetails.IsAStringType(schemaColumnObj.DataType))
+                            {
+                                lstFieldNames.Add(schemaColumnObj.ColumnName + " (String: padded with spaces)");
+                            }
+                            else if (SchemaInfoDetails.IsADateType(schemaColumnObj.DataType))
+                            {
+                                lstFieldNames.Add(schemaColumnObj.ColumnName + " (Date: mm/dd/yyyy)");
+                            }
+                            else if (SchemaInfoDetails.IsANumericType(schemaColumnObj.DataType))
+                            {
+                                lstFieldNames.Add(schemaColumnObj.ColumnName + " (Numeric: padded with leading zeros)");
+                            }
+                        }
+                    }
+                }
+
+                var Setting = new JsonSerializerSettings();
+                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+
+                lstFieldNamesObj = JsonConvert.SerializeObject(lstFieldNames, Newtonsoft.Json.Formatting.Indented, Setting);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+
+            return lstFieldNamesObj;
+        }
+
+        [Route("EditFileRoomOrderRecord")]
+        [HttpGet]
+        public async Task<string> EditFileRoomOrderRecord(int pRecordId, string ConnectionString) //complete testing
+        {
+            var jsonObject = string.Empty;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pFileRoomOrderEntity = await context.SLTableFileRoomOrders.Where(x => x.Id == pRecordId).FirstOrDefaultAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    jsonObject = JsonConvert.SerializeObject(pFileRoomOrderEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+            return jsonObject;
+        }
+
+        [Route("SetFileRoomOrderRecord")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SetFileRoomOrderRecord(SetFileRoomOrderRecordParam setFileRoomOrderRecordParam) //complete testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pFileRoomOrder = setFileRoomOrderRecordParam.SLTableFileRoomOrder;
+            var pTableName = setFileRoomOrderRecordParam.TableName;
+            var ConnectionString = setFileRoomOrderRecordParam.ConnectionString;
+            var pStartFromFront = setFileRoomOrderRecordParam.StartFromFront;
+
+            try
+            {
+                int pFieldLength = 0;
+                string ErrMsg = "";
+                bool IsDateField = false;
+                bool ErrStatus = false;
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    var schemaColumnList = SchemaInfoDetails.GetSchemaInfo(pTableName, ConnectionString, pFileRoomOrder.FieldName);
+
+                    if (schemaColumnList.Count > 0)
+                    {
+                        if (schemaColumnList[0].IsADate)
+                        {
+                            pFieldLength = 10;
+                            IsDateField = true;
+                        }
+                        else if (schemaColumnList[0].IsString)
+                        {
+                            if (schemaColumnList[0].CharacterMaxLength <= 0 | schemaColumnList[0].CharacterMaxLength >= 2000000)
+                            {
+                                pFieldLength = 30;
+                            }
+                            else
+                            {
+                                pFieldLength = schemaColumnList[0].CharacterMaxLength;
+                            }
+                        }
+                        else
+                        {
+                            pFieldLength = 30;
+                        }
+                    }
+
+                    pFileRoomOrder.StartFromFront = pStartFromFront;
+
+                    if (pFileRoomOrder.StartingPosition == null)
+                    {
+                        ErrMsg = string.Format("Starting Position must be {0} or less.", Strings.Format(pFieldLength));
+                        ErrStatus = true;
+                    }
+                    if (pFileRoomOrder.NumberofCharacters == null & string.IsNullOrEmpty(ErrMsg))
+                    {
+                        ErrMsg = string.Format("Number of characters must be {0} or less.", Strings.Format(pFieldLength));
+                        ErrStatus = true;
+                    }
+
+                    if (!(pFileRoomOrder.StartingPosition == null) & !(pFileRoomOrder.NumberofCharacters == null) & string.IsNullOrEmpty(ErrMsg))
+                    {
+                        if (pFileRoomOrder.StartingPosition < 1 || pFileRoomOrder.StartingPosition > pFieldLength)
+                        {
+                            ErrMsg = string.Format("Starting Position must be {0} or less.", Strings.Format(pFieldLength));
+                            ErrStatus = true;
+                        }
+
+                        if (pFileRoomOrder.NumberofCharacters < 1 || pFileRoomOrder.NumberofCharacters > pFieldLength)
+                        {
+                            ErrMsg = string.Format("Number of characters must be {0} or less.", Strings.Format(pFieldLength));
+                            ErrStatus = true;
+                        }
+                    }
+
+                    if (pFileRoomOrder.StartFromFront == true)
+                    {
+                        if (((pFileRoomOrder.StartingPosition + pFileRoomOrder.NumberofCharacters) > pFieldLength + 1) && (ErrMsg == ""))
+                        {
+                            ErrMsg = "Number of characters must be less than or equal to the starting position.";
+                            ErrStatus = true;
+                        }
+                    }
+                    if ((pFileRoomOrder.StartingPosition > pFieldLength) && ErrMsg == "")
+                    {
+                        ErrMsg = string.Format("Number of characters plus the starting position exceeds the field length of {0} characters", Strings.Format(pFieldLength));
+                        ErrStatus = true;
+                    }
+
+                    if (IsDateField == true)
+                    {
+                        if ((pFileRoomOrder.StartingPosition > pFieldLength) && ErrMsg == "")
+                        {
+                            ErrMsg = string.Format("Starting position cannot exceed {0} for a date field", Strings.Format(pFieldLength));
+                            ErrStatus = true;
+                        }
+
+                        if (pFileRoomOrder.StartFromFront == false)
+                        {
+                            if ((pFileRoomOrder.StartingPosition + pFileRoomOrder.NumberofCharacters) > (pFieldLength + 1) && ErrMsg == "")
+                            {
+                                ErrMsg = string.Format("Starting position plus length cannot exceed {0} for a date field", Strings.Format(pFieldLength + 1));
+                                ErrStatus = true;
+                            }
+                        }
+                    }
+
+                    if (!(ErrStatus == true))
+                    {
+                        if (pFileRoomOrder.Id > 0)
+                        {
+                            pFileRoomOrder.TableName = pTableName;
+                            context.Entry(pFileRoomOrder).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Record saved successfully";
+                        }
+                        else
+                        {
+                            pFileRoomOrder.TableName = pTableName;
+                            context.SLTableFileRoomOrders.Add(pFileRoomOrder);
+                            await context.SaveChangesAsync();
+
+                            model.ErrorType = "s";
+                            model.ErrorMessage = "Record saved successfully";
+                        }
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = ErrMsg;
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("RemoveFileRoomOrderRecord")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveFileRoomOrderRecord(int pRecordId, string ConnectionString) //complete testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+
+                    var pSLTableFileRoomOrderEntity = await context.SLTableFileRoomOrders.Where(x => x.Id == pRecordId).FirstOrDefaultAsync();
+                    context.SLTableFileRoomOrders.Remove(pSLTableFileRoomOrderEntity);
+                    await context.SaveChangesAsync();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected Citation code has been deleted successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        #endregion
+
+        #region Advanced
+
+        [Route("GetAdvanceDetails")]
+        [HttpGet]
+        public async Task<ReturnGetAdvanceDetails> GetAdvanceDetails(string tableName, string ConnectionString) //complete testing 
+        {
+            var model = new ReturnGetAdvanceDetails();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    if (tableEntity.RecordManageMgmtType == null)
+                    {
+                        tableEntity.RecordManageMgmtType = 0;
+                    }
+                    var relationshipEntity = await context.RelationShips.Where(m => m.LowerTableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).ToListAsync();
+                    bool flag = false;
+                    var parentFolderList = await LoadAdvancedLevelList(tableEntity.TableName, relationshipEntity, ConnectionString);
+                    var parentDocList = await LoadAdvancedLevelList(tableEntity.TableName, relationshipEntity, ConnectionString);
+                    if (parentFolderList.Count == 0)
+                    {
+                        flag = false;
+                    }
+                    else
+                    {
+                        flag = true;
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.TableEntity = JsonConvert.SerializeObject(tableEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ParentFolderList = JsonConvert.SerializeObject(parentFolderList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ParentDocList = JsonConvert.SerializeObject(parentDocList, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.Flag = JsonConvert.SerializeObject(flag, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "All Data Get successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("SetAdvanceDetails")]
+        [HttpPost]
+        public async Task<ReturnSetAdvanceDetails> SetAdvanceDetails(SetAdvanceDetailsParam setAdvanceDetailsParam)
+        {
+            var model = new ReturnSetAdvanceDetails();
+
+            var advanceform = setAdvanceDetailsParam.Table;
+            var ConnectionString = setAdvanceDetailsParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(advanceform.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    if (advanceform.RecordManageMgmtType == null)
+                    {
+                        tableEntity.RecordManageMgmtType = 0;
+                    }
+                    else
+                    {
+                        tableEntity.RecordManageMgmtType = advanceform.RecordManageMgmtType;
+                    }
+                    if (advanceform.RecordManageMgmtType != null)
+                    {
+                        if (!(advanceform.ParentFolderTableName == null))
+                        {
+                            tableEntity.ParentDocTypeTableName = null;
+                            tableEntity.ParentFolderTableName = null;
+                        }
+                    }
+                    if (advanceform.ParentDocTypeTableName != null)
+                    {
+                        tableEntity.ParentDocTypeTableName = advanceform.ParentDocTypeTableName;
+                    }
+                    if (advanceform.ParentFolderTableName != null)
+                    {
+                        tableEntity.ParentFolderTableName = advanceform.ParentFolderTableName;
+                    }
+
+                    context.Entry(tableEntity).State = EntityState.Modified;
+                    await context.SaveChangesAsync();
+
+                    model.WarningMsg = await VerifyRetentionDispositionTypesForParentAndChildren(ConnectionString, tableEntity.TableId);
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Table Properties are applied Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("CheckParentForder")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> CheckParentForder(string parentFolderVar, string selectedTableVar, string ConnectionString)
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tableEntity = await context.Tables.OrderBy(m => m.TableId).ToListAsync();
+                    bool flagEqual = false;
+                    string parentTableName = (await context.Tables.Where(m => m.UserName.Trim().ToLower().Equals(parentFolderVar.Trim().ToLower())).FirstOrDefaultAsync()).TableName;
+
+                    string ConfigTable = null;
+
+                    if (tableEntity != null)
+                    {
+                        foreach (Table tableObj in tableEntity)
+                        {
+                            if (tableObj.ParentFolderTableName is not null)
+                            {
+                                if (tableObj.ParentFolderTableName.Trim().ToLower().Equals(parentTableName.Trim().ToLower()))
+                                {
+                                    if (!tableObj.TableName.Trim().ToLower().Equals(selectedTableVar.Trim().ToLower()))
+                                    {
+                                        flagEqual = true;
+                                        ConfigTable = tableObj.UserName;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (flagEqual == true)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The table {0} is already configured as the Document Level table for {1}. Do you wish to replace it with this table?", parentTableName, ConfigTable);
+                    }
+                    else
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+
+            }
+            return model;
+        }
+
+        private async Task<List<KeyValuePair<string, string>>> LoadAdvancedLevelList(string tableName, List<RelationShip> relationshipEntity, string ConnectionString)
+        {
+            var parentDDList = new List<KeyValuePair<string, string>>();
+            
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var tableEntity = await context.Tables.OrderBy(m => m.TableId).ToListAsync();
+                if (relationshipEntity != null & tableEntity != null)
+                {
+                    foreach (RelationShip relationOBj in relationshipEntity)
+                    {
+                        foreach (Table tableObj in tableEntity)
+                        {
+                            if (relationOBj.UpperTableName.Trim().ToLower().Equals(tableObj.TableName.Trim().ToLower()))
+                            {
+                                parentDDList.Add(new KeyValuePair<string, string>(tableObj.TableName, tableObj.UserName));
+                            }
+                        }
+                    }
+                }
+            }
+
+            return parentDDList;
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Data Module All methods Moved
+
+        [Route("GetDataList")]
+        [HttpPost]
+        public async Task<string> GetDataList(GetDataListParams getDataListParams) //completed testing 
+        {
+            var jsonObject = string.Empty;
+
+            var ConnectionString = getDataListParams.ConnectionString;
+            var pTabledName = getDataListParams.TableName;
+            var sidx = getDataListParams.sidx;
+            var sord = getDataListParams.sord;
+            var page = getDataListParams.page;
+            var rows = getDataListParams.rows;
+
+            DataTable dtRecords = new DataTable();
+            int totalRecords = 0;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntity = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTabledName.Trim().ToLower())).FirstOrDefaultAsync();
+                    Databas pDatabaseEntity = null;
+
+                    if (pTableEntity != null)
+                    {
+                        if (pTableEntity.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTableEntity.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        if(pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+                    }
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var param = new DynamicParameters();
+                        param.Add("@TableName", pTabledName);
+                        param.Add("@PageNo", page);
+                        param.Add("@PageSize", rows);
+                        param.Add("@DataAndColumnInfo", true);
+                        param.Add("@ColName", sidx);
+                        param.Add("@Sort", sord);
+
+                        var loutput = await conn.ExecuteReaderAsync("SP_RMS_GetTableData", param, commandType: CommandType.StoredProcedure);
+                        if (loutput != null)
+                            dtRecords.Load(loutput);
+
+                        if (dtRecords.Rows.Count == 0)
+                            return "NUll Value";
+                        else
+                        {
+                            System.Threading.Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
+                            if (dtRecords.Columns.Contains("TotalCount"))
+                            {
+                                if (dtRecords.Rows.Count != 0)
+                                {
+                                    totalRecords = Convert.ToInt32(dtRecords.AsEnumerable().ElementAtOrDefault(0)["TotalCount"]);
+                                }
+                                dtRecords.Columns.Remove("TotalCount");
+
+                            }
+                            if (dtRecords.Columns.Contains("ROWNUM"))
+                            {
+                                dtRecords.Columns.Remove("ROWNUM");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            var dataList = CommonFunctions.ConvertDTToJQGridResult(dtRecords, totalRecords, sidx, sord, page, rows);
+
+            var Setting = new JsonSerializerSettings();
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            jsonObject = JsonConvert.SerializeObject(dataList, Newtonsoft.Json.Formatting.Indented, Setting);
+
+            return jsonObject;
+        }
+
+        [Route("DeleteSelectedRows")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> DeleteSelectedRows(DeleteSelectedRowsParam deleteSelectedRowsParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var tablename = deleteSelectedRowsParam.TableName;
+            var col = deleteSelectedRowsParam.col;
+            var rows = deleteSelectedRowsParam.rows;
+            var ConnectionString = deleteSelectedRowsParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var RowID = new DataTable();
+                    var row = rows.Split(',');
+                    RowID.Columns.Add("ID", typeof(string));
+                    RowID.Columns.Add("Col", typeof(string));
+                    int i = 0;
+                    foreach (string value in row)
+                    {
+                        RowID.Rows.Add(row[i], col);
+                        i = i + 1;
+                    }
+
+                    var pTable = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(tablename.Trim().ToLower()) && !string.IsNullOrEmpty(x.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    Databas pDatabaseEntity = null;
+
+                    if (pTable != null)
+                    {
+                        if (pTable.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        if (pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+                    }
+
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var param = new DynamicParameters();
+                        param.Add("@TableType", RowID.AsTableValuedParameter("TableType_RMS_DeleteDataRecords"));
+                        param.Add("@TableName", tablename);
+                        param.Add("@ColName", col);
+
+                        var loutput = await conn.ExecuteAsync("SP_RMS_DeleteDataRecords", param, commandType: CommandType.StoredProcedure);
+                        model.ErrorMessage = "Record saved successfully";
+                        model.ErrorType = "s";
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        [Route("ProcessRequest")]
+        [HttpPost]
+        public async Task<string> ProcessRequest(ProcessRequestParam processRequestParam) //completed testing 
+        {
+            var ConnectionString = processRequestParam.ConnectionString;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    string data = processRequestParam.Data;
+
+                    string tableName = processRequestParam.TableName;
+                    string colName = processRequestParam.ColName;
+                    string colType = processRequestParam.ColType;
+                    string columnName = processRequestParam.ColumnName;
+                    string pkValue = processRequestParam.PkValue;
+
+                    //string data = forms["x01"];
+
+                    //string tableName = forms["x02"];
+                    //string colName = forms["x03"];
+                    //string colType = forms["x04"];
+                    //string columnName = forms["x05"];
+                    //string pkValue = forms["x07"];
+                    string columnValue;
+
+                    var jsonObject = JsonConvert.DeserializeObject<JObject>(data);
+                    var jsonType = JsonConvert.DeserializeObject<JObject>(colType);
+                    var strOperation = jsonObject.GetValue("oper");
+                    if (columnName.Trim().ToLower().Equals("id"))
+                    {
+                        if (processRequestParam.ColumnValue.Contains("<"))
+                        {
+                            columnValue = jsonObject.GetValue(columnName).ToString();
+                        }
+                        else
+                        {
+                            columnValue = processRequestParam.ColumnValue;
+                        }
+                    }
+
+                    else if (processRequestParam.ColumnValue.Equals(""))
+                    {
+                        columnValue = null;
+                    }
+                    else
+                    {
+                        columnValue = processRequestParam.ColumnValue;
+                    }
+
+
+                    var AddEditType = new DataTable();
+                    AddEditType.Columns.Add("Col_Name", typeof(string));
+                    AddEditType.Columns.Add("Col_Data", typeof(string));
+
+                    var cNames = colName.Split(',');
+
+                    object val = "";
+
+                    for (int value = 0, loopTo = cNames.Length - 1; value <= loopTo; value++)
+                    {
+                        var types = jsonType.GetValue(cNames[value]);
+
+                        object type = null;
+                        string incremented = "true";
+                        string readOnlye = "false";
+
+                        //if (Convert.ToBoolean(Operators.ConditionalCompareObjectNotEqual(types, null, false)))
+                        //{
+                        //    type = types.ToString().Split(',')[0];
+                        //    incremented = types.ToString().Split(',')[1];
+                        //    readOnlye = types.ToString().Split(',')[2];
+                        //}
+                        if (types != null)
+                        {
+                            var parts = types.ToString().Split(',');
+                            type = parts[0];
+                            incremented = parts[1];
+                            readOnlye = parts[2];
+                        }
+
+
+                        if (readOnlye != "true")
+                        {
+                            switch (type)
+                            {
+                                case "String":
+                                    {
+                                        string str = jsonObject.GetValue(cNames[value]).ToString();
+
+                                        if (str.IndexOf("'") > -1)
+                                        {
+                                            str = str.Replace("'", Convert.ToString(ControlChars.Quote));
+                                        }
+
+                                        val = str;
+                                        break;
+                                    }
+
+                                case "Int32":
+                                case "Int64":
+                                case "Int16":
+                                    {
+                                        if ((cNames[value]) != (columnName))
+                                        {
+                                            string intr = jsonObject.GetValue(cNames[value]).ToString();
+                                            if (string.IsNullOrEmpty(intr))
+                                            {
+                                                val = jsonObject.GetValue(intr);
+                                            }
+                                            else
+                                            {
+                                                decimal round = Math.Round(decimal.Parse(jsonObject.GetValue(cNames[value]).ToString()));
+                                                val = int.Parse(round.ToString());
+                                            }
+                                        }
+                                        else if (incremented.Equals("false"))
+                                        {
+                                            if (!string.IsNullOrEmpty(jsonObject.GetValue(cNames[value]).ToString()))
+                                            {
+                                                val = int.Parse(jsonObject.GetValue(cNames[value]).ToString());
+                                            }
+
+                                        }
+
+                                        break;
+                                    }
+                                case "Double":
+                                    {
+                                        string str = jsonObject.GetValue(cNames[value]).ToString();
+                                        if (string.IsNullOrEmpty(str))
+                                        {
+                                            val = jsonObject.GetValue(str);
+                                        }
+                                        else
+                                        {
+                                            val = jsonObject.GetValue(cNames[value]).ToString();
+                                        }
+
+                                        break;
+                                    }
+                                case "Decimal":
+                                    {
+                                        string str = jsonObject.GetValue(cNames[value]).ToString();
+                                        if (string.IsNullOrEmpty(str))
+                                        {
+                                            val = jsonObject.GetValue(str);
+                                        }
+                                        else
+                                        {
+                                            val = jsonObject.GetValue(cNames[value]).ToString();
+                                        }
+
+                                        break;
+                                    }
+                                case "DateTime":
+                                    {
+                                        string dates = jsonObject.GetValue(cNames[value]).ToString();
+                                        if (string.IsNullOrEmpty(dates))
+                                        {
+                                            val = jsonObject.GetValue(dates);
+                                        }
+                                        else
+                                        {
+                                            var argresult = new DateTime();
+                                            if (DateTime.TryParse(dates, out argresult))
+                                            {
+                                                if (dates.IndexOf(":") > -1)
+                                                {
+                                                    val = DateTime.Parse(dates).ToString(CultureInfo.InvariantCulture);
+                                                }
+                                                else
+                                                {
+                                                    val = DateTime.Parse(dates).ToString("MM/dd/yyyy");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                val = DateTime.ParseExact(dates, "MM/dd/yyyy HH:mm", CultureInfo.InvariantCulture).ToString("MM/dd/yyyy HH:mm");
+                                            }
+                                        }
+
+                                        break;
+                                    }
+                                case "Byte[]":
+                                    {
+                                        val = Constants.vbByte;
+                                        break;
+                                    }
+                                case "Boolean":
+                                    {
+                                        val = jsonObject.GetValue(cNames[value]);
+                                        break;
+                                    }
+
+                                default:
+                                    {
+                                        val = jsonObject.GetValue(cNames[value]);
+                                        break;
+                                    }
+                            }
+                            //if (Convert.ToBoolean(Operators.AndObject(Operators.AndObject(Operators.ConditionalCompareObjectNotEqual(type, "Byte[]", false), (cNames[value]) != (columnName)), Operators.ConditionalCompareObjectNotEqual(type, null, false))))
+                            //{
+                            //    if (!(strOperation.ToString().Equals("edit") & val is null))
+                            //    {
+                            //        AddEditType.Rows.Add(cNames[value], val);
+                            //    }
+                            //}
+                            if (type != "Byte[]" && cNames[value] != columnName && type != null)
+                            {
+                                if (!(strOperation.ToString() == "edit" && val == null))
+                                {
+                                    AddEditType.Rows.Add(cNames[value], val);
+                                }
+                            }
+                            else if (cNames[value].Equals(columnName) & incremented.Equals("false"))
+                            {
+                                AddEditType.Rows.Add(cNames[value], val);
+                            }
+                        }
+                    }
+
+                    int n;
+
+                    var pTable = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower()) && !string.IsNullOrEmpty(x.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    Databas pDatabaseEntity = null;
+
+                    if (pTable != null)
+                    {
+                        if (pTable.DBName != null)
+                        {
+                            pDatabaseEntity = await context.Databases.Where(x => x.DBName.Trim().ToLower().Equals(pTable.DBName.Trim().ToLower())).FirstOrDefaultAsync();
+                        }
+                        if (pDatabaseEntity != null)
+                        {
+                            ConnectionString = _commonService.GetConnectionString(pDatabaseEntity, false);
+                        }
+                    }
+
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        var param = new DynamicParameters();
+                        if (strOperation.ToString().Equals("add"))
+                        {
+                            param.Add("@TableType", AddEditType.AsTableValuedParameter("TableType_RMS_AddEditDataRecords"));
+                            param.Add("@TableName", tableName);
+                        }
+                        else
+                        {
+                            param.Add("@TableType", AddEditType.AsTableValuedParameter("TableType_RMS_AddEditDataRecords"));
+                            param.Add("@TableName", tableName);
+                            param.Add("@ColName", columnName);
+                            if (pkValue == null)
+                            {
+                                param.Add("@ColVal", columnValue);
+                            }
+                            else
+                            {
+                                param.Add("@ColVal", pkValue);
+                            }
+                        }
+
+                        if (strOperation.ToString().Equals("add"))
+                        {
+                            int loutput = await conn.ExecuteAsync("SP_RMS_AddDataRecords", param, commandType: CommandType.StoredProcedure);
+                            return "Record saved successfully";
+                        }
+                        else
+                        {
+                            int loutput = await conn.ExecuteAsync("SP_RMS_EditDataRecords", param, commandType: CommandType.StoredProcedure);
+                            return "Record updated successfully";
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                return string.Format("Error : {0}", ex.Message);
+            }
+        }
+
+        #endregion
 
         [Route("BindAccordian")]
         [HttpPost]
@@ -6440,38 +10618,6 @@ namespace MSRecordsEngine.Controllers
             return jsonObject;
         }
 
-        [Route("LoadAccordianTable")]
-        [HttpPost]
-        public async Task<string> LoadAccordianTable(Passport passport) //completed testing 
-        {
-            var pTablesList = new List<Table>();
-            try
-            {
-                using (var context = new TABFusionRMSContext(passport.ConnectionString))
-                {
-                    var pTablesEntities = await context.Tables.Where(m => (m.TableName.Trim().ToLower()) != ("Operators".Trim().ToLower())).OrderBy(m => m.TableName).ToListAsync();
-                    var lAllTables = await context.vwTablesAlls.Select(x => x.TABLE_NAME).ToListAsync();
-
-                    foreach (var oTable in pTablesEntities)
-                    {
-                        if (passport.CheckPermission(oTable.TableName, (Smead.Security.SecureObject.SecureObjectType)Models.Enums.SecureObjects.Table, (Permissions.Permission)Models.Enums.PassportPermissions.Configure))
-                        {
-                            pTablesList.Add(oTable);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
-            }
-
-            var Setting = new JsonSerializerSettings();
-            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-            string jsonObject = JsonConvert.SerializeObject(pTablesList.OrderBy(m => m.UserName), Newtonsoft.Json.Formatting.Indented, Setting);
-            return jsonObject;
-
-        }
 
         [Route("GetReportInformation")]
         [HttpPost]
@@ -7421,6 +11567,81 @@ namespace MSRecordsEngine.Controllers
             }
         }
 
+        private async Task<bool> AddSecureObjectPermissionsBySecureObjectType(int pSecureObjectID, int pBaseSecureObjectID, int pSecureObjectType, string ConnectionString)
+        {
+            bool bSucceed = false;
+            try
+            {
+                using (var conn = CreateConnection(ConnectionString))
+                {
+                    string sSql = "INSERT INTO SecureObjectPermission (GroupID, SecureObjectID, PermissionID) SELECT GroupID," + pSecureObjectID + " AS SecureObjectId, PermissionID FROM SecureObjectPermission AS SecureObjectPermission WHERE     (SecureObjectID = " + pBaseSecureObjectID + ") AND (PermissionID IN (SELECT     PermissionID FROM          SecureObjectPermission AS SecureObjectPermission_1 WHERE (SecureObjectID = " + pSecureObjectType + ") AND (GroupID = 0)))";
+                    bSucceed = Convert.ToBoolean(await conn.ExecuteAsync(sSql, commandType: CommandType.Text));
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return bSucceed;
+        }
+
+        private async Task<string> VerifyRetentionDispositionTypesForParentAndChildren(int pTableId, string ConnectionString)        {            Table oTable;            string sMessage = string.Empty;            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();
+                    var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableEntites.TableName)).ToListAsync();
+                    var lstRelatedChildTable = await context.RelationShips.Where(x => (x.UpperTableName) == (pTableEntites.TableName)).ToListAsync();
+
+                    if (pTableEntites.RetentionFinalDisposition != 0)
+                    {
+
+                        foreach (var lTableName in lstRelatedTables)
+                        {
+
+                            oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.UpperTableName)).FirstOrDefaultAsync();
+
+                            if (oTable != null)
+                            {
+                                if (((oTable.RetentionPeriodActive == true) || (oTable.RetentionInactivityActive == true)) && (oTable.RetentionFinalDisposition != 0))
+                                {
+                                    if (oTable.RetentionFinalDisposition != pTableEntites.RetentionFinalDisposition)
+                                        sMessage = Constants.vbTab + Constants.vbTab + oTable.UserName + Constants.vbCrLf;
+                                }
+                                oTable = null;
+                            }
+
+                        }
+
+                        foreach (var lTableName in lstRelatedChildTable)
+                        {
+
+                            oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.LowerTableName)).FirstOrDefaultAsync();
+
+                            if (oTable != null)
+                            {
+                                if (((oTable.RetentionPeriodActive == true) || (oTable.RetentionInactivityActive == true)) && (oTable.RetentionFinalDisposition != 0))
+                                {
+                                    if ((oTable.RetentionFinalDisposition != pTableEntites.RetentionFinalDisposition))
+                                        sMessage = Constants.vbTab + Constants.vbTab + oTable.UserName + Constants.vbCrLf;
+                                }
+                                oTable = null;
+                            }
+
+                        }
+
+                        if (string.Compare(sMessage, "", StringComparison.Ordinal) > 0)
+                        {
+                            sMessage = string.Format("<b>WARNING:</b>;  The following related tables have a retention disposition set differently than this table: <b>{1}</b>; {0} This could give different results than expected. {0};Please correct the appropriate table if this is not what is intended.", Environment.NewLine, sMessage);
+                        }
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");                sMessage = string.Empty;
+            }            return sMessage;        }
 
         #endregion
     }

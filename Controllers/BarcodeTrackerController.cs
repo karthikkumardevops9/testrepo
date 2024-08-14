@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Logging;
 using MSRecordsEngine.RecordsManager;
@@ -11,6 +10,9 @@ using System.Text;
 using System.Data;
 using MSRecordsEngine.Models;
 using System.Collections.Generic;
+using MSRecordsEngine.Services.Interface;
+using System.Threading.Tasks;
+using System.Globalization;
 
 namespace MSRecordsEngine.Controllers
 {
@@ -19,12 +21,14 @@ namespace MSRecordsEngine.Controllers
     public class BarcodeTrackerController : ControllerBase
     {
         private readonly CommonControllersService<BarcodeTrackerController> _commonService;
+        private readonly ITrackingServices _trackingServices;
         private TableItem _objItem;
         private TableItem _destItem;
         BarcodeTrackerModel Barcodemodel = new BarcodeTrackerModel();
-        public BarcodeTrackerController(CommonControllersService<BarcodeTrackerController> commonControllersService)
+        public BarcodeTrackerController(CommonControllersService<BarcodeTrackerController> commonControllersService,ITrackingServices trackingServices)
         {
             _commonService = commonControllersService;
+            _trackingServices = trackingServices;
         }
 
         [Route("Index")]
@@ -94,7 +98,7 @@ namespace MSRecordsEngine.Controllers
 
         [Route("ClickBarcodeTextDestination")] 
         [HttpPost]
-        public string ClickBarcodeTextDestination(DetectDestinationChangeParam param)
+        public async Task<string> ClickBarcodeTextDestination(DetectDestinationChangeParam param)
         {
             try
             {
@@ -122,7 +126,8 @@ namespace MSRecordsEngine.Controllers
                             param.barcodemodel.getDestination = string.Format("'{0}' not found", param.txtDestination);
                             param.barcodemodel.CheckgetDestination = false;
                         }
-                        // SetDueBackDate(_destItem, param.txtDestination);
+                        Barcodemodel = param.barcodemodel;
+                        await SetDueBackDate(_destItem, param.txtDestination, param.shortDateFormat, param.timeoffSet, param.passport.ConnectionString);
                     }
                 }
             }
@@ -131,7 +136,7 @@ namespace MSRecordsEngine.Controllers
                 _commonService.Logger.LogError($"Error:{ex.Message} Database: {param.passport.DatabaseName} CompanyName: {param.passport.License.CompanyName}");
             }
 
-            return JsonConvert.SerializeObject(new { param.barcodemodel, _destItem });
+            return JsonConvert.SerializeObject(param.barcodemodel);
         }
 
         [Route("DetectDestinationChange")]
@@ -166,7 +171,7 @@ namespace MSRecordsEngine.Controllers
 
         [Route("ClickBarckcodeTextTolistBox")] 
         [HttpPost]
-        public string ClickBarckcodeTextTolistBox(ClickBarckcodeTextTolistBoxParam param)
+        public async Task<string> ClickBarckcodeTextTolistBox(ClickBarckcodeTextTolistBoxParam param)
         {
             Barcodemodel.serverErrorMsg = "";
             try
@@ -192,7 +197,7 @@ namespace MSRecordsEngine.Controllers
                     if (IsDestination(_destItem) && !DestinationIsHigher(_destItem, _objItem))
                         throw new Exception(string.Format("Tracking Object '{0}' does not fit into Tracking Destination '{1}''", _objItem.TableName, param.txtDestination));
                     var user = new User(param.passport, true);
-                    //StartTransfer(_destItem, _objItem, param.txtObject, param.txtDestination, param.txtDueBackDate, param.additional1, param.additional2);
+                    await StartTransfer(_destItem, _objItem, param.txtObject, param.txtDestination, param.txtDueBackDate, param.passport,param.userName, param.additional1, param.additional2);
                     Barcodemodel.returnDestination = Navigation.GetItemName(_destItem.TableName, _destItem.ID, param.passport);
                     Barcodemodel.returnObjectItem = "  └─► " + Navigation.GetItemName(_objItem.TableName, _objItem.ID, param.passport);
                 }
@@ -207,7 +212,7 @@ namespace MSRecordsEngine.Controllers
                 Barcodemodel.serverErrorMsg = ex.Message;
             }
          
-            return JsonConvert.SerializeObject(new { Barcodemodel, _destItem, _objItem});
+            return JsonConvert.SerializeObject(Barcodemodel);
         }
 
         #region private methods
@@ -219,6 +224,7 @@ namespace MSRecordsEngine.Controllers
             }
             return false;
         }
+
         private bool DestinationIsHigher(TableItem _destItem, TableItem _objItem)
         {
             if (_destItem != null & _objItem != null)
@@ -234,6 +240,7 @@ namespace MSRecordsEngine.Controllers
             }
             return false;
         }
+
         private string LoadPrefixes(Passport passport)
         {
             var sb = new StringBuilder();
@@ -254,6 +261,58 @@ namespace MSRecordsEngine.Controllers
                 }
             }
             return sb.ToString();
+        }
+
+        private async Task SetDueBackDate(TableItem item, string textm,string shortdateformat,string offSetVal,string connectionString)
+        {
+            Barcodemodel.chkDueBackDate = await _trackingServices.IsOutDestination(item.TableName, item.ID, connectionString);
+            Barcodemodel.formatDueBackDate = shortdateformat;
+            if (Convert.ToBoolean(Barcodemodel.chkDueBackDate))
+            {
+                Barcodemodel.DueBackDateText = _commonService.GetConvertCultureDate(Convert.ToString(await _trackingServices.GetDueBackDate(item.TableName, item.ID, connectionString)),shortdateformat,offSetVal);
+            }
+            else
+            {
+                Barcodemodel.DueBackDateText = "[None]";
+            }
+        }
+
+        private async Task StartTransfer(TableItem destItem, TableItem objItem, string txtObject, string txtDestination, string txtDueBackDate,Passport passport,string userName,string? additional1 = null, string? additional2 = null)
+        {
+            if (string.IsNullOrEmpty(txtObject))
+            {
+                txtObject = "";
+            }
+            if (string.IsNullOrEmpty(txtDestination))
+            {
+                txtDestination = "";
+            }
+            var dateStr = new DateTime();
+            if (await _trackingServices.IsOutDestination(destItem.TableName, destItem.ID, passport.ConnectionString))
+            {
+                if (txtDueBackDate is not null)
+                {
+                    if (txtDueBackDate.Trim().Length == 0)
+                    {
+                        Barcodemodel.serverErrorMsg = "Due Back Date is required";
+                        return;
+                    }
+
+                    if (!DateTime.TryParse(txtDueBackDate, out _))
+                    {
+                        Barcodemodel.serverErrorMsg = "Due Back Date is invalid";
+                        return;
+                    }
+                    dateStr = DateTime.Parse(txtDueBackDate.Trim(), CultureInfo.CurrentCulture);
+                    if (DateTime.Parse(DateTime.Now.ToShortDateString()) > DateTime.Parse(dateStr.ToShortDateString()))
+                    {
+                        Barcodemodel.serverErrorMsg = "Object Due Back Date cannot be less than Today";
+                        return;
+                    }
+                }
+            }
+
+            await _trackingServices.PrepareDataForTransfer(objItem.TableName, objItem.ID, destItem.TableName, destItem.ID, dateStr, userName, passport, additional1, additional2);
         }
 
         #endregion

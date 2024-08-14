@@ -5,6 +5,7 @@ using System;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
 using Dapper;
+using System.Linq;
 
 namespace MSRecordsEngine.Services
 {
@@ -144,6 +145,36 @@ namespace MSRecordsEngine.Services
 
         }
 
+        public static async Task<List<CoulmnSchemaInfo>> GetCoulmnSchemaInfo(string ConnectionString, string tableName)
+        {
+
+            var query = @$"SELECT 
+                            c.TABLE_CATALOG,
+                            c.TABLE_SCHEMA,
+                            c.TABLE_NAME,
+                            c.COLUMN_NAME,
+                            c.DATA_TYPE,
+                            c.CHARACTER_MAXIMUM_LENGTH,
+                            c.IS_NULLABLE,
+                            c.COLUMN_DEFAULT,
+                            col.is_identity AS IsAutoIncrement
+                        FROM 
+                            INFORMATION_SCHEMA.COLUMNS c
+                        INNER JOIN 
+                            sys.tables t ON t.name = c.TABLE_NAME
+                        INNER JOIN 
+                            sys.columns col ON col.object_id = t.object_id AND col.name = c.COLUMN_NAME
+                        WHERE 
+                            c.TABLE_NAME = '{tableName}';";
+
+            using (var conn = CreateConnection(ConnectionString))
+            {
+                var columnSchema = (await conn.QueryAsync<CoulmnSchemaInfo>(query, commandType: CommandType.Text)).ToList();
+                return columnSchema;
+            }
+
+        }
+
         public static bool IsADateType(string eDataType)
         {
             switch (eDataType.ToLower())
@@ -181,6 +212,27 @@ namespace MSRecordsEngine.Services
                     {
                         return false;
                     }
+            }
+        }
+
+        public static async Task<bool> ProcessADOCommand(string sSQL, string connectionString,bool bDoNoCount = false)
+        {
+            int recordaffected = default;
+            using (var conn = CreateConnection(connectionString))
+            {
+                try
+                {
+                    if (bDoNoCount)
+                    {
+                        sSQL = "SET NOCOUNT OFF;" + sSQL + ";SET NOCOUNT ON";
+                    }
+                    recordaffected = await conn.ExecuteAsync(sSQL, commandType: CommandType.Text);
+                    return true;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
             }
         }
     }

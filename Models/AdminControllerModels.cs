@@ -1,4 +1,5 @@
-﻿using MSRecordsEngine.Entities;
+﻿using Microsoft.AspNetCore.Http;
+using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models.FusionModels;
 using Smead.Security;
 using System;
@@ -840,4 +841,240 @@ namespace MSRecordsEngine.Models
     {
         public bool ChildExist { get; set; }
     }
+
+    public class SetSystemAddressDetailsParam
+    {
+        public SystemAddress SystemAddress { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class SetVolumeDetailsParam
+    {
+        public Volume Volume { get; set; }
+        public Passport Passport { get; set; }
+        public bool Active { get; set; }
+    }
+
+    public class GetVolumesListParams
+    {
+        public string ConnectionString { get; set; }
+        public string sord { get; set; }
+        public int page { get; set; }
+        public string pId { get; set; }
+        public int rows { get; set; }
+    }
+
+    public class ReturnGetGeneralDetails : ReturnErrorTypeErrorMsg
+    {
+        public string CursorFlagJSON { get; set; }
+        public string AuditflagJSON { get; set; }
+        public string SelectTableJSON { get; set; }
+        public string DisplayFieldListJSON { get; set; }
+        public string ServerPathJSON { get; set; }
+        public string DBUserNameJSON { get; set; }
+        public string UserTableIconJSON { get; set; }
+        public string AttachmentLicenseJSON { get; set; }
+    }
+
+    public class GetGeneralDetailsParam
+    {
+        public string ConnectionString { get; set; }
+        public bool AttachmentPermission { get; set; }
+        public string TableName { get; set; }
+        public string ServerPath { get; set; }
+    }
+
+    public class SetGeneralDetailsParam
+    {
+        public Table Table { get; set; }
+        public bool Attachments { get; set; }
+        public int OfficialRecord { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ReturnSetGeneralDetails : ReturnErrorTypeErrorMsg
+    {
+        public string SearchValueJSON { get; set; }
+        public string WarnMsgJSON { get; set; }
+    }
+
+    public class LoadFieldDataParam
+    {
+        public string TableName { get; set; }
+        public string sidx {  get; set; }
+        public string sord { get; set; }
+        public int page { get; set; }
+        public int rows { get; set; }
+        public string ConnectionString { get; set;}
+    }
+
+    public class ReturnGetFieldTypeList : ReturnErrorTypeErrorMsg
+    {
+        public string FieldTypesList { get; set; }
+    }
+
+    public class ReturnCheckBeforeRemoveFieldFromTable : ReturnErrorTypeErrorMsg
+    {
+        public bool DeleteIndexes { get; set; }
+    }
+
+    public class RemoveFieldFromTableParam
+    {
+        public string TableName { get; set; }
+        public string FieldName { get; set; }
+        public bool DeleteIndexes { get; set; }
+        public string ConnectionString { get; set;}
+    }
+
+    public class ReturnCheckFieldBeforeEdit
+    {
+        public string Message { get; set; }
+        public string IndexMessage { get; set; }
+    }
+
+    public class CheckBeforeUpdatepParam
+    {
+        public string FieldName { get; set;}
+        public int NewFieldSize { get; set; }
+        public int NewFieldType { get; set; }
+        public int OrigFieldSize { get; set; }
+        public int OrigFieldType { get; set; }
+    }
+
+    public class AddEditFieldParam
+    {
+        public string OperationName { get; set; }
+        public string TableName { get; set; }
+        public string NewInternalName { get; set; }
+        public string OriginalInternalName { get; set; }
+        public string FieldType { get; set; }
+        public string OriginalFieldType { get; set; }
+        public string FieldSize { get; set; }
+        public string OriginalFieldSize { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ReturnGetTableTrackingProperties : ReturnErrorTypeErrorMsg
+    {
+        public string ContainerList { get; set; }
+        public string SystemEntities { get; set; }
+        public string SelectTable { get; set; }
+        public string OutFieldList { get; set; }
+        public string DueBackFieldList { get; set; }
+        public string ActiveFieldList { get; set; }
+        public string EmailAddressList { get; set; }
+        public string RequesFieldList { get; set; }
+        public string InactiveFieldList { get; set; }
+        public string ArchiveFieldList { get; set; }
+        public string UserIdFieldList { get; set; }
+        public string PhoneFieldList { get; set; }
+        public string MailSTopFieldList { get; set; }
+        public string SignatureFieldList { get; set; }
+        public string LabelDestination { get; set; }
+    }
+
+    public class SetTableTrackingDetailsParams
+    {
+        public Table TrackingForm { get; set; }
+        public bool FieldFlag { get; set; }
+        public bool AutoAddNotification { get; set; }
+        public bool AllowBatchRequesting { get; set; }
+        public bool Trackable { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ReturnSetTableTrackingDetails : ReturnErrorTypeErrorMsg
+    {
+        public string WarningMessage { set; get;}
+    }
+
+    public class GetTableEntityParam
+    {
+        public string TableName { get; set; }
+        public int ContainerInfo { get; set; }
+        public string StatusFieldText { get; set; }
+        public string ConnectionString {  get; set; }
+    }
+
+    public class ReturnGetTrackingDestination : ReturnErrorTypeErrorMsg
+    {
+        public string RecordJSON { set; get; }
+        public string ColVisibleJSON { get; set; }
+        public string Col1VisibleJSON { get; set; }
+        public string Col2VisibleJSON { get; set; }
+        public string ColDataFieldJSON { get; set; }
+        public string Col1DataFieldJSON { get; set; }
+        public string Col2DataFieldJSON { get; set; }
+        public string BRequestPermissionJSON { get; set; }
+        public string BTransferPermissionJSON { get; set; }
+        public string TableObjectJSON { get; set;}
+        public string NoRecordMsgJSON { get; set; }
+    }
+
+    public class GetTrackingDestinationParam
+    {
+        public string TableName { get; set; }
+        public Passport Passport { get; set; }
+        public bool ConfigureTransfer { get; set; }
+        public bool TransferValue { get; set; }
+        public bool RequestVal { get; set; }
+    }
+
+    public class SetFileRoomOrderRecordParam
+    {
+        public SLTableFileRoomOrder SLTableFileRoomOrder { get; set; }
+        public string TableName { get; set; }
+        public bool StartFromFront { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ReturnGetAdvanceDetails : ReturnErrorTypeErrorMsg
+    {
+        public string TableEntity { get; set; }
+        public string ParentFolderList { get; set; }
+        public string ParentDocList { get; set; }
+        public string Flag { get; set; }
+    }
+
+    public class SetAdvanceDetailsParam
+    {
+        public Table Table { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ReturnSetAdvanceDetails: ReturnErrorTypeErrorMsg
+    {
+        public string WarningMsg { get; set; }
+    }
+
+    public class GetDataListParams
+    {
+        public string ConnectionString { get; set; }
+        public string TableName {  get; set; }
+        public string sidx { get; set;}
+        public string sord { get; set;}
+        public int page { get; set;}
+        public int rows { get; set;}
+    }
+
+    public class DeleteSelectedRowsParam
+    {
+        public string ConnectionString { get; set; }
+        public string TableName { get; set; }
+        public string rows { get; set; }
+        public string col { get; set; }
+    }
+
+    public class ProcessRequestParam
+    {
+        public string Data {  get; set; }
+        public string TableName { get; set; }
+        public string ColName { get; set; }
+        public string ColType { get; set; }
+        public string ColumnName { get; set; }
+        public string PkValue { get; set; }
+        public string ColumnValue { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
 }
