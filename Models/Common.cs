@@ -1,4 +1,5 @@
-﻿using MSRecordsEngine.Entities;
+﻿using Microsoft.VisualBasic;
+using MSRecordsEngine.Entities;
 using Smead.Security;
 using System;
 using System.Collections.Generic;
@@ -66,6 +67,21 @@ namespace MSRecordsEngine.Models
 
     public class Enums
     {
+        public enum meFieldTypes
+        {
+            ftLong = 1,
+            ftCounter = 2,
+            ftText = 3,
+            ftSmeadCounter = 4
+        }
+
+        public enum eNodeLevel
+        {
+            ndDatabase = 0,
+            ndTabSets = 1,
+            ndTableTabRel = 2
+        }
+
         public enum SecureObjects
         {
             Application = Smead.Security.SecureObject.SecureObjectType.Application,
@@ -720,6 +736,52 @@ namespace MSRecordsEngine.Models
             oTempView = null;
             return NotSubReportRet;
         }
+
+        public static List<string> EngineTablesNotNeededList
+        {
+            get
+            {
+                if (mcEngineTablesNotNeededList is null)
+                {
+                    mcEngineTablesNotNeededList = new List<string>();
+                }
+
+                if (mcEngineTablesNotNeededList.Count == 0)
+                {
+                    mcEngineTablesNotNeededList.Add("coverletterlines");
+                    mcEngineTablesNotNeededList.Add("coverletters");
+                    mcEngineTablesNotNeededList.Add("destcertdetail");
+                    mcEngineTablesNotNeededList.Add("destcerts");
+                    mcEngineTablesNotNeededList.Add("faxaddresses");
+                    mcEngineTablesNotNeededList.Add("faxconfigurations");
+                    mcEngineTablesNotNeededList.Add("faxesinbound");
+                    mcEngineTablesNotNeededList.Add("faxesoutbound");
+                    mcEngineTablesNotNeededList.Add("fielddefinitions");
+                    mcEngineTablesNotNeededList.Add("litigationsupport");
+                    mcEngineTablesNotNeededList.Add("litigationtrackables");
+                    mcEngineTablesNotNeededList.Add("retention");
+                    mcEngineTablesNotNeededList.Add("retentionlists");
+                    mcEngineTablesNotNeededList.Add("scanformlines");
+                    mcEngineTablesNotNeededList.Add("scanforms");
+                    mcEngineTablesNotNeededList.Add("sdlkfoldertypes");
+                    mcEngineTablesNotNeededList.Add("sdlkpulllists");
+                    mcEngineTablesNotNeededList.Add("sdlkrequestor");
+                    mcEngineTablesNotNeededList.Add("sdlkstatus");
+                    mcEngineTablesNotNeededList.Add("sdlkstatushistory");
+                    mcEngineTablesNotNeededList.Add("trackableheaders");
+                    mcEngineTablesNotNeededList.Add("viewparms");
+                    mcEngineTablesNotNeededList.Add("slloggedinusers");
+                    mcEngineTablesNotNeededList.Add("devicetype");
+                    mcEngineTablesNotNeededList.Add("members");
+                    mcEngineTablesNotNeededList.Add("securitygroups");
+                    mcEngineTablesNotNeededList.Add("operators");
+                    mcEngineTablesNotNeededList.Add("operators_back");
+                }
+
+                return mcEngineTablesNotNeededList;
+            }
+
+        }
     }
 
     public class GridColumns
@@ -998,6 +1060,21 @@ namespace MSRecordsEngine.Models
                 }
             }
             return conn;
+        }
+
+        private static string msDBName;
+        public static string DBName
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(msDBName))
+                    msDBName = "DB_Engine";
+                return msDBName;
+            }
+            set
+            {
+                msDBName = Strings.Trim(value);
+            }
         }
     }
 }

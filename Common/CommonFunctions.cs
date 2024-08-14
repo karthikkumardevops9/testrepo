@@ -293,7 +293,7 @@ public sealed class CommonFunctions
         }
     }
 
-    public bool IsAStringType(Enums.DataTypeEnum eDataType)
+    public static bool IsAStringType(Enums.DataTypeEnum eDataType)
     {
         switch (eDataType)
         {
@@ -400,6 +400,23 @@ public sealed class CommonFunctions
             }
         }
         return IsSysAdminRet;
+    }
+
+    public static List<KeyValuePair<string, string>> GetParamFromConnString(string ConnectionString, Databas dbObj = null)
+    {
+        string conString = ConnectionString;
+        var builder = new SqlConnectionStringBuilder(conString);
+        var conStrList = new List<KeyValuePair<string, string>>();
+        // Dim sConnect As String = String.Empty
+        string DBServer = builder.DataSource;
+        string DBDatabase = builder.InitialCatalog;
+        string DBUserId = builder.UserID;
+        string DBPassword = builder.Password;
+        conStrList.Add(new KeyValuePair<string, string>("DBServer", DBServer));
+        conStrList.Add(new KeyValuePair<string, string>("DBDatabase", DBDatabase));
+        conStrList.Add(new KeyValuePair<string, string>("DBUserId", DBUserId));
+        conStrList.Add(new KeyValuePair<string, string>("DBPassword", DBPassword));
+        return conStrList;
     }
 
     public static object IsContainField(string ConnectionString, string tableName, List<SchemaColumns> schemaColumnList, string fieldName, List<KeyValuePair<string, string>> DDList)

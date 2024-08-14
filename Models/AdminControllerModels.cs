@@ -1,11 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models.FusionModels;
 using Smead.Security;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Drawing;
 
 namespace MSRecordsEngine.Models
 {
@@ -1077,4 +1076,190 @@ namespace MSRecordsEngine.Models
         public string ConnectionString { get; set; }
     }
 
+    public class SetNewWorkgroupParam
+    {
+        public Passport Passport { get; set; }
+        public string WorkGroupName { get; set; }
+        public int TabsetsId { get; set; }
+    }
+
+    public class ReturnSetNewWorkgroup : ReturnErrorTypeErrorMsg
+    {
+        public string TabSetId { get; set; }
+    }
+
+    public class RemoveNewWorkgroupParam
+    {
+        public Passport Passport { get; set; }
+        public int TabSetsId { get; set; }
+    }
+
+    public class SetNewTableParam
+    {
+        public int ParentNodeId { get; set; }
+        public int FieldType { get; set; }
+        public int FieldSize { get; set; }
+        public int NodeLevel { get; set; }
+        public string TableName { get; set; }
+        public string DatabaseName { get; set; }
+        public string UserName { get; set; }
+        public string IdFieldName { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ReturnSetNewTable : ReturnErrorTypeErrorMsg
+    {
+        public string NewNodeId { get; set; }
+        public int ViewIdTemp { get; set; }
+    }
+
+    public class RtnSetTablesEntity
+    {
+        public bool Success { get; set; }
+        public int TableId { get; set; }
+    }
+
+    public class RtnSetViewsEntity
+    {
+        public bool Success { get; set; }
+        public int ViewId { get; set; }
+    }
+
+    public class RtnSetRelationshipsEntity
+    {
+        public bool Success { get; set; }
+        public int RelationshipId { get; set;}
+    }
+
+    public class RtnSetTabSetEntity
+    {
+        public bool Success { get; set; }
+        public int TableTabId { get; set; }
+    }
+
+    public class ReturnGetDeleteTableNames : ReturnErrorTypeErrorMsg
+    {
+        public string ParentTable { get; set; }
+        public string ChildTable { get; set; }
+        public string ChildTableId { get; set; }
+    }
+
+    public class ReturnDeleteTable : ReturnErrorTypeErrorMsg
+    {
+        public bool IsUnattached { get; set; }
+    }
+
+    public class ReturnLoadAttachExistingTableScreen
+    {
+        public string TableName { get; set; }
+        public string IdFieldName { get; set; }
+        public string TableIdColumnList { get; set;}
+        public string TablesList { get; set;}
+    }
+
+    public class RenameTreeNodeParam
+    {
+        public string PrevNodeName {  get; set; }
+        public string NewNodeName {  get; set; }
+        public int Id {  get; set; }
+        public string RenameOperation {  get; set; }
+        public Passport Passport {  get; set; }
+    }
+
+    public class ChangeNodeOrderParam
+    {
+        public int UpperTableId { get; set; }
+        public string TableName { get; set; }
+        public int TableId { get; set; }
+        public char Action { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ReturnGetDatabaseList : ReturnErrorTypeErrorMsg
+    {
+        public string DatabaseList { get; set; }
+    }
+
+    public class GetDatabaseListParam
+    {
+        public string Instance { get; set; }
+        public string UserID { get; set; }
+        public string Pass { get; set; }
+    }
+
+    public class AddNewDBParam
+    {
+        public Databas Databas { get; set; }
+        public string Connectionstring { get; set; }
+        public string DBProvider { get; set; }
+    }
+
+    public class CheckIfDateChangedParam
+    {
+        public Databas Databas { get; set; }
+        public string Connectionstring { get; set; }
+    }
+
+    public class ReturnLoadRegisterList : ReturnErrorTypeErrorMsg
+    {
+        public string RegisterBlock { get; set; }
+    }
+
+    public class ReturnGetAvailableDatabase : ReturnErrorTypeErrorMsg
+    {
+        public string ExternalDB { get; set; }
+        public string SystemDB { get; set; }
+    }
+
+    public class ReturnGetAvailableTable : ReturnErrorTypeErrorMsg
+    {
+        public bool Flag { get; set; }
+        public string UnregisterList { get; set; }
+    }
+
+    public class ReturnGetPrimaryField : ReturnErrorTypeErrorMsg
+    {
+        public string PrimaryFieldList { get; set; }
+    }
+
+    public class GetAvailableTableParam
+    {
+        public string DbName { get; set; }
+        public string Server { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class SetRegisterTableParam
+    {
+        public string DbName { get; set; }
+        public string TableName { get; set; }
+        public string FieldName { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class UnRegisterTableParam
+    {
+        public string DbName { get; set; }
+        public string TableName { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class DropTableParam
+    {
+        public string DbName { get; set; }
+        public string TableName { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class ReturnLoadMapView
+    {
+        public TreeView TreeView { get; set; }
+        public IEnumerable<SelectListItem> DatabaseList { get; set; }
+        public SelectList FieldTypeList { get; set; }
+    }
+
+    public class ReturnGetAttachTableFieldsList : ReturnErrorTypeErrorMsg
+    {
+        public string lstColumnNames { get; set; }
+    }
 }
