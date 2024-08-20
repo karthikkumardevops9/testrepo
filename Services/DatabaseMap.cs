@@ -266,37 +266,33 @@ namespace MSRecordsEngine.Services
             }
         }
 
-        private static int miUserLinkIndexTableIdSize = 0;
-
-        public static int UserLinkIndexTableIdSize
+        public static int UserLinkIndexTableIdSize(string ConnectionString)
         {
-            get
+            if (miUserLinkIndexTableIdSize == 0)
             {
-                if (miUserLinkIndexTableIdSize == 0)
+                var pSchemaInfo = SchemaInfoDetails.GetSchemaInfo("USERLINKS", ConnectionString, "INDEXTABLEID");
+                if (pSchemaInfo.Count > 0)
                 {
-                    // Get UserLinks.IndexTableId field length...
-                    var pSchemaInfo = SchemaInfoDetails.GetSchemaInfo("USERLINKS", "INDEXTABLEID");
-                    if (pSchemaInfo.Count > 0)
+                    try
                     {
-                        try
-                        {
-                            miUserLinkIndexTableIdSize = pSchemaInfo[0].CharacterMaxLength;
-                        }
-                        catch (Exception)
-                        {
-                            miUserLinkIndexTableIdSize = 30;
-                        }
+                        miUserLinkIndexTableIdSize = pSchemaInfo[0].CharacterMaxLength;
                     }
-                    else
+                    catch (Exception)
                     {
                         miUserLinkIndexTableIdSize = 30;
                     }
-
-                    pSchemaInfo = null;
+                }
+                else
+                {
+                    miUserLinkIndexTableIdSize = 30;
                 }
 
-                return miUserLinkIndexTableIdSize;
+                pSchemaInfo = null;
             }
+
+            return miUserLinkIndexTableIdSize;
         }
+
+        private static int miUserLinkIndexTableIdSize = 0;
     }
 }

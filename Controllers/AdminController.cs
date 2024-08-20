@@ -11125,7 +11125,7 @@ namespace MSRecordsEngine.Controllers
             {
                 if (pFieldType == (int)Enums.meFieldTypes.ftText)
                 {
-                    int iMaxFieldSize = DatabaseMap.UserLinkIndexTableIdSize;
+                    int iMaxFieldSize = DatabaseMap.UserLinkIndexTableIdSize(ConnectionString);
                     if (pFieldSize < 1 | pFieldSize > iMaxFieldSize)
                     {
                         model.ErrorType = "e";
