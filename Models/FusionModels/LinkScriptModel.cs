@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace MSRecordsEngine.Models.FusionModels
 {
-    public class LinkScriptModel : BaseModel
+    public class LinkScriptModel
     {
         public LinkScriptModel()
         {
@@ -69,14 +69,6 @@ namespace MSRecordsEngine.Models.FusionModels
             public string text { get; set; }
             public string value { get; set; }
         }
-    }
-
-    public class linkscriptPropertiesUI
-    {
-        public string WorkFlow { get; set; }
-        public int ViewId { get; set; }
-        public string[] Rowids { get; set; }
-        public string TableId { get; set; }
     }
 
     public class linkscriptUidata

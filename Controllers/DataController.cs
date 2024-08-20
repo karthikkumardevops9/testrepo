@@ -11,6 +11,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using MSRecordsEngine.Models;
 using Leadtools.Barcode;
+using MSRecordsEngine.RecordsManager;
+using System.ComponentModel;
 namespace FusionWebApi.Controllers
 {
     [Route("[controller]")]
@@ -72,7 +74,7 @@ namespace FusionWebApi.Controllers
         [Route("LoadQueryWindow")]
         public async Task<ViewQueryWindow> LoadQueryWindow(ViewQueryWindowProps props)
         {
-            try
+            try 
             {
                 return await _datagridService.DrawQuery(props);
             }
@@ -81,7 +83,96 @@ namespace FusionWebApi.Controllers
                 _commonService.Logger.LogError(ex.Message);
                 throw;
             }
-          
         }
+        [HttpPost]
+        [Route("RunQuery")]
+        public async Task<GridDataBinding> RunQuery(SearchQueryRequestModal props)
+        {
+            var model = new GridDataBinding();
+            try
+            {
+                model = await _datagridService.BuildNewData(props);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+            return model;
+        }
+        [HttpPost]
+        [Route("GetTotalrowsForGrid")]
+        public async Task<string> GetTotalrowsForGrid(SearchQueryRequestModal req)
+        {
+            try
+            {
+                return await _datagridService.GetTotalRowsForGrid(req);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+        }
+
+        [HttpPost]
+        [Route("LinkscriptButtonClick")]
+        public async Task<ScriptReturn> LinkscriptButtonClick(linkscriptPropertiesUI props)
+        {
+            try
+            {
+                return await _datagridService.LinkscriptButtonClick(props);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+        }
+
+        [HttpPost]
+        [Route("BuiltControls")]
+        public LinkScriptModel BuiltControls(ScriptReturn scriptresult)
+        {
+            try
+            {
+                return _datagridService.BuiltControls(scriptresult);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+        }
+        [HttpPost]
+        [Route("LinkscriptEvents")]
+        public async Task<ScriptReturn> LinkscriptEvents(linkscriptPropertiesUI props)
+        {
+            try
+            {
+                return await _datagridService.LinkscriptEvents(props);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+        }
+
+        [HttpPost]
+        [Route("FlowButtonsClickEvent")]
+        public async Task<bool> FlowButtonsClickEvent(linkscriptPropertiesUI props)
+        {
+            try
+            {
+               return await _datagridService.FlowButtonsClickEvent(props);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+        }
+
     }
 }

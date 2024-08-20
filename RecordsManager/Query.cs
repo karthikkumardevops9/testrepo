@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
@@ -496,7 +497,7 @@ namespace MSRecordsEngine.RecordsManager
             // Dim t1 = DateTime.Now
             if (@params.SQL.Length > 0)
             {
-                using (var conn = _passport.Connection())
+                using (var conn = new SqlConnection(_passport.ConnectionString))
                 {
                     using (var cmd = new SqlCommand(@params.SQL, conn))
                     {
@@ -508,6 +509,62 @@ namespace MSRecordsEngine.RecordsManager
                             {
                                 da.MissingSchemaAction = action;
                                 da.Fill(@params.Data);
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine(ex.Message);
+                                if (@params.Data.Columns.Count == 0)
+                                    return @params.Data;
+
+                                try
+                                {
+                                    @params.Data.Constraints.Add("pkeyConstraint", @params.Data.Columns["pkey"], true);
+                                }
+                                catch (Exception innerEx)
+                                {
+                                    Debug.WriteLine(innerEx.Message);
+                                    @params.Data.Constraints.Add("RowNumConstraint", @params.Data.Columns["RowNum"], true);
+                                }
+                            }
+                        }
+
+                        ExtendViewColumnProperties(@params);
+                    }
+                }
+            }
+            // Dim diff = (DateTime.Now - t1).Milliseconds
+            return @params.Data;
+        }
+
+
+        public async Task<DataTable> FillDataAsync(Parameters @params, bool concatenate = false)
+        {
+            return await FillDataAsync(@params, MissingSchemaAction.AddWithKey, concatenate);
+        }
+        public async Task<DataTable> FillDataAsync(Parameters @params, MissingSchemaAction action, bool concatenate = false)
+        {
+            RefineSQL(@params);
+            if (!concatenate)
+                @params.Data = new DataTable();
+            // Dim t1 = DateTime.Now
+            if (@params.SQL.Length > 0)
+            {
+                using (var conn = new SqlConnection(_passport.ConnectionString))
+                {
+                    await conn.OpenAsync();
+                    using (var cmd = new SqlCommand(@params.SQL, conn))
+                    {
+                        cmd.CommandTimeout = CommandTimeOut;
+
+                        using (var da = new SqlDataAdapter(cmd))
+                        {
+                            try
+                            {
+                                using (var reader = await cmd.ExecuteReaderAsync())
+                                {
+                                    @params.Data.Load(reader);
+                                    da.MissingSchemaAction = action;
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -2299,6 +2356,24 @@ namespace MSRecordsEngine.RecordsManager
 
             return processedItemName;
         }
+        public static async Task<int> TotalQueryRowCountAsync(string sql, SqlConnection conn)
+        {
+            using (var cmd = new SqlCommand("SELECT COUNT(*) " + Strings.Right(sql, sql.Length - Strings.InStr(sql, " FROM ", CompareMethod.Text)), conn))
+            {
+                cmd.CommandTimeout = CommandTimeOut;
+
+                try
+                {
+                    return Conversions.ToInteger(await cmd.ExecuteScalarAsync());
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                    return 0;
+                }
+            }
+
+        }
 
         public static int TotalQueryRowCount(string sql, SqlConnection conn)
         {
@@ -2316,7 +2391,9 @@ namespace MSRecordsEngine.RecordsManager
                     return 0;
                 }
             }
+            
         }
+
 
 
         public static int TotalQueryRowCountMVC(string sql, SqlConnection conn)

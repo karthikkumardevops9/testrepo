@@ -8,8 +8,24 @@ namespace MSRecordsEngine.Models.FusionModels
 {
     public class GridDataBinding : BaseModel
     {
+        public GridDataBinding()
+        {
+            ListOfColumn = new List<string>();
+            fvList = new List<FieldValue>();
+            ListOfHeaders = new List<TableHeadersProperty>();
+            ListofEditableHeader = new List<TableEditableHeader>();
+            ListOfDatarows = new List<List<string>>();
+            ListOfAttachmentLinks = new List<string>();
+            ListOfBreadCrumbsRightClick = new List<BreadCrumbsRightClick>();
+            ListOfBreadCrumbs = new List<BreadCrumbsUI>();
+            ListOfdropdownColumns = new List<DropDownproperties>();
+            ListOfColumnWidths = new List<int>();
+            sortableFields = new List<SortableFileds>();
+            RightClickToolBar = new RightclickToolBar();
+
+        }
         internal Parameters @params { get; set; }
-        private int fViewType;
+        public int fViewType;
         private TableColums Cell;
         private List<string> ListOfColumn { get; set; }
 
@@ -56,8 +72,8 @@ namespace MSRecordsEngine.Models.FusionModels
         public string dateFormat { get; set; }
         public List<int> ListOfColumnWidths { get; set; }
         public List<SortableFileds> sortableFields { get; set; } = new List<SortableFileds>();
-        internal string IdFieldDataType { get; set; }
-        internal string TotalRowsQuery { get; set; }
+        public string IdFieldDataType { get; set; }
+        public string TotalRowsQuery { get; set; }
     }
 
     public class BreadCrumbsRightClick
@@ -104,31 +120,28 @@ namespace MSRecordsEngine.Models.FusionModels
         public string ColumnType { get; set; }
         public string operators { get; set; }
         public string values { get; set; }
-        public class Searchparams
-        {
-            public int ViewId { get; set; }
-            public int pageNum { get; set; }
-            public string ChildKeyField { get; set; }
-            public string keyFieldValue { get; set; }
-            public int firstCrumbChild { get; set; } = 0;
-            public string columntype { get; set; }
-            public string rowid { get; set; }
-            public string preTableName { get; set; }
-            public string Childid { get; set; }
-            public string password { get; set; }
-            public int ViewType { get; set; } = 0;
-            public int crumbLevel { get; set; } = 0;
-        }
+   
 
     }
-    public class SearchQueryRequestModal
-    {
-        public searchQueryModel.Searchparams paramss { get; set; }
-        public searchQueryModel.Searchparams paramsUI { get; set; }
-        public List<searchQueryModel> searchQuery { get; set; }
-    }
+    
     public class TableHeadersProperty
     {
+        public TableHeadersProperty(string headername, string issort, string datatype, string isdropdown, string isEditable, int columnOrder, string editmask, bool allownull, string dataTypeFullName, string ColumnName, bool isprimarykey, int maxlength, bool iscounterField)
+        {
+            HeaderName = headername;
+            Issort = Convert.ToBoolean(issort);
+            DataType = datatype;
+            isDropdown = Convert.ToBoolean(isdropdown);
+            this.isEditable = Convert.ToBoolean(isEditable);
+            this.columnOrder = columnOrder;
+            editMask = editmask;
+            Allownull = allownull;
+            DataTypeFullName = dataTypeFullName;
+            this.ColumnName = ColumnName;
+            IsPrimarykey = isprimarykey;
+            MaxLength = maxlength;
+            isCounterField = iscounterField;
+        }
         public string HeaderName { get; set; }
         public bool Issort { get; set; }
         public string DataType { get; set; }
@@ -169,6 +182,12 @@ namespace MSRecordsEngine.Models.FusionModels
 
     public class DropDownproperties
     {
+        public DropDownproperties(int colOrder, List<string> lvalue, List<string> ldisplay)
+        {
+            colorder = colOrder;
+            ListValue = lvalue;
+            ListDisplay = ldisplay;
+        }
         public int colorder { get; set; }
         public string value { get; set; }
         public string display { get; set; }
