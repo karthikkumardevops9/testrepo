@@ -10,12 +10,14 @@ using System.Xml.Linq;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
 using Smead.Security;
+using System.Threading.Tasks;
 
 namespace MSRecordsEngine.RecordsManager
 {
 
     public class ScriptReturn
     {
+        public ScriptReturn() { }
         internal ScriptReturn(bool Successful)
         {
             _successful = Successful;
@@ -377,6 +379,14 @@ namespace MSRecordsEngine.RecordsManager
         {
             using (var conn = passport.Connection())
             {
+                return RunScriptWorkFlow(WorkFlow, TableName, TableId, ViewId, passport, conn, selectedRowIds);
+            }
+        }
+        public static async Task<ScriptReturn> RunScriptWorkFlowAsync(string WorkFlow, string TableName, string TableId, int ViewId, Passport passport, string[] selectedRowIds = null)
+        {
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
                 return RunScriptWorkFlow(WorkFlow, TableName, TableId, ViewId, passport, conn, selectedRowIds);
             }
         }
@@ -743,16 +753,16 @@ namespace MSRecordsEngine.RecordsManager
                     if (string.IsNullOrEmpty(key))
                     {
                         // Sending a NULL will Remove an unused section deleting all old stuff
-                        lRC = INIFile.WritePrivateProfileStringLongLong( section, 0, 0,  fileName);
+                        lRC = INIFile.WritePrivateProfileStringLongLong(section, 0, 0, fileName);
                     }
                     else if (string.IsNullOrEmpty(value))
                     {
                         // Sending a NULL will Remove an unused entry
-                        lRC = INIFile.WritePrivateProfileStringLong( section,  key, 0,  fileName);
+                        lRC = INIFile.WritePrivateProfileStringLong(section, key, 0, fileName);
                     }
                     else
                     {
-                        lRC = INIFile.WritePrivateProfileString( section,  key,  value,  fileName);
+                        lRC = INIFile.WritePrivateProfileString(section, key, value, fileName);
                     }
                 }
                 catch (Exception ex)
@@ -784,7 +794,7 @@ namespace MSRecordsEngine.RecordsManager
                     {
                         lLength = lLength + INI_STRING_LEN;
                         sReturnBuffer = new string('\0', lLength);
-                        lRC = INIFile.GetPrivateProfileStringLong( section, 0,  defaultValue,  sReturnBuffer, lLength,  fileName);
+                        lRC = INIFile.GetPrivateProfileStringLong(section, 0, defaultValue, sReturnBuffer, lLength, fileName);
                     }
                 }
                 else
@@ -795,7 +805,7 @@ namespace MSRecordsEngine.RecordsManager
                     {
                         lLength = lLength + INI_STRING_LEN;
                         sReturnBuffer = new string('\0', lLength);
-                        lRC = INIFile.GetPrivateProfileString( section,  key,  defaultValue,  sReturnBuffer, lLength,  fileName);
+                        lRC = INIFile.GetPrivateProfileString(section, key, defaultValue, sReturnBuffer, lLength, fileName);
                     }
                 }
 
@@ -4137,7 +4147,7 @@ namespace MSRecordsEngine.RecordsManager
                     }
                 case "IF":
                     {
-                    //lbl_IfCase:;
+                        //lbl_IfCase:;
 
                         // If...
                         // Get value for Arg One...
@@ -4278,8 +4288,8 @@ namespace MSRecordsEngine.RecordsManager
 
             if (this.ScriptMsgBox("Critical Errors " + Information.Err().Number.ToString() + " " + Information.Err().Description + ". (ScriptEngine.FlowControl)", MsgBoxStyle.RetryCancel | MsgBoxStyle.Exclamation, System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + "-" + Strings.Trim(scriptLine.ScriptName) + "(" + scriptLine.ScriptSequence.ToString() + ")") == MsgBoxResult.Retry)
             {
-//                ;
-//#error Cannot convert ResumeStatementSyntax - see comment for details
+                //                ;
+                //#error Cannot convert ResumeStatementSyntax - see comment for details
                 /* Cannot convert ResumeStatementSyntax, CONVERSION ERROR: Conversion for ResumeStatement not implemented, please report this issue in 'Resume' at character 153920
 
 

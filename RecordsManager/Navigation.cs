@@ -15,8 +15,12 @@ using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
+using MSRecordsEngine.Entities;
 using MSRecordsEngine.Properties;
+using MSRecordsEngine.Repository;
 using Smead.Security;
+using static MSRecordsEngine.RecordsManager.RecordsManage;
+using SecureObject = Smead.Security.SecureObject;
 
 
 namespace MSRecordsEngine.RecordsManager
@@ -261,7 +265,7 @@ namespace MSRecordsEngine.RecordsManager
                 if (checkPath.StartsWith(@"\\"))
                     checkPath += string.Format("{0}{1}", oVolume.PathName.StartsWith(@"\") ? string.Empty : @"\", oVolume.PathName);
 
-                bIsValidOutputSettings = Directory.Exists(checkPath) && passport.CheckPermission(oOutputSetting.Id, SecureObject.SecureObjectType.OutputSettings, Permissions.Permission.Access);
+                bIsValidOutputSettings =  System.IO.Directory.Exists(checkPath) && passport.CheckPermission(oOutputSetting.Id, Smead.Security.SecureObject.SecureObjectType.OutputSettings, Permissions.Permission.Access);
                 bIsOutputSettingsActive = CBoolean(oOutputSetting.InActive) == false;
             }
         }
@@ -323,7 +327,18 @@ namespace MSRecordsEngine.RecordsManager
                 throw new Exception(string.Format("Error - \"{0}\" in Navigation.SendEmail", ex.Message));
             }
         }
-
+        public static bool IsAuditingEnabled(string tableName, string connectionStr)
+        {
+            using(var context = new TABFusionRMSContext(connectionStr))
+            {
+                var tb = context.Tables.Where(x => x.TableName == tableName).FirstOrDefault();
+                if (tb.AuditUpdate == true || tb.AuditConfidentialData == true || tb.AuditAttachments == true)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         public static void SetSetting(string section, string item, string value, SqlConnection conn)
         {
             using (var cmd = new SqlCommand("SELECT COUNT(*) FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
@@ -1756,7 +1771,7 @@ namespace MSRecordsEngine.RecordsManager
 
         public static string GetViewTableName(int viewId, Passport passport)
         {
-            using (var conn = passport.Connection())
+            using (var conn = new SqlConnection(passport.ConnectionString))
             {
                 return GetViewTableName(viewId, conn);
             }

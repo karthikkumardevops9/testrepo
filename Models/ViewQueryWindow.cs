@@ -45,7 +45,7 @@ namespace MSRecordsEngine.Models
         public bool GsIncludeAttchment { get; set; }
         public bool GsIsAllGlobalRequest { get; set; }
         public string HoldTotalRowQuery { get; set; }
-        public List<TableEditableHeader> EditableCells { get; set; }
+        public List<TableEditableHeaderquery> EditableCells { get; set; }
     }
 
     public class queryList
@@ -60,7 +60,7 @@ namespace MSRecordsEngine.Models
         public string ColumnType { get; set; }
     }
 
-    public class TableEditableHeader
+    public class TableEditableHeaderquery
     {
         public string HeaderName { get; set; }
         public bool Issort { get; set; }
