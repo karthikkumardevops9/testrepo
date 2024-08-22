@@ -576,5 +576,24 @@ public sealed class CommonFunctions
         var jsonData = new { total = totalPages, page, records = totalRecords, rows = objListOfEmployeeEntity };
         return jsonData;
     }
+
+    public static string ValidateSQLStatement(string SQLString, string ConnectionString)
+    {
+        string sReturnErrorMessage = string.Empty;
+        try
+        {
+            using (var conn = CreateConnection(ConnectionString))
+            {
+                SQLString = CommonFunctions.NormalizeString(SQLString);
+                var testquery = conn.Query(SQLString);
+                sReturnErrorMessage = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            sReturnErrorMessage = ex.Message;
+        }
+        return sReturnErrorMessage;
+    }
 }
 

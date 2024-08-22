@@ -3741,229 +3741,6 @@ namespace MSRecordsEngine.Controllers
 
         #region Report Definitions 
 
-        //[Route("GetDataFromViewColumn")]
-        //[HttpPost]
-        //public async Task<Dictionary<string, bool>> GetDataFromViewColumn(GetDataFromViewColumnParams getDataFromViewColumnParams)
-        //{
-        //    var editSettingList = getDataFromViewColumnParams.EditSettingList;
-        //    var viewColumnEntity = getDataFromViewColumnParams.ViewColumnEntity;
-        //    var CurrentViewColumn = getDataFromViewColumnParams.CurrentViewColumn;
-        //    var tableName = getDataFromViewColumnParams.TableName;
-        //    var oView = getDataFromViewColumnParams.View;
-        //    var ConnectionString = getDataFromViewColumnParams.ConnectionString;
-        //    try
-        //    {
-        //        using (var context = new TABFusionRMSContext(ConnectionString))
-        //        {
-        //            bool bIsSecondLevel;
-        //            var mbLocalLookup = default(bool);
-        //            bool bLocked;
-        //            editSettingList.Add("Capslock", true);
-        //            editSettingList.Add("Editable", true);
-        //            editSettingList.Add("Filterable", true);
-        //            editSettingList.Add("Sortable", true);
-        //            editSettingList.Add("MaskIncludeDB", true);
-        //            editSettingList.Add("DropDown", false);
-        //            editSettingList.Add("DropDownSuggestionOnly", false);
-        //            editSettingList.Add("SubTotal", true);
-        //            var moTable = new Table();
-        //            if (viewColumnEntity is not null)
-        //            {
-        //                moTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).FirstOrDefaultAsync();
-        //                switch (viewColumnEntity.LookupType)
-        //                {
-        //                    case 1:
-        //                        {
-        //                            bIsSecondLevel = true;
-        //                            if ((viewColumnEntity.LookupIdCol >= 0) && (viewColumnEntity.LookupIdCol < CurrentViewColumn.Count))
-        //                            {
-        //                                var tempViewCol = CurrentViewColumn.Where(m => m.ColumnNum == viewColumnEntity.LookupIdCol).FirstOrDefault();
-        //                                if (tempViewCol is not null)
-        //                                {
-        //                                    bIsSecondLevel = (tempViewCol.LookupType != Convert.ToInt32(Enums.geViewColumnsLookupType.ltDirect));
-        //                                }
-        //                            }
-        //                            if (!bIsSecondLevel)
-        //                            {
-        //                                editSettingList["DropDown"] = true;
-        //                                editSettingList["Editable"] = false;
-        //                            }
-        //                            else
-        //                            {
-        //                                editSettingList["DropDown"] = false;
-        //                                editSettingList["Editable"] = false;
-        //                            }
-
-        //                            break;
-        //                        }
-
-        //                    case 12:
-        //                    case 14:
-        //                    case 13:
-        //                    case 15:
-        //                    case 17:
-        //                        {
-        //                            var childTable = new Table();
-        //                            if (viewColumnEntity.LookupIdCol > -1)
-        //                            {
-        //                                if ((viewColumnEntity.LookupIdCol >= 0) && (viewColumnEntity.LookupIdCol < CurrentViewColumn.Count))
-        //                                {
-        //                                    var tempViewCol = CurrentViewColumn.Where(m => m.ColumnNum == viewColumnEntity.LookupIdCol).FirstOrDefault();
-        //                                    string TempTableName = DatabaseMap.RemoveFieldNameFromField(tempViewCol.FieldName);
-        //                                    childTable = (Table)context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(TempTableName.Trim().ToLower()));
-        //                                    if (childTable is not null)
-        //                                    {
-        //                                        editSettingList["DropDown"] = true;
-        //                                    }
-        //                                }
-        //                            }
-        //                            else
-        //                            {
-        //                                string TempTableName = DatabaseMap.RemoveFieldNameFromField(viewColumnEntity.FieldName);
-        //                                childTable = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(TempTableName.Trim().ToLower())).FirstOrDefaultAsync();
-        //                                if (childTable is not null)
-        //                                {
-        //                                    var ParentTable = await context.RelationShips.Where(m => m.LowerTableName.Trim().ToLower().Equals(childTable.TableName.Trim().ToLower())).ToListAsync();
-        //                                    if (ParentTable is not null)
-        //                                    {
-        //                                        foreach (RelationShip relationObj in ParentTable)
-        //                                        {
-        //                                            if (relationObj.LowerTableFieldName.Trim().ToLower().Equals(viewColumnEntity.FieldName.Trim().ToLower()))
-        //                                            {
-        //                                                if (!relationObj.UpperTableName.Trim().ToLower().Equals(moTable.TableName.Trim().ToLower()))
-        //                                                {
-        //                                                    editSettingList["DropDown"] = true;
-        //                                                    break;
-        //                                                }
-        //                                            }
-        //                                        }
-        //                                    }
-        //                                }
-        //                            }
-        //                            if (editSettingList["DropDown"])
-        //                            {
-        //                                if (childTable is not null)
-        //                                {
-        //                                    if (string.IsNullOrEmpty(Strings.Trim(childTable.CounterFieldName)))
-        //                                    {
-        //                                        var IsAuto = SchemaInfoDetails.GetColumnsSchema(moTable.TableName, ConnectionString).Where(a => a.COLUMN_NAME.ToLower() == viewColumnEntity.FieldName.ToLower() && a.IsAutoIncrement == "yes").FirstOrDefault();
-        //                                        if (IsAuto.IsAutoIncrement == "no")
-        //                                        {
-        //                                            editSettingList["DropDown"] = false;
-        //                                            editSettingList["Editable"] = false;
-        //                                        }
-        //                                    }
-        //                                }
-        //                            }
-        //                            else
-        //                            {
-        //                                editSettingList["DropDown"] = false;
-        //                            }
-
-        //                            break;
-        //                        }
-
-        //                    case 0:
-        //                        {
-        //                            var ParentTable = await context.RelationShips.Where(m => m.LowerTableName.Trim().ToLower().Equals(moTable.TableName.Trim().ToLower())).ToListAsync();
-
-        //                            if (ParentTable is not null)
-        //                            {
-        //                                foreach (RelationShip relationObj in ParentTable)
-        //                                {
-        //                                    if (Strings.StrComp(DatabaseMap.RemoveTableNameFromField(relationObj.LowerTableFieldName), DatabaseMap.RemoveTableNameFromField(viewColumnEntity.FieldName), Constants.vbTextCompare) == 0)
-        //                                    {
-        //                                        mbLocalLookup = true;
-        //                                        break;
-        //                                    }
-        //                                }
-        //                                editSettingList["DropDown"] = mbLocalLookup;
-        //                                if (editSettingList["DropDown"] == false)
-        //                                {
-        //                                    if (moTable is not null)
-        //                                    {
-        //                                        if (ParentTable is not null)
-        //                                        {
-        //                                            foreach (RelationShip relationObj in ParentTable)
-        //                                            {
-        //                                                if (relationObj.UpperTableFieldName.Split('.')[0].Trim().ToLower().Equals(viewColumnEntity.FieldName.Split('.')[0].Trim().ToLower()))
-        //                                                {
-        //                                                    editSettingList["Editable"] = false;
-        //                                                    break;
-        //                                                }
-        //                                            }
-        //                                        }
-        //                                    }
-        //                                }
-        //                            }
-        //                            if (DatabaseMap.RemoveTableNameFromField(moTable.RetentionFieldName).Trim().ToLower().Equals(DatabaseMap.RemoveTableNameFromField(viewColumnEntity.FieldName).Trim().ToLower()))
-        //                            {
-        //                                editSettingList["Editable"] = (moTable.RetentionAssignmentMethod != (int)Enums.meRetentionCodeAssignment.rcaCurrentTable) && (moTable.RetentionAssignmentMethod != (int)Enums.meRetentionCodeAssignment.rcaRelatedTable);
-        //                                editSettingList["DropDown"] = editSettingList["Editable"];
-        //                            }
-
-        //                            break;
-        //                        }
-        //                }
-
-        //                switch (viewColumnEntity.LookupType)
-        //                {
-        //                    case 1:
-        //                    case 12:
-        //                    case 13:
-        //                    case 14:
-        //                    case 15:
-        //                    case 17:
-        //                        {
-        //                            bLocked = false;
-        //                            break;
-        //                        }
-
-        //                    default:
-        //                        {
-        //                            bLocked = DataLocked(viewColumnEntity.FieldName, moTable.TableName, ConnectionString);
-        //                            break;
-        //                        }
-        //                }
-        //                if (bLocked)
-        //                {
-        //                    editSettingList["Editable"] = false;
-        //                    if ((Int32)viewColumnEntity.LookupType != (Int32)Enums.geViewColumnsLookupType.ltLookup)
-        //                    {
-        //                        editSettingList["DropDown"] = false;
-        //                    }
-        //                }
-        //                if ((Int32)viewColumnEntity.LookupType != (Int32)Enums.geViewColumnsLookupType.ltDirect)
-        //                {
-        //                    if ((Int32)viewColumnEntity.LookupType != (Int32)Enums.geViewColumnsLookupType.ltLookup)
-        //                    {
-        //                        editSettingList["Editable"] = false;
-        //                    }
-        //                    editSettingList["Sortable"] = false;
-        //                    editSettingList["Filterable"] = false;
-        //                    editSettingList["MaskIncludeDB"] = false;
-        //                    editSettingList["Capslock"] = false;
-        //                }
-        //                if (editSettingList["DropDown"] & mbLocalLookup)
-        //                {
-        //                    editSettingList["DropDownSuggestionOnly"] = true;
-        //                }
-        //                else
-        //                {
-        //                    editSettingList["DropDownSuggestionOnly"] = false;
-        //                }
-        //                editSettingList = await SetEditSettingOnEdit(editSettingList, viewColumnEntity, tableName, oView, ConnectionString);
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _commonService.Logger.LogError($"Error:{ex.Message}");
-        //    }
-
-        //    return editSettingList;
-        //}
-
         [Route("GetDataFromViewColumn")]
         [HttpPost]
         public async Task<Dictionary<string, bool>> GetDataFromViewColumn(ValidateEditSettingsOnEditParams validateEditSettingsOnEditParams) //Complete testing 
@@ -4213,9 +3990,10 @@ namespace MSRecordsEngine.Controllers
 
                 var tableObjList = await context.Tables.ToListAsync();
                 var relationObjList = await context.RelationShips.ToListAsync();
-                FieldNameList = await _reportService.FillViewColField(tableObjList, relationObjList, FieldNameList, orgTable, relationShipEntity, bDoUpper, iLevel, bNumericOnly, ConnectionString);
+                var fillViewColField = await _reportService.FillViewColField(tableObjList, relationObjList, FieldNameList, orgTable, relationShipEntity, bDoUpper, iLevel, bNumericOnly, ConnectionString);
+                //FieldNameList = await _reportService.FillViewColField(tableObjList, relationObjList, FieldNameList, orgTable, relationShipEntity, bDoUpper, iLevel, bNumericOnly, ConnectionString);
 
-                return FieldNameList;
+                return fillViewColField.LstKeyValuePair;
             }
         }
 
@@ -4276,6 +4054,301 @@ namespace MSRecordsEngine.Controllers
                 _commonService.Logger.LogError($"Error:{ex.Message}");
             }
 
+            return model;
+        }
+
+        [Route("SetColumnInTempViewCol")]
+        [HttpPost]
+        public async Task<ReturnSetColumnInTempViewCol> SetColumnInTempViewCol(SetColumnInTempViewColParam setColumnInTempViewColParam) //Complete testing
+        {
+            var model = new ReturnSetColumnInTempViewCol();
+
+            var formEntity = setColumnInTempViewColParam.formEntity;
+            var DisplayStyleData = setColumnInTempViewColParam.DisplayStyleData;
+            var DuplicateType = setColumnInTempViewColParam.DuplicateType;
+            var TableName = setColumnInTempViewColParam.TableName;
+            var reportNameOrId = setColumnInTempViewColParam.reportNameOrId;
+            var LevelNum = setColumnInTempViewColParam.LevelNum;
+            var SQLString = setColumnInTempViewColParam.SQLString;
+            var FieldNameTB = setColumnInTempViewColParam.FieldNameTB ;
+            var IsReportColumn = setColumnInTempViewColParam.IsReportColumn ;
+            var DropDownFlagBool = setColumnInTempViewColParam.DropDownFlagBool ;
+            var pPageBreakField = setColumnInTempViewColParam.pPageBreakField ;
+            var pSuppressDuplicates = setColumnInTempViewColParam.pSuppressDuplicates ;
+            var pCountColumn = setColumnInTempViewColParam.pCountColumn ;
+            var pSubtotalColumn = setColumnInTempViewColParam.pSubtotalColumn ;
+            var pRestartPageNumber = setColumnInTempViewColParam.pRestartPageNumber ;
+            var pUseAsPrintId = setColumnInTempViewColParam.pUseAsPrintId ;
+            var pSortableField = setColumnInTempViewColParam.pSortableField ;
+            var pFilterField = setColumnInTempViewColParam.pFilterField ;
+            var pEditAllowed = setColumnInTempViewColParam.pEditAllowed ;
+            var pColumnVisible = setColumnInTempViewColParam.pColumnVisible ;
+            var pDropDownSuggestionOnly = setColumnInTempViewColParam.pDropDownSuggestionOnly ;
+            var pMaskInclude = setColumnInTempViewColParam.pMaskInclude ;
+            var LookupNumber = setColumnInTempViewColParam.LookupNumber;
+            var tempExist = setColumnInTempViewColParam.tempExist;
+            var tempViewColumns = setColumnInTempViewColParam.tempViewColumns;
+            var ConnectionString = setColumnInTempViewColParam.ConnectionString;
+
+
+            string lstViewColumnJSON = "";
+            var CurrentViewColumn = new List<ViewColumn>();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    bool sortFieldValue;
+                    bool filterFieldValue;
+                    if (IsReportColumn)
+                    {
+                        sortFieldValue = true;
+                        filterFieldValue = true;
+                    }
+                    else
+                    {
+                        sortFieldValue = pSortableField;
+                        filterFieldValue = pFilterField;
+                    }
+                    formEntity.DropDownFlag = Convert.ToInt16(DropDownFlagBool);
+                    formEntity.EditAllowed = pEditAllowed;
+                    formEntity.PageBreakField = pPageBreakField;
+                    formEntity.SuppressDuplicates = pSuppressDuplicates;
+                    formEntity.CountColumn = pCountColumn;
+                    formEntity.SubtotalColumn = pSubtotalColumn;
+                    formEntity.RestartPageNumber = pRestartPageNumber;
+                    formEntity.UseAsPrintId = pUseAsPrintId;
+                    formEntity.SortableField = pSortableField;
+                    formEntity.FilterField = pFilterField;
+                    formEntity.EditAllowed = pEditAllowed;
+                    formEntity.ColumnVisible = pColumnVisible;
+                    formEntity.DropDownSuggestionOnly = pDropDownSuggestionOnly;
+                    formEntity.MaskInclude = pMaskInclude;
+                    if (!string.IsNullOrEmpty(FieldNameTB))
+                    {
+                        formEntity.FieldName = FieldNameTB;
+                    }
+
+                    string msSql = "";
+                    string sTempFieldName = string.Empty;
+                    int iLookupColumn = 0;
+
+                    if (!string.IsNullOrEmpty(SQLString))
+                    {
+                        msSql = SQLString;
+                    }
+
+                    var tableEntity = await context.Tables.Where(m => m.TableName.Trim().ToLower().Equals(TableName.Trim().ToLower())).FirstOrDefaultAsync();
+                    var msg = await ValidateAlternateField(formEntity, sortFieldValue, filterFieldValue, msSql, tableEntity, sTempFieldName, ConnectionString);
+                    sTempFieldName = msg;
+
+                    if (!string.IsNullOrEmpty(sTempFieldName))
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = sTempFieldName;
+                        return model;
+                    }
+                    //check in client side 
+                    //if (!this.TempData.ContainsKey("TempViewColumns_" + LevelNum))
+                    //{
+                    //    var lViewColumnsList = new List<ViewColumn>();
+                    //    TempData.Set<List<ViewColumn>>("TempViewColumns_" + LevelNum, lViewColumnsList);
+                    //}
+
+                    //if (TempData is not null)
+                    if (tempExist)
+                    {
+                        long viewColumnId = new long();
+                        //CurrentViewColumn = TempData.Get<List<ViewColumn>>("TempViewColumns_" + LevelNum);
+                        CurrentViewColumn = tempViewColumns;
+                        if (!string.IsNullOrEmpty(reportNameOrId))
+                        {
+                            if (reportNameOrId.Contains("_"))
+                            {
+                                var viewColArray = reportNameOrId.Split('_');
+                                viewColumnId = Convert.ToInt64(viewColArray[1]);
+                            }
+                        }
+                        if (CurrentViewColumn is not null)
+                        {
+                            if (IsReportColumn)
+                            {
+                                formEntity.SortableField = true;
+                                formEntity.FilterField = true;
+                            }
+                            if (viewColumnId != 0L)
+                            {
+                                foreach (ViewColumn viewColObj in CurrentViewColumn)
+                                {
+                                    if (viewColObj.Id == viewColumnId)
+                                    {
+                                        formEntity.Id = (int)viewColumnId;
+                                        formEntity.LookupType = Convert.ToInt16(LookupNumber);
+                                        formEntity.FieldName = FieldNameTB;
+                                        formEntity.ColumnNum = viewColObj.ColumnNum;
+                                        formEntity.SortOrder = viewColObj.SortOrder;
+                                        formEntity.SortOrderDesc = viewColObj.SortOrderDesc;
+                                        var viewColObjref = viewColObj;
+                                        var updatedViewColumn = AddUpdateViewColumn(viewColObjref, formEntity);
+                                        viewColObjref = updatedViewColumn;
+                                        break;
+                                    }
+                                }
+                                model.ErrorMessage = "Selected Column properties are edited successfully";
+                                model.ErrorType = "s";
+                            }
+                            else
+                            {
+                                SetChildLookDown(ref formEntity, DisplayStyleData, DuplicateType);
+                                var lookUpColumn = await SetLookupIdColOnAdd(iLookupColumn, ConnectionString, formEntity, CurrentViewColumn, TableName, msSql, tableEntity);
+                                iLookupColumn = lookUpColumn;
+                                formEntity.LookupIdCol = (short?)iLookupColumn;
+                                int iMinNumber = -1;
+                                if (CurrentViewColumn.Count != 0)
+                                {
+                                    iMinNumber = CurrentViewColumn.Min(x => x.Id);
+                                    if (iMinNumber < 0)
+                                    {
+                                        iMinNumber = iMinNumber - 1;
+                                    }
+                                    else
+                                    {
+                                        iMinNumber = -1;
+                                    }
+                                }
+                                formEntity.Id = iMinNumber;
+                                if (!string.IsNullOrEmpty(formEntity.FieldName) & !string.IsNullOrEmpty(tableEntity.RetentionFieldName))
+                                {
+                                    if (formEntity.FieldName.Trim().ToLower().Equals(tableEntity.RetentionFieldName.Trim().ToLower()))
+                                    {
+                                        formEntity.DropDownFlag = (short?)-1;
+                                    }
+                                    else if (Convert.ToBoolean(formEntity.DropDownFlag.Value))
+                                    {
+                                        formEntity.DropDownFlag = (short?)-1;
+                                    }
+                                    else
+                                    {
+                                        formEntity.DropDownFlag = (short?)0;
+                                    }
+                                }
+                                else if (Convert.ToBoolean(formEntity.DropDownFlag.Value))
+                                {
+                                    formEntity.DropDownFlag = (short?)-1;
+                                }
+                                else
+                                {
+                                    formEntity.DropDownFlag = (short?)0;
+                                }
+
+                                int ColumnCount = CurrentViewColumn.Count;
+                                int pColumnNumber = ColumnCount;
+
+                                formEntity.ColumnNum = (short?)pColumnNumber; 
+
+                                formEntity.FieldName = formEntity.FieldName;
+
+                                var UpdateViewColumn = AddUpdateViewColumn(formEntity, formEntity);
+                                formEntity = UpdateViewColumn;
+                                CurrentViewColumn.Add(formEntity);
+
+                                model.ErrorMessage = "Column added into the Selected View";
+                                model.ErrorType = "s";
+                            }
+                            //implement on client side
+                            //if (CurrentViewColumn.Count > 0)
+                            //{
+                            //    TempData.Set<List<ViewColumn>>("TempViewColumns_" + LevelNum, CurrentViewColumn);
+                            //}
+                        }
+                    }
+                    if (CurrentViewColumn is not null)
+                    {
+                        var Setting = new JsonSerializerSettings();
+                        Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                        var lstViewColumn = new List<ViewColumn>();
+                        //lstViewColumn = TempData.GetPeek<List<ViewColumn>>("TempViewColumns_" + LevelNum);
+                        lstViewColumn = CurrentViewColumn;
+                        lstViewColumnJSON = JsonConvert.SerializeObject(lstViewColumn, Newtonsoft.Json.Formatting.Indented, Setting);
+                        model.ErrorType = "s";
+
+                        model.LstViewColumn = lstViewColumnJSON;
+                        model.TempViewColumns = CurrentViewColumn;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("DropDownValidation")]
+        [HttpPost]
+        public async Task<ReturnDropDownValidation> DropDownValidation(DropDownValidationParam dropDownValidationParam) //Complete testing
+        {
+            var currentStatus = dropDownValidationParam.CurrentStatus ;
+            var editStatus = dropDownValidationParam.EditStatus ;
+            var tableName = dropDownValidationParam.TableName ;
+            var lFieldNameVar = dropDownValidationParam.FieldNameVar ;
+            var ConnectionString = dropDownValidationParam.ConnectionString;
+            var lookUpVar = dropDownValidationParam.LookUpVar;
+
+            var model = new ReturnDropDownValidation();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    bool chkEditable = editStatus;
+                    bool chkDropDownSuggest;
+                    bool mbLocalLookup = false;
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        var parentTable = await context.RelationShips.Where(m => m.LowerTableName.Trim().ToLower().Equals(tableName.Trim().ToLower())).ToListAsync();
+                        if (parentTable.Count() > 0)
+                        {
+                            foreach (RelationShip relationObj in parentTable)
+                            {
+                                if (DatabaseMap.RemoveTableNameFromField(relationObj.LowerTableFieldName).Trim().ToLower().Equals(DatabaseMap.RemoveTableNameFromField(lFieldNameVar).Trim().ToLower()))
+                                {
+                                    mbLocalLookup = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!currentStatus)
+                    {
+                        if (!mbLocalLookup | lookUpVar == Enums.geViewColumnsLookupType.ltLookup)
+                        {
+                            chkEditable = false;
+                        }
+                        chkDropDownSuggest = false;
+                    }
+                    else
+                    {
+                        if (!mbLocalLookup | lookUpVar == Enums.geViewColumnsLookupType.ltLookup)
+                        {
+                            chkEditable = true;
+                        }
+                        chkDropDownSuggest = mbLocalLookup;
+                    }
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.ChkEditable = JsonConvert.SerializeObject(chkEditable, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ChkDropDownSuggest = JsonConvert.SerializeObject(chkDropDownSuggest, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ErrorType = "s";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
             return model;
         }
 
@@ -4649,6 +4722,676 @@ namespace MSRecordsEngine.Controllers
 
             return editSettingList;
         }
+
+        private async Task<string> ValidateAlternateField(ViewColumn moViewColumn, bool sortFieldValue, bool filterFieldValue, string msSQL, Table moTables, string sTempReturnMessage, string ConnectionString)
+        {
+            string sSQL;
+            int iWherePos;
+            string sFieldName;
+            string sErrorMessage = string.Empty;
+            var lError = default(int);
+            bool bIsMemo;
+            var oSchemaColumns = new SchemaColumns();
+            object sTempFieldName;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    using (var conn = CreateConnection(ConnectionString))
+                    {
+                        if (sortFieldValue || filterFieldValue)
+                        {
+                            sSQL = CommonFunctions.NormalizeString(msSQL);
+
+                            if (!sSQL.Contains("SELECT DISTINCT TOP", StringComparison.OrdinalIgnoreCase) &&
+                                !sSQL.Contains("SELECT DISTINCTROW TOP", StringComparison.OrdinalIgnoreCase) &&
+                                !sSQL.Contains("SELECT TOP", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (sSQL.Contains("SELECT DISTINCT ", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    sSQL = sSQL.Replace("SELECT DISTINCT ", "SELECT DISTINCT TOP " + string.Format("{0}", 1) + " ", StringComparison.OrdinalIgnoreCase);
+                                }
+                                else if (sSQL.Contains("SELECT DISTINCTROW ", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    sSQL = sSQL.Replace("SELECT DISTINCTROW ", "SELECT DISTINCTROW TOP " + string.Format("{0}", 1) + " ", StringComparison.OrdinalIgnoreCase);
+                                }
+                                else
+                                {
+                                    sSQL = sSQL.Replace("SELECT ", "SELECT TOP " + string.Format("{0}", 1) + " ", StringComparison.OrdinalIgnoreCase);
+                                }
+                            }
+
+                            iWherePos = sSQL.IndexOf("GROUP BY", StringComparison.OrdinalIgnoreCase);
+                            if (iWherePos == -1)
+                                iWherePos = sSQL.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                            if (iWherePos > -1)
+                                sSQL = sSQL.Substring(0, iWherePos - 1);
+
+                            iWherePos = sSQL.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+                            if (iWherePos > -1)
+                            {
+                                sSQL = sSQL.Substring(0, iWherePos - 1);
+                            }
+
+                            sSQL = sSQL.Trim() + " WHERE (";
+                            sTempFieldName = DatabaseMap.RemoveTableNameFromField(moViewColumn.FieldName);
+
+                            if (string.Equals(Convert.ToString(sTempFieldName), "SLFileRoomOrder", StringComparison.OrdinalIgnoreCase))
+                            {
+                                sFieldName = "[" + moTables.TableName + "].[" + DatabaseMap.RemoveTableNameFromField(moTables.IdFieldName) + "]";
+                                sSQL = sSQL + sFieldName + " IS NULL)";
+                            }
+                            else if (string.Equals(Convert.ToString(sTempFieldName), "SLTrackedDestination", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var buildTrackingLocation = _trackingServices.BuildTrackingLocationSQL(await context.Tables.ToListAsync(), ConnectionString, msSQL, moTables);
+                                sSQL = buildTrackingLocation.BuildTrackingLocationSQLRet;
+                                moTables = buildTrackingLocation.Table;
+                            }
+                            else
+                            {
+                                if (string.IsNullOrEmpty(moViewColumn.AlternateFieldName?.Trim()))
+                                {
+                                    sFieldName = "[" + moTables.TableName + "].[" + DatabaseMap.RemoveTableNameFromField(moViewColumn.FieldName) + "]";
+                                }
+                                else
+                                {
+                                    sFieldName = moViewColumn.AlternateFieldName;
+                                }
+
+                                sSQL = sSQL + sFieldName + " IS NULL)";
+                            }
+
+                            try
+                            {
+                                await conn.QueryAsync(sSQL);
+                            }
+                            catch (Exception ex)
+                            {
+                                if (string.IsNullOrEmpty(moViewColumn.AlternateFieldName?.Trim()))
+                                {
+                                    sTempReturnMessage = string.Format("An Alternate Field Name is required to make this column sortable/filterable.{0}{0}Error: {1}", Environment.NewLine, sErrorMessage);
+                                }
+                                else
+                                {
+                                    sTempReturnMessage = string.Format("The Alternate Field Name is Invalid.{0}{0}Error: {1}", Environment.NewLine, sErrorMessage);
+                                }
+                                conn.Close();
+                                return sTempReturnMessage;
+                            }
+                        }
+
+                        if (sortFieldValue)
+                        {
+                            if (!string.Equals(moViewColumn.FieldName, "SLFileRoomOrder", StringComparison.OrdinalIgnoreCase) &&
+                                !string.Equals(moViewColumn.FieldName, "SLTrackedDestination", StringComparison.OrdinalIgnoreCase))
+                            {
+                                sSQL = CommonFunctions.NormalizeString(msSQL);
+
+                                if (!sSQL.Contains("SELECT DISTINCT TOP", StringComparison.OrdinalIgnoreCase) &&
+                                    !sSQL.Contains("SELECT DISTINCTROW TOP", StringComparison.OrdinalIgnoreCase) &&
+                                    !sSQL.Contains("SELECT TOP", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (sSQL.Contains("SELECT DISTINCT ", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        sSQL = sSQL.Replace("SELECT DISTINCT ", "SELECT DISTINCT TOP " + string.Format("{0}", 1) + " ", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                    else if (sSQL.Contains("SELECT DISTINCTROW ", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        sSQL = sSQL.Replace("SELECT DISTINCTROW ", "SELECT DISTINCTROW TOP " + string.Format("{0}", 1) + " ", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                    else
+                                    {
+                                        sSQL = sSQL.Replace("SELECT ", "SELECT TOP " + string.Format("{0}", 1) + " ", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                }
+
+                                if (!sSQL.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    iWherePos = sSQL.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+                                    if (iWherePos > 0)
+                                        sSQL = sSQL.Substring(0, iWherePos);
+
+                                    sSQL = sSQL.Trim() + " WHERE (0=1)";
+
+                                    if (string.IsNullOrEmpty(moViewColumn.AlternateFieldName?.Trim()))
+                                    {
+                                        lError = 0;
+                                        bIsMemo = false;
+                                        if (moTables != null)
+                                        {
+                                            if (!string.IsNullOrEmpty(moViewColumn.FieldName))
+                                            {
+                                                var oSchemaColumnsList = SchemaInfoDetails.GetSchemaInfo(moTables.TableName, ConnectionString, DatabaseMap.RemoveTableNameFromField(moViewColumn.FieldName));
+                                                if (oSchemaColumnsList.Count != 0)
+                                                {
+                                                    oSchemaColumns = oSchemaColumnsList[0];
+                                                    if (oSchemaColumns != null)
+                                                    {
+                                                        if (oSchemaColumns.IsString && (oSchemaColumns.CharacterMaxLength <= 0 || oSchemaColumns.CharacterMaxLength > 8000))
+                                                        {
+                                                            bIsMemo = true;
+                                                        }
+
+                                                        oSchemaColumns = null;
+                                                    }
+
+                                                    if (bIsMemo)
+                                                    {
+                                                        sSQL = sSQL + " ORDER BY CONVERT(VARCHAR(8000), [" + moViewColumn.FieldName.Replace(".", "].[").Trim() + "])";
+                                                    }
+                                                    else
+                                                    {
+                                                        sSQL = sSQL + " ORDER BY [" + moViewColumn.FieldName.Replace(".", "].[").Trim() + "]";
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        try
+                                        {
+                                            await conn.QueryAsync(sSQL);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            sTempReturnMessage = string.Format("An Alternate Field Name is required to make this column sortable/filterable.{0}{0}Error: {1}", Environment.NewLine, ex.Message);
+                                            conn.Close();
+                                            return sTempReturnMessage;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        lError = 0;
+                                        sSQL = sSQL + " ORDER BY " + moViewColumn.AlternateFieldName;
+                                        try
+                                        {
+                                            await conn.QueryAsync(sSQL);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            sTempReturnMessage = string.Format("The Alternate Field Name is Invalid.{0}{0}Error: {1}", Environment.NewLine, ex.Message);
+                                            conn.Close();
+                                            return sTempReturnMessage;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                sTempReturnMessage = ex.Message.ToString();
+            }
+
+            return sTempReturnMessage;
+        }
+
+        private void SetChildLookDown(ref ViewColumn formEntity, int DisplayStyleData, int DuplicateType)
+        {
+            if (formEntity.LookupType == Convert.ToInt32(Enums.geViewColumnsLookupType.ltChildLookdownCommaDisplayDups))
+            {
+                if (DisplayStyleData == 0 & DuplicateType == 1)
+                {
+                    formEntity.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltChildLookdownCommaHideDups);
+                }
+                else if (DisplayStyleData == 0 & DuplicateType == 0)
+                {
+                    formEntity.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltChildLookdownCommaDisplayDups);
+                }
+                else if (DisplayStyleData == 1 & DuplicateType == 1)
+                {
+                    formEntity.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltChildLookdownLFHideDups);
+                }
+                else if (DisplayStyleData == 1 & DuplicateType == 0)
+                {
+                    formEntity.LookupType = Convert.ToInt16(Enums.geViewColumnsLookupType.ltChildLookdownLFDisplayDups);
+                }
+            }
+            else
+            {
+                formEntity.LookupType = formEntity.LookupType;
+            }
+        }
+
+        private int CreateViewColumnsForLookupIdCol(ref List<ViewColumn> CurrentViewColumn,
+                                                    string ConnectionString,
+                                                    Enums.geViewColumnsLookupType eLookupType,
+                                                    int iLookupCol,
+                                                    string sFieldName,
+                                                    string sFieldDesc,
+                                                    bool bDoDropDownFlag,
+                                                    bool bVisible,
+                                                    string msSQL,
+                                                    Table moTables,
+                                                    ViewColumn formEntity)
+        {
+            int CreateViewColumnsForLookupIdColRet = default;
+            try
+            {
+                string sSQL;
+                long lError = default;
+                string sErrorMessage = string.Empty;
+                int iWherePos;
+                string sTestFieldName;
+                var oViewColumns = new ViewColumn();
+                int iMinNumber = -1;
+                int columnNum = 0;
+
+                var updatedViewColum = AddUpdateViewColumn(oViewColumns, formEntity);
+                oViewColumns = updatedViewColum;
+
+                if (CurrentViewColumn != null)
+                {
+                    if (CurrentViewColumn.Count != 0)
+                    {
+                        iMinNumber = CurrentViewColumn.Min(x => x.Id);
+                        if (iMinNumber < 0)
+                        {
+                            iMinNumber = iMinNumber - 1;
+                        }
+                        else
+                        {
+                            iMinNumber = -1;
+                        }
+                        columnNum = (int)CurrentViewColumn.Max(x => x.ColumnNum);
+                        columnNum = columnNum + 1;
+                    }
+                }
+
+                oViewColumns.Id = iMinNumber;
+                oViewColumns.ViewsId = formEntity.ViewsId;
+                oViewColumns.ColumnNum = (short?)columnNum;
+
+                oViewColumns.ColumnOrder = bVisible ? Convert.ToInt16(Enums.geViewColumnDisplayType.cvAlways) : Convert.ToInt16(Enums.geViewColumnDisplayType.cvNotVisible);
+
+                oViewColumns.FieldName = sFieldName;
+                oViewColumns.Heading = sFieldDesc.Substring(0, Math.Min(sFieldDesc.Length, 30));
+                oViewColumns.FreezeOrder = 0;
+                oViewColumns.SortOrder = 0;
+                oViewColumns.LookupType = Convert.ToInt16(eLookupType);
+
+                if ((bool)(oViewColumns.FilterField | oViewColumns.SortableField))
+                {
+                    sSQL = msSQL
+                        .Replace("\r", " ")
+                        .Replace("\n", " ");
+
+                    iWherePos = sSQL.IndexOf("GROUP BY", StringComparison.OrdinalIgnoreCase);
+                    if (iWherePos == -1)
+                    {
+                        iWherePos = sSQL.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (iWherePos > 0)
+                    {
+                        sSQL = sSQL.Substring(0, iWherePos - 2);
+                    }
+
+                    iWherePos = sSQL.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+                    if (iWherePos > 0)
+                    {
+                        sSQL = sSQL.Substring(0, iWherePos + 6) + " (" + sSQL.Substring(iWherePos + 7) + ")";
+                        sSQL = sSQL + " AND (";
+                    }
+                    else
+                    {
+                        sSQL = sSQL + " WHERE (";
+                    }
+
+                    if (string.Equals(DatabaseMap.RemoveTableNameFromField(oViewColumns.FieldName), "SLFileRoomOrder", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sTestFieldName = "[" + moTables.IdFieldName.Replace(".", "].[") + "]";
+                    }
+                    else if (string.IsNullOrEmpty(oViewColumns.AlternateFieldName?.Trim()))
+                    {
+                        sTestFieldName = "[" + oViewColumns.FieldName.Replace(".", "].[") + "]";
+                    }
+                    else
+                    {
+                        sTestFieldName = oViewColumns.AlternateFieldName;
+                    }
+
+                    sSQL = sSQL + sTestFieldName + " IS NULL)";
+                    var query = CommonFunctions.GetRecords<dynamic>(ConnectionString, sSQL);
+
+                    if (!query.Any())
+                    {
+                        oViewColumns.FilterField = false;
+                        oViewColumns.SortableField = false;
+                    }
+                }
+
+                if (bDoDropDownFlag || string.Equals(moTables.RetentionFieldName, oViewColumns.FieldName, StringComparison.OrdinalIgnoreCase))
+                {
+                    oViewColumns.DropDownFlag = (short?)-1;
+                    oViewColumns.EditAllowed = true;
+                }
+                else
+                {
+                    oViewColumns.DropDownFlag = (short?)0;
+                }
+
+                oViewColumns.MaskPromptChar = "_";
+                oViewColumns.MaxPrintLines = 1;
+                oViewColumns.LookupIdCol = (short?)iLookupCol;
+                oViewColumns.ColumnStyle = (short?)0;
+
+                CurrentViewColumn.Add(oViewColumns);
+                CreateViewColumnsForLookupIdColRet = (int)oViewColumns.ColumnNum;
+            }
+            catch (Exception ex)
+            {
+                CreateViewColumnsForLookupIdColRet = 0;
+                throw ex.InnerException ?? ex;
+            }
+
+            return CreateViewColumnsForLookupIdColRet;
+        }
+
+
+        private async Task<int> SetLookupIdColOnAdd(int iLookupColumn, string ConnectionString, ViewColumn formEntity, List<ViewColumn> CurrentViewColumn, string currentTableName, string msSql, Table moTables)
+        {
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    RelationShip oRelationships;
+                    var oParentRelationships = new RelationShip();
+                    int iLookupColumn2 = default;
+                    ViewColumn oTmpViewColumns;
+                    string sFieldTableName;
+                    string sTmpTableName;
+                    var ParentTable = await context.RelationShips.Where(m => m.LowerTableName.Trim().ToLower() == currentTableName.Trim().ToLower()).ToListAsync();
+
+
+                    var tableObjList = await context.Tables.ToListAsync();
+                    var relationObjList = await context.RelationShips.ToListAsync();
+                    var t = new List<KeyValuePair<string, string>>();
+                    var data = await _reportService.FillViewColField(tableObjList, relationObjList, t, moTables, ParentTable, true, 1, false, ConnectionString);
+
+                    switch (formEntity.LookupType)
+                    {
+                        case 1:
+                            {
+                                iLookupColumn = -1;
+                                foreach (var currentOTmpViewColumns in CurrentViewColumn)
+                                {
+                                    oTmpViewColumns = currentOTmpViewColumns;
+
+                                    //if (Operators.ConditionalCompareObjectEqual(ReportsService.mcLevel[Strings.UCase(Strings.Trim(formEntity.FieldName))], 1, false))
+                                    if (data.mcLevel[formEntity.FieldName.Trim()] == 1)
+                                    {
+                                        if ((Int32)oTmpViewColumns.LookupType == (Int32)Enums.geViewColumnsLookupType.ltDirect)
+                                        {
+                                            if (DatabaseMap.RemoveTableNameFromField(oTmpViewColumns.FieldName).ToUpper().Trim() ==
+                                                DatabaseMap.RemoveTableNameFromField(Convert.ToString(data.mcFieldName[formEntity.FieldName.Trim()])).ToUpper().Trim())
+                                            {
+                                                iLookupColumn = (int)oTmpViewColumns.ColumnNum;
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    //if (Operators.ConditionalCompareObjectEqual(ReportsService.mcLevel[Strings.UCase(Strings.Trim(formEntity.FieldName))], 2, false))
+                                    if (data.mcLevel[formEntity.FieldName.Trim()] == 2)
+                                    {
+                                        if ((Int32)oTmpViewColumns.LookupType == (Int32)Enums.geViewColumnsLookupType.ltLookup)
+                                        {
+                                            if (oTmpViewColumns.FieldName.ToUpper().Trim() ==
+                                                Convert.ToString(data.mcFieldName[formEntity.FieldName.Trim()]).ToUpper().Trim())
+                                            {
+                                                iLookupColumn = CheckForDirectRelationship(formEntity.FieldName, ConnectionString, ParentTable, CurrentViewColumn, msSql, moTables, formEntity);
+
+                                                if (iLookupColumn < 0)
+                                                {
+                                                    iLookupColumn = (int)oTmpViewColumns.ColumnNum;
+                                                }
+
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                oTmpViewColumns = null;
+
+                                if (iLookupColumn < 0)
+                                {
+                                    //if (Operators.ConditionalCompareObjectEqual(ReportsService.mcLevel[Strings.UCase(Strings.Trim(formEntity.FieldName))], 1, false))
+                                    if (data.mcLevel[formEntity.FieldName.Trim()] == 1)
+                                    {
+                                        iLookupColumn = CreateViewColumnsForLookupIdCol(ref CurrentViewColumn, ConnectionString, Enums.geViewColumnsLookupType.ltDirect, 0,
+                                            DatabaseMap.RemoveTableNameFromFieldIfNotCurrentTable(
+                                                Convert.ToString(data.mcFieldName[formEntity.FieldName.Trim()]),
+                                                currentTableName), "Id For " + formEntity.FieldName, false, false, msSql, moTables, formEntity);
+                                    }
+                                    else
+                                    {
+                                        oRelationships = (RelationShip)data.mcRelationships[formEntity.FieldName.Trim()];
+
+                                        foreach (var currentOParentRelationships in ParentTable)
+                                        {
+                                            oParentRelationships = currentOParentRelationships;
+
+                                            if (oParentRelationships.UpperTableName.ToUpper().Trim() ==
+                                                oRelationships.LowerTableName.ToUpper().Trim())
+                                            {
+                                                break;
+                                            }
+                                        }
+
+                                        if (oParentRelationships != null)
+                                        {
+                                            iLookupColumn2 = -1;
+                                            foreach (var currentOTmpViewColumns1 in CurrentViewColumn)
+                                            {
+                                                oTmpViewColumns = currentOTmpViewColumns1;
+
+                                                if ((Int32)oTmpViewColumns.LookupType == (Int32)Enums.geViewColumnsLookupType.ltDirect)
+                                                {
+                                                    if (DatabaseMap.RemoveTableNameFromField(oTmpViewColumns.FieldName).ToUpper().Trim() ==
+                                                        DatabaseMap.RemoveTableNameFromField(oParentRelationships.LowerTableFieldName).ToUpper().Trim())
+                                                    {
+                                                        iLookupColumn2 = (int)oTmpViewColumns.ColumnNum;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            oTmpViewColumns = null;
+
+                                            if (iLookupColumn2 < 0)
+                                            {
+                                                iLookupColumn2 = CreateViewColumnsForLookupIdCol(ref CurrentViewColumn, ConnectionString, Enums.geViewColumnsLookupType.ltDirect, 0, oParentRelationships.LowerTableFieldName.Trim(), "Id For " + oRelationships.LowerTableFieldName, false, false, msSql, moTables, formEntity);
+                                            }
+
+                                            iLookupColumn = CreateViewColumnsForLookupIdCol(ref CurrentViewColumn, ConnectionString, Enums.geViewColumnsLookupType.ltLookup, iLookupColumn2, oRelationships.LowerTableFieldName.Trim(), "Id For " + formEntity.FieldName, false, false, msSql, moTables, formEntity);
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+
+                        case 12:
+                        case 13:
+                        case 14:
+                        case 15:
+                        case 17:
+                            {
+                                iLookupColumn = -1;
+                                string uCaseVar = formEntity.FieldName.ToUpper().Trim();
+
+                                //if (Operators.ConditionalCompareObjectEqual(ReportsService.mcLevel[Strings.UCase(Strings.Trim(formEntity.FieldName))], 2, false))
+                                if (data.mcLevel[formEntity.FieldName.Trim()] == 2)
+                                {
+                                    iLookupColumn = -1;
+                                    sFieldTableName = Convert.ToString(data.mcFieldName[uCaseVar]).Trim();
+
+                                    if (sFieldTableName.Contains("."))
+                                    {
+                                        sFieldTableName = sFieldTableName.Substring(0, sFieldTableName.IndexOf("."));
+                                    }
+                                    else
+                                    {
+                                        sFieldTableName = string.Empty;
+                                    }
+
+                                    if (!string.IsNullOrEmpty(sFieldTableName))
+                                    {
+                                        foreach (var currentOTmpViewColumns2 in CurrentViewColumn)
+                                        {
+                                            oTmpViewColumns = currentOTmpViewColumns2;
+
+                                            if (oTmpViewColumns.LookupIdCol == -1)
+                                            {
+                                                bool exitFor = false;
+
+                                                switch (oTmpViewColumns.LookupType)
+                                                {
+                                                    case 12:
+                                                    case 13:
+                                                    case 14:
+                                                    case 15:
+                                                    case 17:
+                                                        {
+                                                            sTmpTableName = oTmpViewColumns.FieldName.ToUpper().Trim();
+                                                            if (sTmpTableName.Contains("."))
+                                                            {
+                                                                sTmpTableName = sTmpTableName.Substring(0, sTmpTableName.IndexOf("."));
+                                                            }
+                                                            else
+                                                            {
+                                                                sTmpTableName = string.Empty;
+                                                            }
+
+                                                            if (sTmpTableName == sFieldTableName)
+                                                            {
+                                                                iLookupColumn = (int)oTmpViewColumns.ColumnNum;
+                                                                exitFor = true;
+                                                                break;
+                                                            }
+                                                            break;
+                                                        }
+
+                                                    default:
+                                                        break;
+                                                }
+
+                                                if (exitFor)
+                                                {
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    oTmpViewColumns = null;
+
+                                    if (iLookupColumn < 0)
+                                    {
+                                        oRelationships = (RelationShip)data.mcRelationships[uCaseVar];
+                                        iLookupColumn = CreateViewColumnsForLookupIdCol(ref CurrentViewColumn, ConnectionString, (Enums.geViewColumnsLookupType)formEntity.LookupType, iLookupColumn2, oRelationships.LowerTableFieldName.Trim(), "Id For " + formEntity.FieldName, false, false, msSql, moTables, formEntity);
+                                    }
+                                }
+                                break;
+                            }
+
+                        default:
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw ex.InnerException ?? ex;
+            }
+            return iLookupColumn;
+        }
+
+        private int CheckForDirectRelationship(string sUpperFieldName, string ConnectionString, List<RelationShip> ParentTable, List<ViewColumn> currentViewColumn, string msSql, Table moTables, ViewColumn FormEntity)
+        {
+            int CheckForDirectRelationshipRet = default;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    int iLookupColumn;
+                    string sLowerFieldName;
+                    string sUpperTableName;
+                    ViewColumn oViewColumns;
+                    string sSQL;
+
+                    iLookupColumn = -1;
+                    sUpperTableName = DatabaseMap.RemoveFieldNameFromField(sUpperFieldName);
+
+                    foreach (var oRelationships in ParentTable)
+                    {
+                        if (string.Equals(oRelationships.UpperTableName, sUpperTableName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            sLowerFieldName = DatabaseMap.RemoveTableNameFromField(oRelationships.LowerTableFieldName);
+
+                            foreach (var currentOViewColumns in currentViewColumn)
+                            {
+                                oViewColumns = currentOViewColumns;
+                                if (string.Equals(sLowerFieldName, DatabaseMap.RemoveTableNameFromField(oViewColumns.FieldName), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    iLookupColumn = (int)oViewColumns.ColumnNum;
+                                    break;
+                                }
+                            }
+
+                            oViewColumns = null;
+
+                            if (iLookupColumn < 0)
+                            {
+                                sSQL = CommonFunctions.NormalizeString(msSql);
+
+                                if (!sSQL.Contains("SELECT DISTINCT TOP", StringComparison.OrdinalIgnoreCase) &&
+                                    !sSQL.Contains("SELECT DISTINCTROW TOP", StringComparison.OrdinalIgnoreCase) &&
+                                    !sSQL.Contains("SELECT TOP", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (sSQL.Contains("SELECT DISTINCT ", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        sSQL = sSQL.Replace("SELECT DISTINCT ", "SELECT DISTINCT TOP " + 1 + " ", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                    else if (sSQL.Contains("SELECT DISTINCTROW ", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        sSQL = sSQL.Replace("SELECT DISTINCTROW ", "SELECT DISTINCTROW TOP " + 1 + " ", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                    else
+                                    {
+                                        sSQL = sSQL.Replace("SELECT ", "SELECT TOP " + 1 + " ", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                }
+
+                                var recordList = CommonFunctions.GetRecords<dynamic>(ConnectionString, sSQL);
+
+                                foreach (var record in recordList)
+                                {
+                                    if (string.Equals(sLowerFieldName, record.Text, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        iLookupColumn = CreateViewColumnsForLookupIdCol(ref currentViewColumn, ConnectionString, Enums.geViewColumnsLookupType.ltDirect, 0, sLowerFieldName, sLowerFieldName, false, false, msSql, moTables, FormEntity);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+
+                    CheckForDirectRelationshipRet = iLookupColumn;
+                }
+            }
+            catch (Exception ex)
+            {
+                CheckForDirectRelationshipRet = -1;
+                throw ex.InnerException ?? ex;
+            }
+            return CheckForDirectRelationshipRet;
+        }
+
 
         #endregion
 
@@ -6343,6 +7086,97 @@ namespace MSRecordsEngine.Controllers
 
         #region Reports
 
+        [Route("ReportsTreePartial")]
+        [HttpPost]
+        public async Task<string> ReportsTreePartial(ReportsTreePartialParam reportsTreePartialParam) //complete testing 
+        {
+            var treeView = string.Empty;
+
+            var root = reportsTreePartialParam.Root;
+            var passport = reportsTreePartialParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var lTableEntities = await context.Tables.OrderBy(m => m.TableName).ToListAsync();
+                    var lViewsEntities = await context.Views.ToListAsync();
+                    var lReportStyleEntities = await context.ReportStyles.ToListAsync();
+
+                    treeView = _reportService.GetBindReportsMenus(root, lTableEntities, lViewsEntities, lReportStyleEntities, passport, reportsTreePartialParam.iCntRpt);
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+
+            return treeView;
+        }
+
+
+        [Route("GetTablesView")]
+        [HttpPost]
+        public async Task<ReturnGetTablesView> GetTablesView(GetTablesViewParams getTablesViewParams) //complete testing 
+        {
+            var model = new ReturnGetTablesView();
+            var lstViews = new List<KeyValuePair<string, string>>();
+            var lstChildTables = new List<KeyValuePair<string, string>>();
+            Table oTable;
+            var pTableName = getTablesViewParams.pTableName;
+            var passport = getTablesViewParams.passport;
+            try
+            {
+                using (var context = new TABFusionRMSContext(passport.ConnectionString))
+                {
+                    var tableEntity = await context.Tables.OrderBy(x => x.TableName).ToListAsync();
+                    var lViewColumnEntities = await context.ViewColumns.ToListAsync();
+                    var lLoopViewEntities = await context.Views.Where(x => (x.TableName.Trim().ToLower()) == (pTableName.ToLower())).ToListAsync();
+
+                    foreach (var oView in lLoopViewEntities)
+                    {
+                        var notSubReport = await NotSubReport(oView, pTableName, passport);
+                        if (notSubReport)
+                        {
+                            if (passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Reports, (Permissions.Permission)Enums.PassportPermissions.View) | passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.View, (Permissions.Permission)Enums.PassportPermissions.View))
+                            {
+                                lstViews.Add(new KeyValuePair<string, string>(oView.Id.ToString(), oView.ViewName));
+                            }
+                        }
+                    }
+
+                    var lstRelatedChildTable = await context.RelationShips.Where(x => (x.UpperTableName) == (pTableName)).ToListAsync();
+
+                    foreach (var lTableName in lstRelatedChildTable)
+                    {
+                        oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.LowerTableName)).FirstOrDefaultAsync();
+
+                        if (oTable != null)
+                        {
+                            lstChildTables.Add(new KeyValuePair<string, string>(oTable.TableName, oTable.UserName));
+                            oTable = null;
+                        }
+                    }
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+                    model.lstViewStr = JsonConvert.SerializeObject(lstViews, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.lstChildTablesObjStr = JsonConvert.SerializeObject(lstChildTables, Newtonsoft.Json.Formatting.Indented, Setting);
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Record saved successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
+            }
+
+            return model;
+        }
+
+
         [Route("DeleteReport")]
         [HttpPost]
         public async Task<ReturnErrorTypeErrorMsg> DeleteReport(DeleteReportParam deleteReportParam) //complete testing 
@@ -6435,6 +7269,692 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
+
+        [Route("GetColumnsForPrinting")]
+        [HttpPost]
+        public async Task<ReturnGetColumnsForPrinting> GetColumnsForPrinting(GetColumnsForPrintingParam columnsForPrintingParam) //complete testing 
+        {
+            var model = new ReturnGetColumnsForPrinting();
+
+            var pTableName = columnsForPrintingParam.TableName;
+            var pViewId = columnsForPrintingParam.ViewId;
+            var pIndex = columnsForPrintingParam.Index;
+            var passport = columnsForPrintingParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+
+            string viewColumnEntityObj = "";
+            var lstTrackedHistory = new List<KeyValuePair<int, string>>();
+            string lstTrackedHisObj = "";
+            string lstViewObjStr = "";
+            string tableEntityObjStr = "";
+            int iCount = 0;
+            bool mbHistory;
+            Table tableEntity;
+            Table oChildTable;
+            View oView;
+            var lstTEMPViewColumns = new List<ViewColumn>();
+            bool bTrackable = false;
+            int altViewId = 0;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var viewColumnEntity = await context.ViewColumns.Where(x => x.ViewsId == pViewId).OrderByField("ColumnNum", true).ToListAsync();
+
+                    var Setting = new JsonSerializerSettings();
+                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+
+                    if (viewColumnEntity.Count() == 0)
+                    {
+                        altViewId = (int)(await context.Views.Where(x => x.Id == pViewId).FirstOrDefaultAsync()).AltViewId;
+                        if (altViewId != 0)
+                        {
+                            viewColumnEntity = await context.ViewColumns.Where(x => x.ViewsId == altViewId).OrderByField("ColumnNum", true).ToListAsync();
+                        }
+                    }
+
+                    viewColumnEntityObj = JsonConvert.SerializeObject(viewColumnEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    foreach (var objView in viewColumnEntity)
+                        lstTEMPViewColumns.Add(objView);
+
+                    model.TempViewColumns = lstTEMPViewColumns;
+
+                    var ViewsEntity = await context.Views.Where(x => x.Id == pViewId).ToListAsync();
+                    lstViewObjStr = JsonConvert.SerializeObject(ViewsEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                    tableEntity = await context.Tables.Where(x => (x.TableName) == (pTableName)).FirstOrDefaultAsync();
+                    oView = await context.Views.Where(x => x.Id == pViewId).FirstOrDefaultAsync();
+
+                    lstTrackedHistory.Add(new KeyValuePair<int, string>(0, "None"));
+                    bTrackable = passport.CheckPermission(tableEntity.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);
+
+                    if ((bTrackable) || (tableEntity.TrackingTable > 0))
+                    {
+                        oChildTable = await context.Tables.Where(x => (x.TableName) == (oView.TableName)).FirstOrDefaultAsync();
+
+                        if (oChildTable != null)
+                        {
+                            iCount = iCount + 1;
+                            bool bChildTrackable = passport.CheckPermission(oChildTable.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);
+                            if (bChildTrackable)
+                            {
+                                lstTrackedHistory.Add(new KeyValuePair<int, string>(iCount, "History"));
+                                mbHistory = true;
+                            }
+                            else
+                            {
+                                mbHistory = false;
+                            }
+
+                            var lstTrackingtbls = await LoadTrackingTables(ConnectionString);
+
+                            if (oChildTable.TrackingTable > 0)
+                            {
+                                bool bContainerTrackable = false;
+
+                                if (oChildTable.TrackingTable < lstTrackingtbls.Count)
+                                {
+                                    foreach (var oContainer in lstTrackingtbls)
+                                    {
+                                        bContainerTrackable = passport.CheckPermission(oContainer.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);
+                                        if ((oContainer.TrackingTable > oChildTable.TrackingTable) && (bContainerTrackable))
+                                        {
+                                            iCount = iCount + 1;
+                                            lstTrackedHistory.Add(new KeyValuePair<int, string>(iCount, oContainer.UserName + " Contained"));
+                                        }
+                                    }
+                                }
+
+                                foreach (var oContainer in await context.Tables.ToListAsync())
+                                {
+                                    bContainerTrackable = passport.CheckPermission(oContainer.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);
+                                    if ((oContainer.TrackingTable == 0) && (bContainerTrackable))
+                                    {
+                                        iCount = iCount + 1;
+                                        lstTrackedHistory.Add(new KeyValuePair<int, string>(iCount, oContainer.UserName + " Contained"));
+                                    }
+                                }
+
+                                lstTrackedHistory.Add(new KeyValuePair<int, string>(9999, "All Contents Contained"));
+                            }
+
+                            oChildTable = null;
+                        }
+                    }
+
+                    lstTrackedHisObj = JsonConvert.SerializeObject(lstTrackedHistory, Newtonsoft.Json.Formatting.Indented, Setting);
+                    tableEntityObjStr = JsonConvert.SerializeObject(tableEntity, Newtonsoft.Json.Formatting.Indented, Setting);
+                }
+                model.ViewColumnEntity = viewColumnEntityObj;
+                model.ViewsEntity = lstViewObjStr;
+                model.LstTrackedHistory = lstTrackedHisObj;
+                model.TableEntity = tableEntityObjStr;
+                model.Trackable = bTrackable;
+                model.ErrorType = "s";
+                model.ErrorMessage = "Record saved successfully";
+
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return model;
+        }
+
+
+        [Route("SetReportDefinitionValues")]
+        [HttpPost]
+        public async Task<ReturnSetReportDefinitionValues> SetReportDefinitionValues(SetReportDefinitionValuesParam setReportDefinitionValuesParam) //complete testing 
+        {
+            var model = new ReturnSetReportDefinitionValues();
+
+            var pOldReportName = setReportDefinitionValuesParam.OldReportName;
+            var pReportStyle = setReportDefinitionValuesParam.ReportStyle;
+            var passport = setReportDefinitionValuesParam.Passport;
+            var ConnectionString = passport.ConnectionString;
+            var formData = setReportDefinitionValuesParam.FormData;
+
+            int ViewId;
+            bool bGrandTotal;
+            bool bIncludeImages;
+            bool bIncludeHeaders;
+            bool bIncludeFooters;
+            bool bPrintImageFullPage;
+            bool bPrintImageFirstPageOnly;
+            bool bIncludeAnnotations;
+            bool bPrintDataRow;
+            bool bIncludeImgFileInfo;
+            bool bTrackingEverContained;
+            int pLeftIndent;
+            int pRightIndent;
+            int pLeftMargin;
+            int pRightMargin;
+            string lblTableName = "";
+            string lblReportName = "";
+            string parentTblName = "";
+            string parentViewName = "";
+            string level3ChildTblName = "";
+            string level3ViewName = "";
+            string parentLevel2TblName = "";
+            string parentLevel2ViewName = "";
+            bool bIsWarnning = false;
+            View pViewObject;
+            int BaseSecureObjId = 0;
+            int lSecureObjectId = 0;
+            int ChildColumnHeaders = 0;
+            bool bUpdateState = false;
+            Array Ids;
+            Array chksState;
+            var lstViewColumns = new List<ViewColumn>();
+            bool reportExists = false;
+            int level1ID = 0;
+            int trackingHistoryIndex;
+            int printColumnHeadersIndex;
+            bool viewStatus = false;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    lblReportName = formData["ReportName"].ToString();
+
+                    for (int pIndex = 1; pIndex <= 3; pIndex++)
+                    {
+
+                        //lstViewColumns = TempData.Get<List<ViewColumn>>("TempViewColumns_" + pIndex);
+                        //TempData.Keep("TempViewColumns_" + pIndex);
+
+                        switch (pIndex)
+                        {
+                            case 1:
+                                lstViewColumns = setReportDefinitionValuesParam.TempViewColumns_1;
+                                break;
+                            case 2:
+                                lstViewColumns = setReportDefinitionValuesParam.TempViewColumns_2;
+                                break;
+                            case 3:
+                                lstViewColumns = setReportDefinitionValuesParam.TempViewColumns_3;
+                                break;
+                            default:
+                                break;
+                        }
+
+                        ViewId = 0;
+                        if (formData.ContainsKey("ViewID_Level" + pIndex.ToString()))
+                        {
+                            ViewId = Convert.ToInt32(formData["ViewID_Level" + pIndex.ToString()]);
+                        }
+                        lblTableName = "";
+
+                        if (formData.ContainsKey("TableName_Level" + pIndex))
+                        {
+                            string tableName = formData["TableName_Level" + pIndex].ToString();
+                            if (!string.IsNullOrEmpty(tableName))
+                            {
+                                lblTableName = tableName;
+                            }
+                        }
+
+                        if (!(ViewId == 0))
+                        {
+
+                            if (!string.IsNullOrEmpty(lblTableName))
+                            {
+                                if (pIndex == 1)
+                                {
+                                    parentTblName = lblTableName;
+                                    parentViewName = lblReportName;
+                                }
+
+                                if (pIndex == 2)
+                                {
+                                    parentLevel2TblName = lblTableName;
+                                    parentLevel2ViewName = lblReportName;
+                                }
+
+                                if (pIndex == 1)
+                                {
+                                    if ((lblReportName) != (pOldReportName))
+                                    {
+                                        reportExists = await context.Views.AnyAsync(x => (x.ViewName) == (lblReportName));
+                                    }
+                                }
+
+                                if (!reportExists)
+                                {
+                                    var ViewEntity = await context.Views.Where(x => x.Id == ViewId).FirstOrDefaultAsync();
+
+                                    bGrandTotal = formData.ContainsKey("GrandTotal_Level" + pIndex) && formData["GrandTotal_Level" + pIndex] == "on";
+                                    bIncludeImages = formData.ContainsKey("PrintImages_Level" + pIndex) && formData["PrintImages_Level" + pIndex] == "on";
+                                    bIncludeHeaders = !formData.ContainsKey("SuppressHeader_Level" + pIndex) || formData["SuppressHeader_Level" + pIndex] != "on";
+                                    bIncludeFooters = !formData.ContainsKey("SuppressFooter_Level" + pIndex) || formData["SuppressFooter_Level" + pIndex] != "on";
+                                    bPrintImageFullPage = formData.ContainsKey("PrintImageFullPage_Level" + pIndex) && formData["PrintImageFullPage_Level" + pIndex] == "on";
+                                    bPrintImageFirstPageOnly = formData.ContainsKey("PrintImageFirstPageOnly_Level" + pIndex) && formData["PrintImageFirstPageOnly_Level" + pIndex] == "on";
+                                    bIncludeAnnotations = formData.ContainsKey("PrintImageRedlining_Level" + pIndex) && formData["PrintImageRedlining_Level" + pIndex] == "on";
+                                    bPrintDataRow = !formData.ContainsKey("SuppressImageDataRow_Level" + pIndex) || formData["SuppressImageDataRow_Level" + pIndex] != "on";
+                                    bIncludeImgFileInfo = !formData.ContainsKey("SuppressImageFooter_Level" + pIndex) || formData["SuppressImageFooter_Level" + pIndex] != "on";
+                                    pLeftIndent = formData.ContainsKey("LeftIndent_Level" + pIndex) && int.TryParse(formData["LeftIndent_Level" + pIndex], out var leftIndent) ? leftIndent : 0;
+                                    pRightIndent = formData.ContainsKey("RightIndent_Level" + pIndex) && int.TryParse(formData["RightIndent_Level" + pIndex], out var rightIndent) ? rightIndent : 0;
+                                    pLeftMargin = formData.ContainsKey("PrintImageLeftMargin_Level" + pIndex) && int.TryParse(formData["PrintImageLeftMargin_Level" + pIndex], out var leftMargin) ? leftMargin : 0;
+                                    pRightMargin = formData.ContainsKey("PrintImageRightMargin_Level" + pIndex) && int.TryParse(formData["PrintImageRightMargin_Level" + pIndex], out var rightMargin) ? rightMargin : 0;
+                                    Ids = formData.ContainsKey("ViewColList_Level" + pIndex) ? formData["ViewColList_Level" + pIndex].Split(',') : new string[0];
+                                    chksState = formData.ContainsKey("ViewColChkStates_Level" + pIndex) ? formData["ViewColChkStates_Level" + pIndex].Split(',') : new string[0];
+                                    trackingHistoryIndex = formData.ContainsKey("Level" + pIndex + "TrackingHis") && int.TryParse(formData["Level" + pIndex + "TrackingHis"], out var trackingIndex) ? trackingIndex : 0;
+                                    printColumnHeadersIndex = formData.ContainsKey("rdPrintColHeaders_Level" + pIndex) && int.TryParse(formData["rdPrintColHeaders_Level" + pIndex], out var printHeadersIndex) ? printHeadersIndex : 0;
+                                    ChildColumnHeaders = formData.ContainsKey("rdPrintColHeaders" + (pIndex + 1)) && int.TryParse(formData["rdPrintColHeaders" + (pIndex + 1)], out var childHeadersIndex) ? childHeadersIndex : 0;
+                                    bTrackingEverContained = formData.ContainsKey("TrackingEverContained_Level" + pIndex) && formData["TrackingEverContained_Level" + pIndex] == "on";
+
+                                    if (pIndex == 1)
+                                    {
+                                        if ((pOldReportName) != (lblReportName))
+                                        {
+                                            var pSecureObject = await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(pOldReportName) & x.SecureObjectTypeID == (int)Enums.SecureObjectType.Reports).FirstOrDefaultAsync();
+                                            if (pSecureObject != null)
+                                            {
+                                                pSecureObject.SecureObjectTypeID = (int)Enums.SecureObjectType.Reports;
+                                                pSecureObject.Name = lblReportName;
+
+                                                context.Entry(pSecureObject).State = EntityState.Modified;
+                                                await context.SaveChangesAsync();
+
+                                            }
+                                        }
+                                    }
+
+                                    ViewEntity.ViewName = lblReportName;
+                                    ViewEntity.ReportStylesId = pReportStyle;
+                                    ViewEntity.GrandTotal = bGrandTotal;
+                                    ViewEntity.PrintImages = bIncludeImages;
+                                    ViewEntity.SuppressHeader = bIncludeHeaders;
+                                    ViewEntity.SuppressFooter = bIncludeFooters;
+                                    ViewEntity.PrintImageFullPage = bPrintImageFullPage;
+                                    ViewEntity.PrintImageFirstPageOnly = bPrintImageFirstPageOnly;
+                                    ViewEntity.PrintImageRedlining = bIncludeAnnotations;
+                                    ViewEntity.SuppressImageDataRow = bPrintDataRow;
+                                    ViewEntity.SuppressImageFooter = bIncludeImgFileInfo;
+                                    ViewEntity.LeftIndent = pLeftIndent;
+                                    ViewEntity.RightIndent = pRightIndent;
+                                    ViewEntity.PrintImageLeftMargin = pLeftMargin;
+                                    ViewEntity.PrintImageRightMargin = pRightMargin;
+                                    ViewEntity.TrackingEverContained = bTrackingEverContained;
+                                    ViewEntity.ChildColumnHeaders = ChildColumnHeaders;
+
+                                    if (trackingHistoryIndex > 0)
+                                    {
+                                        ViewEntity.SubTableName = "<<Tracking>>";
+                                    }
+
+                                    if (pIndex == 2 || pIndex == 3)
+                                    {
+                                        bool printWithoutChildren = formData.ContainsKey("PrintWithoutChildren_Level" + pIndex) && formData["PrintWithoutChildren_Level" + pIndex] == "on";
+                                        ViewEntity.PrintWithoutChildren = (bool?)printWithoutChildren;
+                                    }
+
+                                    context.Entry(ViewEntity).State = EntityState.Modified;
+                                    await context.SaveChangesAsync();
+
+                                    bUpdateState = true;
+                                    await SaveViewColumns(Ids, chksState, lstViewColumns, ViewEntity.Id, ConnectionString);
+                                }
+                                else
+                                {
+                                    model.ErrorType = "w";
+                                    model.ErrorMessage = string.Format("'{0}' has already been defined as a view or report for '{1}' table", lblReportName, lblTableName);
+                                    bIsWarnning = true;
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(lblTableName))
+                        {
+
+                            if (pIndex == 1)
+                            {
+                                viewStatus = await context.Views.AnyAsync(x => (x.ViewName) == (lblReportName));
+                            }
+
+                            if (viewStatus == false)
+                            {
+
+                                bGrandTotal = formData.ContainsKey("GrandTotal_Level" + pIndex) && formData["GrandTotal_Level" + pIndex] == "on";
+                                bIncludeImages = formData.ContainsKey("PrintImages_Level" + pIndex) && formData["PrintImages_Level" + pIndex] == "on";
+                                bIncludeHeaders = !formData.ContainsKey("SuppressHeader_Level" + pIndex) || formData["SuppressHeader_Level" + pIndex] != "on";
+                                bIncludeFooters = !formData.ContainsKey("SuppressFooter_Level" + pIndex) || formData["SuppressFooter_Level" + pIndex] != "on";
+                                bPrintImageFullPage = formData.ContainsKey("PrintImageFullPage_Level" + pIndex) && formData["PrintImageFullPage_Level" + pIndex] == "on";
+                                bPrintImageFirstPageOnly = formData.ContainsKey("PrintImageFirstPageOnly_Level" + pIndex) && formData["PrintImageFirstPageOnly_Level" + pIndex] == "on";
+                                bIncludeAnnotations = formData.ContainsKey("PrintImageRedlining_Level" + pIndex) && formData["PrintImageRedlining_Level" + pIndex] == "on";
+                                bPrintDataRow = !formData.ContainsKey("SuppressImageDataRow_Level" + pIndex) || formData["SuppressImageDataRow_Level" + pIndex] != "on";
+                                bIncludeImgFileInfo = !formData.ContainsKey("SuppressImageFooter_Level" + pIndex) || formData["SuppressImageFooter_Level" + pIndex] != "on";
+                                pLeftIndent = formData.ContainsKey("LeftIndent_Level" + pIndex) && int.TryParse(formData["LeftIndent_Level" + pIndex], out var leftIndent) ? leftIndent : 0;
+                                pRightIndent = formData.ContainsKey("RightIndent_Level" + pIndex) && int.TryParse(formData["RightIndent_Level" + pIndex], out var rightIndent) ? rightIndent : 0;
+                                pLeftMargin = formData.ContainsKey("PrintImageLeftMargin_Level" + pIndex) && int.TryParse(formData["PrintImageLeftMargin_Level" + pIndex], out var leftMargin) ? leftMargin : 0;
+                                pRightMargin = formData.ContainsKey("PrintImageRightMargin_Level" + pIndex) && int.TryParse(formData["PrintImageRightMargin_Level" + pIndex], out var rightMargin) ? rightMargin : 0;
+                                bTrackingEverContained = formData.ContainsKey("TrackingEverContained_Level" + pIndex) && formData["TrackingEverContained_Level" + pIndex] == "on";
+                                Ids = formData.ContainsKey("ViewColList_Level" + pIndex) ? formData["ViewColList_Level" + pIndex].Split(',') : new string[0];
+                                chksState = formData.ContainsKey("ViewColChkStates_Level" + pIndex) ? formData["ViewColChkStates_Level" + pIndex].Split(',') : new string[0];
+                                trackingHistoryIndex = formData.ContainsKey("Level" + pIndex + "TrackingHis") && int.TryParse(formData["Level" + pIndex + "TrackingHis"], out var trackingIndex) ? trackingIndex : 0;
+                                printColumnHeadersIndex = formData.ContainsKey("rdPrintColHeaders_Level" + pIndex) && int.TryParse(formData["rdPrintColHeaders_Level" + pIndex], out var printHeadersIndex) ? printHeadersIndex : 0;
+                                ChildColumnHeaders = formData.ContainsKey("rdPrintColHeaders" + (pIndex + 1)) && int.TryParse(formData["rdPrintColHeaders" + (pIndex + 1)], out var childHeadersIndex) ? childHeadersIndex : 0;
+                                int initialViewId = formData.ContainsKey("InitialViewID_Level" + pIndex) && int.TryParse(formData["InitialViewID_Level" + pIndex], out var viewId) ? viewId : 0;
+
+                                var initialViewEntity = await context.Views.Where(m => m.Id == initialViewId).FirstOrDefaultAsync();
+
+                                pViewObject = new View();
+                                pViewObject.TableName = lblTableName;
+                                pViewObject.ViewName = lblReportName;
+                                pViewObject.ReportStylesId = pReportStyle;
+                                pViewObject.GrandTotal = bGrandTotal;
+                                pViewObject.PrintImages = bIncludeImages;
+                                pViewObject.SuppressHeader = bIncludeHeaders;
+                                pViewObject.SuppressFooter = bIncludeFooters;
+                                pViewObject.PrintImageFullPage = bPrintImageFullPage;
+                                pViewObject.PrintImageFirstPageOnly = bPrintImageFirstPageOnly;
+                                pViewObject.PrintImageRedlining = bIncludeAnnotations;
+                                pViewObject.SuppressImageDataRow = bPrintDataRow;
+                                pViewObject.SuppressImageFooter = bIncludeImgFileInfo;
+                                pViewObject.LeftIndent = pLeftIndent;
+                                pViewObject.RightIndent = pRightIndent;
+                                pViewObject.PrintImageLeftMargin = pLeftMargin;
+                                pViewObject.PrintImageRightMargin = pRightMargin;
+                                pViewObject.TrackingEverContained = bTrackingEverContained;
+                                pViewObject.Printable = true;
+                                pViewObject.AltViewId = 0;
+                                pViewObject.DeleteGridAvail = false;
+                                pViewObject.FiltersActive = false;
+                                pViewObject.RowHeight = (short?)0;
+                                pViewObject.SQLStatement = "SELECT * FROM " + lblTableName;
+                                pViewObject.TablesId = 0;
+                                pViewObject.UseExactRowCount = false;
+                                pViewObject.VariableColWidth = true;
+                                pViewObject.VariableFixedCols = false;
+                                pViewObject.VariableRowHeight = true;
+                                pViewObject.ViewGroup = 0;
+                                pViewObject.ViewOrder = 1;
+                                pViewObject.ViewType = (short?)0;
+                                pViewObject.Visible = true;
+                                pViewObject.ChildColumnHeaders = ChildColumnHeaders;
+                                pViewObject.DisplayMode = 1;
+                                pViewObject.PrintAttachments = 0;
+                                pViewObject.MaxRecsPerFetch = pViewObject.MaxRecsPerFetch;
+                                pViewObject.MaxRecsPerFetchDesktop = pViewObject.MaxRecsPerFetchDesktop;
+                                pViewObject.InTaskList = false;
+                                pViewObject.SearchableView = true;
+                                pViewObject.SubViewId = 0;
+                                pViewObject.WorkFlow1 = initialViewEntity.WorkFlow1;
+                                pViewObject.RowHeight = initialViewEntity.RowHeight;
+                                pViewObject.ViewGroup = initialViewEntity.ViewGroup;
+                                pViewObject.MaxRecsPerFetch = initialViewEntity.MaxRecsPerFetch;
+                                pViewObject.MaxRecsPerFetchDesktop = initialViewEntity.MaxRecsPerFetchDesktop;
+                                pViewObject.WorkFlow1 = initialViewEntity.WorkFlow1;
+                                pViewObject.WorkFlowDesc1 = initialViewEntity.WorkFlowDesc1;
+                                pViewObject.WorkFlowToolTip1 = initialViewEntity.WorkFlowToolTip1;
+                                pViewObject.TablesId = initialViewEntity.TablesId;
+                                pViewObject.UseExactRowCount = initialViewEntity.UseExactRowCount;
+
+                                if (trackingHistoryIndex > 0)
+                                {
+                                    pViewObject.SubTableName = "<<Tracking>>";
+                                }
+
+                                if (pIndex == 2 | pIndex == 3)
+                                {
+                                    //pViewObject.PrintWithoutChildren = formData["PrintWithoutChildren_Level" + pIndex] == "on" ? true : false;
+                                    pViewObject.PrintWithoutChildren = formData.ContainsKey("PrintWithoutChildren_Level" + pIndex) && formData["PrintWithoutChildren_Level" + pIndex] == "on";
+                                }
+                                //_iView.Add(pViewObject);
+                                context.Views.Add(pViewObject);
+                                await context.SaveChangesAsync();
+
+
+                                if (pIndex == 1)
+                                {
+                                    parentTblName = lblTableName;
+                                    parentViewName = lblReportName;
+
+                                    //_iSecureObject.BeginTransaction();
+                                    var pNewSecureObject = new Entities.SecureObject();
+
+                                    var pSecureObjectData = await context.SecureObjects.FirstOrDefaultAsync(x => x.Name.Trim().ToLower().Equals(lblReportName) & x.SecureObjectTypeID == (int)Enums.SecureObjectType.Reports);
+                                    if (pSecureObjectData is not null)
+                                    {
+                                        var pSecureObjectPermission = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == pSecureObjectData.SecureObjectID).ToListAsync();
+                                        //_iSecureObjectPermission.DeleteRange(pSecureObjectPermission);
+
+                                        context.SecureObjectPermissions.RemoveRange(pSecureObjectPermission);
+                                        await context.SaveChangesAsync();
+
+                                        //_iSecureObject.Delete(pSecureObjectData);
+                                        context.SecureObjects.Remove(pSecureObjectData);
+                                        await context.SaveChangesAsync();
+                                    }
+
+                                    var pSecureObject = await context.SecureObjects.FirstOrDefaultAsync(x => x.Name.Trim().ToLower().Equals(lblTableName) & x.SecureObjectTypeID == (int)Enums.SecureObjectType.Table);
+                                    if (pSecureObject != null)
+                                    {
+                                        BaseSecureObjId = pSecureObject.SecureObjectID;
+                                        pNewSecureObject.BaseID = pSecureObject.SecureObjectID;
+                                        pNewSecureObject.SecureObjectTypeID = (int)Enums.SecureObjectType.Reports;
+                                        pNewSecureObject.Name = lblReportName;
+                                        //_iSecureObject.Add(pNewSecureObject);
+                                        //_iSecureObject.CommitTransaction();
+
+                                        context.SecureObjects.Add(pNewSecureObject);
+                                        await context.SaveChangesAsync();
+
+                                        await AddSecureObjectPermissionsBySecureObjectType(pNewSecureObject.SecureObjectID, BaseSecureObjId, (int)Enums.SecureObjects.Reports, ConnectionString);
+
+                                        bUpdateState = false;
+                                        level1ID = pViewObject.Id;
+                                        await SaveViewColumns(Ids, chksState, lstViewColumns, pViewObject.Id, ConnectionString);
+                                    }
+                                }
+
+                                else if (pIndex == 2)
+                                {
+                                    parentLevel2TblName = lblTableName;
+                                    parentLevel2ViewName = lblReportName;
+
+                                    await UpdateLevelWiseReportsView(lblReportName, pOldReportName, parentTblName, parentViewName, parentLevel2TblName, parentLevel2ViewName, ConnectionString);
+
+                                    // Add columns for View
+                                    bUpdateState = false;
+                                    await SaveViewColumns(Ids, chksState, lstViewColumns, pViewObject.Id, ConnectionString);
+                                }
+                                else if (pIndex == 3)
+                                {
+                                    level3ChildTblName = lblTableName;
+                                    level3ViewName = lblReportName;
+
+                                    await UpdateLevelWiseReportsView(lblReportName, pOldReportName, parentLevel2TblName, parentLevel2ViewName, level3ChildTblName, level3ViewName, ConnectionString);
+
+                                    bUpdateState = false;
+                                    await SaveViewColumns(Ids, chksState, lstViewColumns, pViewObject.Id, ConnectionString);
+                                }
+                            }
+
+                            else
+                            {
+                                model.ErrorType = "w";
+                                model.ErrorMessage = string.Format("'{0}' has already been defined as a view or report for '{1}' table", lblReportName, lblTableName);
+                                bIsWarnning = true;
+                            }
+                        }
+                    }
+
+                    passport.FillSecurePermissions();
+
+                    if (bIsWarnning == false)
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Report saved successfully";
+                    }
+
+                    model.Level1Id = level1ID;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("RemoveActiveLevel")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveActiveLevel(RemoveActiveLevelParam removeActiveLevelParam) //complete testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var pViewIDs = removeActiveLevelParam.ViewIds;
+            var ConnectionString = removeActiveLevelParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    foreach (string item in pViewIDs)
+                    {
+                        var parentView = await context.Views.Where(x => x.SubViewId == Convert.ToDouble(item)).FirstOrDefaultAsync();
+                        if (parentView != null)
+                        {
+                            parentView.SubTableName = "";
+                            parentView.SubViewId = 0;
+                            context.Entry(parentView).State = EntityState.Modified;
+                            await context.SaveChangesAsync();
+                        }
+
+                        var viewEntity = await context.Views.Where(x => x.Id == Convert.ToDouble(item)).FirstOrDefaultAsync();
+
+                        if (viewEntity != null)
+                        {
+                            context.Views.Remove(viewEntity);
+                            await context.SaveChangesAsync();
+                        }
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Level removed successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+        private async Task<List<Table>> LoadTrackingTables(string ConnectionString)
+        {
+            int iContainerNum;
+            int iLowContainer;
+            var lstTables = new List<Table>();
+            Table oSaveTable = null;
+            iLowContainer = 0;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var tableEntity = await context.Tables.ToListAsync();
+
+                do
+                {
+                    iContainerNum = 9999;
+                    oSaveTable = null;
+
+                    foreach (Table oTable in tableEntity)
+                    {
+                        if ((oTable.TrackingTable > iLowContainer) && (oTable.TrackingTable < iContainerNum))
+                        {
+                            iContainerNum = (int)oTable.TrackingTable;
+                            oSaveTable = oTable;
+                        }
+                    }
+
+                    if (oSaveTable is null)
+                        break;
+                    lstTables.Add(oSaveTable);
+                    iLowContainer = (int)oSaveTable.TrackingTable;
+                }
+                while (true);
+            }
+
+            return lstTables;
+        }
+
+        private async Task<bool> SaveViewColumns(Array Ids, Array chksState, List<ViewColumn> lstViewColumns, int vId, string ConnectionString)
+        {
+            ViewColumn ViewColumnObj;
+            int icount = 0;
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+
+                var lSViewColEntities = await context.ViewColumns.Where(x => x.ViewsId == vId).ToListAsync();
+                context.ViewColumns.RemoveRange(lSViewColEntities);
+                await context.SaveChangesAsync();
+
+                foreach (var id in Ids)
+                {
+                    ViewColumnObj = lstViewColumns.FirstOrDefault(item => item.Id == Convert.ToInt32(id));
+                    //ViewColumnObj = lstViewColumns.Where(item => Operators.ConditionalCompareObjectEqual(item.Id, id, false)).FirstOrDefault();
+                    ViewColumnObj.Id = 0;
+                    ViewColumnObj.SuppressPrinting = chksState.GetValue(icount).ToString() == "0" ? false : true;
+                    ViewColumnObj.ColumnNum = (short?)icount;
+                    ViewColumnObj.ViewsId = vId;
+                    context.ViewColumns.Add(ViewColumnObj);
+                    await context.SaveChangesAsync();
+                    icount = icount + 1;
+                }
+            }
+            return true;
+        }
+
+        private async Task<object> UpdateLevelWiseReportsView(string reportName, string oldReportName, string parentTblName, string parentViewName, string childTblName, string childViewName, string ConnectionString)
+        {
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                var parentViewEntity = await context.Views.Where(x => (x.TableName) == (parentTblName) & (x.ViewName) == (parentViewName)).FirstOrDefaultAsync();
+                var childViewEntity = await context.Views.Where(x => (x.TableName) == (childTblName) & (x.ViewName) == (childViewName)).FirstOrDefaultAsync();
+                if (childViewEntity != null)
+                {
+                    parentViewEntity.SubTableName = childTblName;
+                    parentViewEntity.SubViewId = childViewEntity.Id;
+                }
+                else
+                {
+                    parentViewEntity.SubTableName = "";
+                    parentViewEntity.SubViewId = 0;
+                }
+                //_iView.Update(parentViewEntity);
+                context.Entry(parentViewEntity).State = EntityState.Modified;
+                await context.SaveChangesAsync();
+
+                var pSecureObject = await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(oldReportName) & x.SecureObjectTypeID == (int)Enums.SecureObjectType.Reports).FirstOrDefaultAsync();
+
+                if (oldReportName != reportName)
+                {
+                    if (pSecureObject != null)
+                    {
+                        //_iSecureObject.BeginTransaction();
+                        int pSecureObjectID = (await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(childTblName) & x.SecureObjectTypeID == (int)Enums.SecureObjectType.Table).FirstOrDefaultAsync()).SecureObjectID;
+                        pSecureObject.BaseID = pSecureObjectID;
+                        pSecureObject.SecureObjectTypeID = 7;
+                        pSecureObject.Name = reportName;
+                        //_iSecureObject.Update(pSecureObject);
+                        //_iSecureObject.CommitTransaction();
+                        context.Entry(pSecureObject).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+            return true;
+        }
 
         #endregion
 
@@ -12681,7 +14201,7 @@ namespace MSRecordsEngine.Controllers
                         {
                             context.SecureObjects.Remove(secureTableObject);
                             await context.SaveChangesAsync();
-                            
+
                             var pSecureObjPermissions = await context.SecureObjectPermissions.Where(x => x.SecureObjectID == vSecureObjectId).ToListAsync();
                             if (pSecureObjPermissions.Count > 0)
                             {
@@ -13020,70 +14540,6 @@ namespace MSRecordsEngine.Controllers
             }
         }
 
-
-        #region Not Working 
-
-        [Route("GetTablesView")]
-        [HttpPost]
-        public async Task<ReturnGetTablesView> GetTablesView(GetTablesViewParams getTablesViewParams) //not working 
-        {
-            var model = new ReturnGetTablesView();
-            var lstViews = new List<KeyValuePair<string, string>>();
-            var lstChildTables = new List<KeyValuePair<string, string>>();
-            Table oTable;
-            var pTableName = getTablesViewParams.pTableName;
-            var passport = getTablesViewParams.passport;
-            try
-            {
-                using (var context = new TABFusionRMSContext(passport.ConnectionString))
-                {
-                    var tableEntity = await context.Tables.OrderBy(x => x.TableName).ToListAsync();
-                    var lViewColumnEntities = await context.ViewColumns.ToListAsync();
-                    var lLoopViewEntities = await context.Views.Where(x => (x.TableName.Trim().ToLower()) == (pTableName.ToLower())).ToListAsync();
-
-                    foreach (var oView in lLoopViewEntities)
-                    {
-                        if (await (NotSubReport(oView, pTableName, passport)))
-                        {
-                            if (passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Reports, (Permissions.Permission)Enums.PassportPermissions.View) | passport.CheckPermission(oView.ViewName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.View, (Permissions.Permission)Enums.PassportPermissions.View))
-                            {
-                                lstViews.Add(new KeyValuePair<string, string>(oView.Id.ToString(), oView.ViewName));
-                            }
-                        }
-                    }
-
-                    var lstRelatedChildTable = await context.RelationShips.Where(x => (x.UpperTableName) == (pTableName)).ToListAsync();
-
-                    foreach (var lTableName in lstRelatedChildTable)
-                    {
-                        oTable = await context.Tables.Where(x => x.TableName.Equals(lTableName.LowerTableName)).FirstOrDefaultAsync();
-
-                        if (oTable != null)
-                        {
-                            lstChildTables.Add(new KeyValuePair<string, string>(oTable.TableName, oTable.UserName));
-                            oTable = null;
-                        }
-                    }
-
-                    var Setting = new JsonSerializerSettings();
-                    Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                    model.lstViewStr = JsonConvert.SerializeObject(lstViews, Newtonsoft.Json.Formatting.Indented, Setting);
-                    model.lstChildTablesObjStr = JsonConvert.SerializeObject(lstChildTables, Newtonsoft.Json.Formatting.Indented, Setting);
-                }
-            }
-            catch (Exception ex)
-            {
-                _commonService.Logger.LogError($"Error:{ex.Message} Database: {passport.DatabaseName} CompanyName: {passport.License.CompanyName}");
-            }
-
-            return model;
-        }
-
-
-
-        #endregion
-
-
         #region Private Method
 
         private async Task<bool> NotSubReport(View oView, string pTableName, Passport passport)
@@ -13094,6 +14550,8 @@ namespace MSRecordsEngine.Controllers
 
             using (var context = new TABFusionRMSContext(passport.ConnectionString))
             {
+                NotSubReportRet = true;
+
                 var tableEntity = await context.Tables.ToListAsync();
                 foreach (var oTable in tableEntity)
                 {

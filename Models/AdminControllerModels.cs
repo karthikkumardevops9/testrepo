@@ -82,7 +82,7 @@ namespace MSRecordsEngine.Models
         public bool RenameOnScan { get; set; }
     }
 
-    public class ReturnGetTablesView
+    public class ReturnGetTablesView : ReturnErrorTypeErrorMsg
     {
         public string lstViewStr { get; set; }
         public string lstChildTablesObjStr { get; set; }
@@ -1261,5 +1261,124 @@ namespace MSRecordsEngine.Models
     public class ReturnGetAttachTableFieldsList : ReturnErrorTypeErrorMsg
     {
         public string lstColumnNames { get; set; }
+    }
+
+    public class ReportsTreePartialParam
+    {
+        public string Root { get; set; }
+        public int iCntRpt { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class DeleteReportsPrintingColumnParam
+    {
+        public List<ViewColumn> LstViewColumns { get; set; }
+        public int ColumnId { get; set; }
+        public int Index { get; set; }
+    }
+
+    public class ReturnDeleteReportsPrintingColumn : ReturnErrorTypeErrorMsg
+    {
+        public List<ViewColumn> LstViewColumns { get; set; }
+    }
+
+    public class GetColumnsForPrintingParam
+    {
+        public string TableName { get; set; }
+        public int ViewId { get; set; }
+        public int Index { get; set; }
+        public Passport Passport { get; set;}
+    }
+
+    public class ReturnGetColumnsForPrinting : ReturnErrorTypeErrorMsg
+    {
+        public string ViewColumnEntity { get; set; }
+        public string ViewsEntity { get; set; }
+        public string LstTrackedHistory { get; set; }
+        public string TableEntity { get; set; }
+        public List<ViewColumn> TempViewColumns { get; set; }
+        public bool Trackable { get; set; }
+    }
+
+    public class SetReportDefinitionValuesParam
+    {
+        public string OldReportName { get; set; }
+        public string ReportStyle { get; set; }
+        public Dictionary<string, string> FormData { get; set; }
+        public Passport Passport { get; set; }
+        public List<ViewColumn> TempViewColumns_1 { get; set; }
+        public List<ViewColumn> TempViewColumns_2 { get; set; }
+        public List<ViewColumn> TempViewColumns_3 { get; set; }
+    }
+
+    public class ReturnSetReportDefinitionValues : ReturnErrorTypeErrorMsg
+    {
+        public int Level1Id { get; set; }
+    }
+
+    public class RemoveActiveLevelParam
+    {
+        public Array ViewIds { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ReturnSetColumnInTempViewCol : ReturnErrorTypeErrorMsg
+    {
+        public string LstViewColumn { get; set; }
+        public List<ViewColumn> TempViewColumns { get; set; }
+    }
+
+    public class RtnFillViewColField
+    {
+        public List<KeyValuePair<string, string>> LstKeyValuePair { get; set; }
+        public Dictionary<string, string> mcFieldName { get; set; }
+        public Dictionary<string, RelationShip> mcRelationships { get; set; }
+        public Dictionary<string, int> mcLevel { get; set; }
+    }
+
+    public class SetColumnInTempViewColParam
+    {
+        public ViewColumn formEntity{ get; set; }
+        public int DisplayStyleData{ get; set; }
+        public int DuplicateType{ get; set; }
+        public string TableName{ get; set; }
+        public string reportNameOrId{ get; set; }
+        public int LevelNum{ get; set; }
+        public string SQLString{ get; set; }
+        public string FieldNameTB { get; set; }
+        public bool IsReportColumn { get; set; }
+        public bool DropDownFlagBool { get; set; }
+        public bool pPageBreakField { get; set; }
+        public bool pSuppressDuplicates { get; set; }
+        public bool pCountColumn { get; set; }
+        public bool pSubtotalColumn { get; set; }
+        public bool pRestartPageNumber { get; set; }
+        public bool pUseAsPrintId { get; set; }
+        public bool pSortableField { get; set; }
+        public bool pFilterField { get; set; }
+        public bool pEditAllowed { get; set; }
+        public bool pColumnVisible { get; set; }
+        public bool pDropDownSuggestionOnly { get; set; }
+        public bool pMaskInclude { get; set; }
+        public Enums.geViewColumnsLookupType LookupNumber { get; set; }
+        public string ConnectionString { get; set; }
+        public bool tempExist { get; set; }
+        public List<ViewColumn> tempViewColumns { get; set; }
+    }
+
+    public class DropDownValidationParam
+    {
+        public bool CurrentStatus {  get; set; }
+        public bool EditStatus {  get; set; }
+        public string TableName {  get; set; }
+        public string FieldNameVar {  get; set; }
+        public string ConnectionString {  get; set; }
+        public Enums.geViewColumnsLookupType LookUpVar {  get; set; }
+    }
+
+    public class ReturnDropDownValidation : ReturnErrorTypeErrorMsg
+    {
+        public string ChkEditable {  get; set; }
+        public string ChkDropDownSuggest {  get; set; }
     }
 }
