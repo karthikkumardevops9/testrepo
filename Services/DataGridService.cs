@@ -25,6 +25,9 @@ using System.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using static MSRecordsEngine.Models.FusionModels.LinkScriptModel;
+using Microsoft.AspNetCore.Hosting;
+using System.Xml.Linq;
+using Microsoft.VisualBasic.CompilerServices;
 
 namespace MSRecordsEngine.Services
 {
@@ -43,7 +46,7 @@ namespace MSRecordsEngine.Services
             }
 
             var query = new Query(prop.passport);
-            var param = new Parameters(prop.viewId, prop.passport);
+            var param = new Parameters(prop.ViewId, prop.passport);
             param.QueryType = queryTypeEnum.Schema;
             //param.Culture = new CultureInfo("en-US");//Keys.GetCultureCookies(_httpContext);
             param.Scope = ScopeEnum.Table;
@@ -129,9 +132,9 @@ namespace MSRecordsEngine.Services
             var model = new ScriptReturn();
             await Task.Run(() =>
             {
-              model = ScriptEngine.RunScript(props.InternalEngine.ScriptName, props.InternalEngine.CurrentTableName, props.InternalEngine.RecordId, props.InternalEngine.ViewId, props.passport, props.passport.Connection(), props.InternalEngine.Caller, props.InternalEngine.GetSelectedRowIds);
+                model = ScriptEngine.RunScript(props.InternalEngine.ScriptName, props.InternalEngine.CurrentTableName, props.InternalEngine.RecordId, props.InternalEngine.ViewId, props.passport, props.passport.Connection(), props.InternalEngine.Caller, props.InternalEngine.GetSelectedRowIds);
             });
-            
+
             return model;
         }
         public LinkScriptModel BuiltControls(ScriptReturn scriptresult)
@@ -255,9 +258,148 @@ namespace MSRecordsEngine.Services
             bool EngineReturn = false;
             await Task.Run(() =>
             {
-             EngineReturn =  ScriptEngine.RunScript(ref engine, engine.ScriptName, engine.CurrentTableName, engine.RecordId, engine.ViewId, props.passport, engine.Caller, ref selectedrow);
+                EngineReturn = ScriptEngine.RunScript(ref engine, engine.ScriptName, engine.CurrentTableName, engine.RecordId, engine.ViewId, props.passport, engine.Caller, ref selectedrow);
             });
             return EngineReturn;
+        }
+        public async Task<TabquikApi> TabQuikInitiator(TabquickpropUI props)
+        {
+            var model = new TabquikApi();
+            
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                await GetLicense(model, props, conn);
+                GetTabquikData(model, props, conn);
+            }
+
+            return model;
+
+        }
+        private async Task GetLicense(TabquikApi model, TabquickpropUI props, SqlConnection conn)
+        {
+            // get the license
+            var key = await Navigation.GetSettingAsync("TABQUIK", "Key", conn);
+            var keys = key.Split('-');
+
+            if (key is not null)
+            {
+                if (key.Length > 1)
+                {
+                    model.CustomerID = keys[0];
+                    model.ContactID = keys[1];
+                }
+                else
+                {
+                    model.CustomerID = keys[0];
+                }
+            }
+        }
+        private void GetTabquikData(TabquikApi model, TabquickpropUI props, SqlConnection conn)
+        {
+            string inClause = System.String.Format(" IN ({0})", props.RowsSelected);
+            var param = new Parameters(props.ViewId, props.passport);
+            DataTable dtData = new DataTable("LabelData");
+            DataTable dtJobs = new DataTable();
+            DataTable dtFormat = new DataTable("Formats");
+            DataTable dtClone;
+
+            using (var cmd = new SqlCommand("SELECT * FROM OneStripJobs WHERE TableName = @tableName AND InPrint = 5", conn))
+            {
+                cmd.Parameters.AddWithValue("@TableName", param.TableName);
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dtJobs);
+                }
+            }
+
+            if (dtJobs.Rows.Count == 0)
+            {
+                model.ErrorMsg = "No labels have been integrated for this table. Unable to continue";
+                return;
+            }
+            var rep = dtJobs.Rows[0]["SQLString"].ToString().Replace("= %ID%", inClause);
+            using (var cmd = new SqlCommand(rep, conn))
+            {
+                cmd.CommandText = cmd.CommandText.Replace("=%ID%", inClause);
+                cmd.CommandText = cmd.CommandText.Replace("='%ID%'", inClause);
+                cmd.CommandText = cmd.CommandText.Replace("= '%ID%'", inClause);
+
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dtData);
+                }
+            }
+
+            if (dtData.Rows.Count == 0)
+            {
+                model.ErrorMsg = "Table label SQL statement returned no data. Unable to continue";
+                return;
+            }
+
+            using (var cmd = new SqlCommand("SELECT * FROM OneStripJobFields WHERE OneStripJobsID = @JobID", conn))
+            {
+                cmd.Parameters.AddWithValue("@JobID", dtJobs.AsEnumerable().ElementAtOrDefault(0)["Id"]);
+
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dtFormat);
+                }
+            }
+
+            if (dtFormat.Rows.Count == 0)
+            {
+                model.ErrorMsg = "No label format fields returned. Unable to continue";
+                return;
+            }
+
+            dtClone = dtData.Clone();
+
+            foreach (DataColumn col in dtClone.Columns)
+                col.DataType = typeof(string);
+
+            foreach (DataRow row in dtData.Rows)
+                dtClone.ImportRow(row);
+
+
+            var datalist = new StringBuilder();
+
+            foreach (DataRow rowData in dtClone.Rows)
+            {
+                var rowValues = new List<string>();
+                foreach (DataColumn col in dtClone.Columns)
+                {
+                    rowValues.Add(rowData[col.ColumnName].ToString());
+                }
+                datalist.Append(string.Join("~", rowValues));
+
+                if (rowData != dtClone.Rows[dtClone.Rows.Count - 1])
+                {
+                    datalist.Append("*!*");
+                }
+            }
+
+            model.DataTQ = datalist.ToString();
+            model.DataTQ = model.DataTQ.Replace(@"\", @"\\");
+            model.DataTQ = model.DataTQ.Replace("'", @"\'");
+
+            LabelPrintUpdate(dtJobs, inClause, conn);
+        }
+        private void LabelPrintUpdate(DataTable dtJobs, string inClause, SqlConnection conn)
+        {
+            if (dtJobs.Rows.Count == 0
+                || string.IsNullOrEmpty(dtJobs.Rows[0]["SQLUpdateString"].ToString())
+                || dtJobs.Rows[0]["SQLUpdateString"].ToString().IndexOf("<YourTable>") != -1) return;
+
+            var rep = dtJobs.Rows[0]["SQLUpdateString"].ToString().Replace("= %ID%", inClause);
+
+            using (var cmd = new SqlCommand(rep, conn))
+            {
+                cmd.CommandText = cmd.CommandText.Replace("=%ID%", inClause);
+                cmd.CommandText = cmd.CommandText.Replace("='%ID%'", inClause);
+                cmd.CommandText = cmd.CommandText.Replace("= '%ID%'", inClause);
+                cmd.ExecuteScalar();
+            }
         }
         private void SetHeadingAndTitle(ScriptReturn scriptresult, LinkScriptModel model)
         {

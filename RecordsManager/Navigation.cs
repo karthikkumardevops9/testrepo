@@ -256,6 +256,18 @@ namespace MSRecordsEngine.RecordsManager
             }
         }
 
+        public static async Task<string> GetSettingAsync(string section, string item, SqlConnection conn)
+        {
+            using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
+            {
+                cmd.Parameters.AddWithValue("@section", section);
+                cmd.Parameters.AddWithValue("@item", item);
+                var getsetting = await cmd.ExecuteScalarAsync();
+                return getsetting.ToString();
+            }
+
+        }
+
         [SecuritySafeCritical]
         public static void GetOutputSettingValues(Entities.SystemAddress oSystemAddress, Entities.Volume oVolume, Entities.OutputSetting oOutputSetting, Passport passport, ref bool bIsValidOutputSettings, ref bool bIsOutputSettingsActive)
         {
@@ -265,7 +277,7 @@ namespace MSRecordsEngine.RecordsManager
                 if (checkPath.StartsWith(@"\\"))
                     checkPath += string.Format("{0}{1}", oVolume.PathName.StartsWith(@"\") ? string.Empty : @"\", oVolume.PathName);
 
-                bIsValidOutputSettings =  System.IO.Directory.Exists(checkPath) && passport.CheckPermission(oOutputSetting.Id, Smead.Security.SecureObject.SecureObjectType.OutputSettings, Permissions.Permission.Access);
+                bIsValidOutputSettings = System.IO.Directory.Exists(checkPath) && passport.CheckPermission(oOutputSetting.Id, Smead.Security.SecureObject.SecureObjectType.OutputSettings, Permissions.Permission.Access);
                 bIsOutputSettingsActive = CBoolean(oOutputSetting.InActive) == false;
             }
         }
@@ -329,7 +341,7 @@ namespace MSRecordsEngine.RecordsManager
         }
         public static bool IsAuditingEnabled(string tableName, string connectionStr)
         {
-            using(var context = new TABFusionRMSContext(connectionStr))
+            using (var context = new TABFusionRMSContext(connectionStr))
             {
                 var tb = context.Tables.Where(x => x.TableName == tableName).FirstOrDefault();
                 if (tb.AuditUpdate == true || tb.AuditConfidentialData == true || tb.AuditAttachments == true)
@@ -385,7 +397,7 @@ namespace MSRecordsEngine.RecordsManager
 
                 try
                 {
-                   await cmd.ExecuteNonQueryAsync();
+                    await cmd.ExecuteNonQueryAsync();
                 }
                 catch (Exception ex)
                 {

@@ -10,6 +10,8 @@ namespace MSRecordsEngine.Models
     {
         public Passport passport { get; set; }
         public string ConnectionString { get; set; }
+        public int ViewId { get; set; }
+        public string TableId { get; set; }
 
     }
     public class NewUrlprops : UserInterfaceProps
@@ -19,7 +21,6 @@ namespace MSRecordsEngine.Models
 
     public class ViewQueryWindowProps : UserInterfaceProps
     {
-        public int viewId { get; set; }
         public int ceriteriaId { get; set; }
         public string ChildKeyField { get; set; }
         public int crumblevel { get; set; }
@@ -50,10 +51,14 @@ namespace MSRecordsEngine.Models
     public class linkscriptPropertiesUI : UserInterfaceProps
     {
         public string WorkFlow { get; set; }
-        public int ViewId { get; set; }
-        public string[] Rowids { get; set; }
-        public string TableId { get; set; }
+        public string[] Rowids { get; set; }       
         public InternalEngine InternalEngine { get; set; }
+    }
+    public class TabquickpropUI : UserInterfaceProps
+    {
+        public string RowsSelected { get; set; }
+        public string WebRootPath { get; set; }
+
     }
 
 }
