@@ -4,8 +4,6 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.CompilerServices;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models;
 using MSRecordsEngine.Services.Interface;
@@ -16,10 +14,9 @@ namespace MSRecordsEngine.Services
 
     public class ReportsService : IReportService
     {
-
-        public static Collection mcFieldName = new Collection();
-        public static Collection mcRelationships = new Collection();
-        public static Collection mcLevel = new Collection();
+        public static Dictionary<string, string> mcFieldName = new Dictionary<string, string>();
+        public static Dictionary<string, RelationShip> mcRelationships = new Dictionary<string, RelationShip>();
+        public static Dictionary<string, int> mcLevel = new Dictionary<string, int>();
         public const string TRACKED_LOCATION_NAME = "SLTrackedDestination";
 
         public string GetBindReportsMenus(string root, List<Table> lTableEntities, List<View> lViewEntities,
@@ -103,14 +100,17 @@ namespace MSRecordsEngine.Services
             return strViewMenu.ToString();
         }
 
-        public async Task<List<KeyValuePair<string, string>>> FillViewColField(List<Table> tableObjList, List<RelationShip> relationObjList, List<KeyValuePair<string, string>> FieldNameList, Table orgTable, List<RelationShip> relationShipEntity, bool bDoUpper, int iLevel, bool bNumericOnly, string connectionString)
+
+        public async Task<RtnFillViewColField> FillViewColField(List<Table> tableObjList, List<RelationShip> relationObjList, List<KeyValuePair<string, string>> FieldNameList, Table orgTable, List<RelationShip> relationShipEntity, bool bDoUpper, int iLevel, bool bNumericOnly, string connectionString)
         {
+            var model = new RtnFillViewColField();
             try
             {
                 Table tableEntity;
-                var schemaColumn = new List<SchemaColumns>();
+                List<SchemaColumns> schemaColumn = new List<SchemaColumns>();
                 string sFieldName = "";
-                if (relationShipEntity is not null)
+
+                if (relationShipEntity != null)
                 {
                     if (iLevel == 1)
                     {
@@ -129,93 +129,103 @@ namespace MSRecordsEngine.Services
                         {
                             tableEntity = tableObjList.Where(m => m.TableName.Trim().ToLower().Equals(relationObj.LowerTableName.Trim().ToLower())).FirstOrDefault();
                         }
-                        if (tableEntity is not null)
+
+                        if (tableEntity != null)
                         {
                             if (!tableEntity.TableName.Trim().ToLower().Equals(orgTable.TableName.Trim().ToLower()))
                             {
                                 schemaColumn = SchemaInfoDetails.GetTableSchemaInfo(tableEntity.TableName, connectionString).ToList();
                             }
+
                             if (schemaColumn.Count > 0)
                             {
-                                for (int icol = 0, loopTo = schemaColumn.Count - 1; icol <= loopTo; icol++)
+                                foreach (var schemaColumnItem in schemaColumn)
                                 {
-                                    var schemaColumnItem = schemaColumn[icol];
                                     if (bDoUpper)
                                     {
                                         if (!DatabaseMap.RemoveTableNameFromField(tableEntity.IdFieldName).Equals(DatabaseMap.RemoveTableNameFromField(schemaColumnItem.ColumnName)))
                                         {
                                             sFieldName = "";
+
                                             if (mcFieldName.Count != 0)
                                             {
-                                                string UpperTableName = relationObj.UpperTableName;
-                                                string schemaColVar = schemaColumnItem.ColumnName;
-                                                if (mcFieldName.Contains(Strings.Trim(Strings.UCase(relationObj.UpperTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName))))
+                                                if (mcFieldName.ContainsKey($"{relationObj.UpperTableName.ToUpper().Trim()}.{schemaColumnItem.ColumnName.ToUpper().Trim()}"))
                                                 {
-                                                    sFieldName = Conversions.ToString(mcFieldName[Strings.Trim(Strings.UCase(relationObj.UpperTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName))]);
+                                                    sFieldName = mcFieldName[$"{relationObj.UpperTableName.ToUpper().Trim()}.{schemaColumnItem.ColumnName.ToUpper().Trim()}"];
                                                 }
                                             }
+
                                             if (string.IsNullOrEmpty(sFieldName))
                                             {
-                                                if (!bNumericOnly | SchemaInfoDetails.IsANumericType(schemaColumnItem.DataType))
+                                                if (!bNumericOnly || SchemaInfoDetails.IsANumericType(schemaColumnItem.DataType))
                                                 {
                                                     if (!SchemaInfoDetails.IsSystemField(schemaColumnItem.ColumnName))
                                                     {
-                                                        FieldNameList.Add(new KeyValuePair<string, string>(Strings.Trim(relationObj.UpperTableName + "." + schemaColumnItem.ColumnName), relationObj.UpperTableName + "." + schemaColumnItem.ColumnName));
-                                                        mcFieldName.Add(relationObj.LowerTableFieldName, Strings.Trim(Strings.UCase(relationObj.UpperTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)));
-                                                        mcRelationships.Add(relationObj, Strings.Trim(Strings.UCase(relationObj.UpperTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)));
-                                                        mcLevel.Add(iLevel, Strings.Trim(Strings.UCase(relationObj.UpperTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)));
+                                                        FieldNameList.Add(new KeyValuePair<string, string>($"{relationObj.UpperTableName.Trim()}.{schemaColumnItem.ColumnName}", $"{relationObj.UpperTableName.Trim()}.{schemaColumnItem.ColumnName}"));
+                                                        mcFieldName.Add($"{relationObj.UpperTableName.Trim()}.{schemaColumnItem.ColumnName}", relationObj.LowerTableFieldName);
+                                                        mcRelationships.Add($"{relationObj.UpperTableName.Trim()}.{schemaColumnItem.ColumnName}", relationObj);
+                                                        mcLevel.Add($"{relationObj.UpperTableName.Trim()}.{schemaColumnItem.ColumnName}", iLevel);
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                    else if (!DatabaseMap.RemoveTableNameFromField(relationObj.LowerTableFieldName).Equals(DatabaseMap.RemoveTableNameFromField(schemaColumnItem.ColumnName)))
+                                    else
                                     {
-                                        if (mcFieldName.Count != 0)
+                                        if (!DatabaseMap.RemoveTableNameFromField(relationObj.LowerTableFieldName).Equals(DatabaseMap.RemoveTableNameFromField(schemaColumnItem.ColumnName)))
                                         {
-                                            if (mcFieldName.Contains(Strings.Trim(Strings.UCase(relationObj.LowerTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName))))
+                                            if (mcFieldName.Count != 0)
                                             {
-                                                sFieldName = Conversions.ToString(mcFieldName[Strings.UCase(relationObj.LowerTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)]);
+                                                if (mcFieldName.ContainsKey($"{relationObj.LowerTableName.ToUpper().Trim()}.{schemaColumnItem.ColumnName.ToUpper().Trim()}"))
+                                                {
+                                                    sFieldName = mcFieldName[$"{relationObj.LowerTableName.ToUpper().Trim()}.{schemaColumnItem.ColumnName.ToUpper().Trim()}"];
+                                                }
                                             }
 
-                                        }
-                                        if (string.IsNullOrEmpty(sFieldName))
-                                        {
-                                            if (!bNumericOnly | SchemaInfoDetails.IsANumericType(schemaColumnItem.DataType))
+                                            if (string.IsNullOrEmpty(sFieldName))
                                             {
-                                                if (!SchemaInfoDetails.IsSystemField(schemaColumnItem.ColumnName))
+                                                if (!bNumericOnly || SchemaInfoDetails.IsANumericType(schemaColumnItem.DataType))
                                                 {
-                                                    FieldNameList.Add(new KeyValuePair<string, string>(Strings.Trim(relationObj.LowerTableName + "." + schemaColumnItem.ColumnName), relationObj.LowerTableName + "." + schemaColumnItem.ColumnName));
-                                                    mcFieldName.Add(relationObj.UpperTableFieldName, Strings.Trim(Strings.UCase(relationObj.LowerTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)));
-                                                    mcRelationships.Add(relationObj, Strings.Trim(Strings.UCase(relationObj.LowerTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)));
-                                                    mcLevel.Add(iLevel, Strings.Trim(Strings.UCase(relationObj.LowerTableName) + "." + Strings.UCase(schemaColumnItem.ColumnName)));
+                                                    if (!SchemaInfoDetails.IsSystemField(schemaColumnItem.ColumnName))
+                                                    {
+                                                        FieldNameList.Add(new KeyValuePair<string, string>($"{relationObj.LowerTableName.Trim()}.{schemaColumnItem.ColumnName}", $"{relationObj.LowerTableName.Trim()}.{schemaColumnItem.ColumnName}"));
+                                                        mcFieldName.Add($"{relationObj.LowerTableName.Trim()}.{schemaColumnItem.ColumnName}", relationObj.UpperTableFieldName);
+                                                        mcRelationships.Add($"{relationObj.LowerTableName.Trim()}.{schemaColumnItem.ColumnName}", relationObj);
+                                                        mcLevel.Add($"{relationObj.LowerTableName.Trim()}.{schemaColumnItem.ColumnName}", iLevel);
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
-                                schemaColumn = null;
+                                schemaColumn = new List<SchemaColumns>();
                             }
                         }
+
                         if (iLevel < 2)
                         {
                             var recursiveParent = relationObjList.Where(m => m.LowerTableName.Trim().ToLower().Equals(tableEntity.TableName.Trim().ToLower())).OrderBy(m => m.TabOrder).ToList();
-                            if (recursiveParent is not null)
+
+                            if (recursiveParent != null)
                             {
-                                FieldNameList = await FillViewColField(tableObjList, relationObjList, FieldNameList, orgTable, recursiveParent, true, iLevel + 1, bNumericOnly, connectionString);
+                                model = await FillViewColField(tableObjList, relationObjList, FieldNameList, orgTable, recursiveParent, true, iLevel + 1, bNumericOnly, connectionString);
                             }
                         }
                     }
-
                 }
-                return FieldNameList;
-            }
 
+                model.mcFieldName = mcFieldName;
+                model.mcRelationships = mcRelationships;
+                model.mcLevel = mcLevel;
+                model.LstKeyValuePair = FieldNameList;
+
+                return model;
+            }
             catch (Exception ex)
             {
                 var msg = ex.Message;
                 throw;
-            } // ex
+            }
         }
     }
 }
