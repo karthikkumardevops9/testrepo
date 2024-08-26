@@ -1,6 +1,6 @@
 ﻿namespace MSRecordsEngine.Models.FusionModels
 {
-    public class TABQUIKModel
+    public class TABQUIKAdminModel
     {
         public string TABQUIKField { get; set; }
         public string TABFusionRMSField { get; set; }

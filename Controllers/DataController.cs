@@ -173,6 +173,19 @@ namespace FusionWebApi.Controllers
                 throw;
             }
         }
-
+        [HttpPost]
+        [Route("TabQuikInitiator")]
+        public async Task<TabquikApi> TabQuikInitiator(TabquickpropUI props)
+        {
+            try
+            {
+                return await _datagridService.TabQuikInitiator(props);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError(ex.Message);
+                throw;
+            }
+        }
     }
 }

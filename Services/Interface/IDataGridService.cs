@@ -18,5 +18,6 @@ namespace MSRecordsEngine.Services.Interface
         public LinkScriptModel BuiltControls(ScriptReturn scriptresult);
         public Task<ScriptReturn> LinkscriptEvents(linkscriptPropertiesUI props);
         public Task<bool> FlowButtonsClickEvent(linkscriptPropertiesUI props);
+        public Task<TabquikApi> TabQuikInitiator(TabquickpropUI props);
     }
 }
