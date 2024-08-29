@@ -1922,13 +1922,55 @@ namespace MSRecordsEngine.Controllers
             return jsonObject;
         }
 
+        [Route("SetTabquikKey")]
+        [HttpGet]
+        public async Task<ReturnErrorTypeErrorMsg> SetTabquikKey(string Tabquikkey, string ConnectionString) //completed testing
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var tabquiksetting = await context.Settings.Where(s => s.Item.Equals("Key") & s.Section.Equals("TABQUIK")).FirstOrDefaultAsync();
+
+                    if (tabquiksetting == null)
+                    {
+                        tabquiksetting = new Setting();
+                        tabquiksetting.Section = "TABQUIK";
+                        tabquiksetting.Item = "Key";
+                        tabquiksetting.ItemValue = Tabquikkey;
+                        context.Settings.Add(tabquiksetting);
+                        await context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        tabquiksetting.ItemValue = Tabquikkey;
+                        context.Entry(tabquiksetting).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Integration Key applied Successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
         #endregion
 
         #region TABQUIK -> Field Mapping
 
         [Route("LoadTABQUIKFieldMappingPartial")]
         [HttpGet]
-        public async Task<string> LoadTABQUIKFieldMappingPartial(string ConnectionString, int pTabquikId)
+        public async Task<string> LoadTABQUIKFieldMappingPartial(string ConnectionString, int pTabquikId) //completed testing 
         {
             var jsonObject = string.Empty;
             using (var context = new TABFusionRMSContext(ConnectionString))
@@ -1947,6 +1989,609 @@ namespace MSRecordsEngine.Controllers
                 }
             }
             return jsonObject;
+        }
+
+
+        [Route("TABQUIKFieldMappingPartial")]
+        [HttpGet]
+        public async Task<OneStripJob> TABQUIKFieldMappingPartial(int pTabquikId, string ConnectionString) //completed testing 
+        {
+            var oOneStripJob = new OneStripJob();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    oOneStripJob = await context.OneStripJobs.Where(x => x.Id == pTabquikId && x.Inprint == 5).FirstOrDefaultAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return oOneStripJob;
+        }
+
+        [Route("GetOneStripJobs")]
+        [HttpGet]
+        public async Task<List<OneStripJob>> GetOneStripJobs(string ConnectionString) //completed testing 
+        {
+            List<OneStripJob> oOneStripJob;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    oOneStripJob = await context.OneStripJobs.Where(x => x.Inprint == 5).ToListAsync();
+                    //oOneStripJob = (await context.OneStripJobs.Where(x => x.Inprint == 5).ToListAsync()).AsQueryable();
+
+                    var t = await context.OneStripJobs.Where(x => x.Inprint == 5).Select(y => new { Value = y.Id, y.Name, y.TableName }).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return oOneStripJob;
+        }
+
+
+        [Route("RemoveSelectedJob")]
+        [HttpDelete]
+        public async Task<ReturnErrorTypeErrorMsg> RemoveSelectedJob(int pTabquikJobId, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oOneStripJob = await context.OneStripJobs.Where(x => x.Id == pTabquikJobId).FirstOrDefaultAsync();
+                    var oOneStripJobFields = await context.OneStripJobFields.Where(x => x.OneStripJobsId == oOneStripJob.Id).ToListAsync();
+
+                    context.OneStripJobFields.RemoveRange(oOneStripJobFields);
+                    await context.SaveChangesAsync();
+                    context.OneStripJobs.Remove(oOneStripJob);
+                    await context.SaveChangesAsync();
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("IsJobAlreadyExists")]
+        [HttpGet]
+        public async Task<bool> IsJobAlreadyExists(string jobName, string ConnectionString) //completed testing 
+        {
+            bool jobExists = false;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    if (await context.OneStripJobs.AnyAsync(x => x.Name == jobName && x.Inprint == 5))
+                    {
+                        jobExists = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+            return jobExists;
+        }
+
+
+        [Route("IsFLDNamesExists")]
+        [HttpGet]
+        public async Task<ReturnIsFLDNamesExists> IsFLDNamesExists(string jobName, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnIsFLDNamesExists();
+            model.FldNamesExists = false;
+            OneStripJob oOneStripJob;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    oOneStripJob = await context.OneStripJobs.Where(x => x.Name == jobName && x.Inprint == 5).FirstOrDefaultAsync();
+
+                    if (!string.IsNullOrEmpty(oOneStripJob.FLDFieldNames))
+                    {
+                        model.FldNamesExists = true;
+                    }
+                }
+                model.ErrorType = "s";
+                model.ErrorMessage = "";
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("GetTableFieldsListAndParentTableFields")]
+        [HttpGet]
+        public async Task<ReturnGetTableFieldsListAndParentTableFields> GetTableFieldsListAndParentTableFields(string pTableName, string ConnectionString) //completed testing 
+        {
+            var model = new ReturnGetTableFieldsListAndParentTableFields();
+
+            var lstAllColumnNames = new List<string>();
+            var lstColumnNames = new List<string>();
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var oParentTableList = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableName)).Select(y => new { TableName = y.UpperTableName }).ToListAsync();
+
+                    lstColumnNames.Add("");
+                    lstColumnNames.AddRange(GetColumnListOfTable(pTableName, ConnectionString));
+                    lstAllColumnNames.AddRange(lstColumnNames);
+
+                    if (oParentTableList != null)
+                    {
+                        foreach (var oTable in oParentTableList)
+                        {
+                            lstColumnNames = GetColumnListOfTable(oTable.TableName, ConnectionString, true);
+                            lstAllColumnNames.AddRange(lstColumnNames);
+                        }
+                    }
+
+                    model.LstAllColumnNames = lstAllColumnNames;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("ValidateTABQUIKSQLStatments")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> ValidateTABQUIKSQLStatments(ValidateTABQUIKSQLStatmentsParams validateTABQUIKSQLStatmentsParams) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+
+            var tabQuickSQL = validateTABQUIKSQLStatmentsParams.TabQuickSQL;
+            var ConnectionString = validateTABQUIKSQLStatmentsParams.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    string SQLStatement = tabQuickSQL.SQLStatement;
+                    string sTableName = tabQuickSQL.sTableName;
+                    bool IsSelectStatement = tabQuickSQL.IsSelectStatement;
+                    string responseMessage = string.Empty;
+                    int lError = 0;
+                    string sSQLStatement = string.Empty;
+                    bool IsBasicSyntaxCorrect = true;
+
+                    sSQLStatement = SQLStatement.Trim();
+
+                    if (!sSQLStatement.StartsWith("SELECT ") && IsSelectStatement)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "The SQL Statement must begin with the \"SELECT\" keyword";
+                        IsBasicSyntaxCorrect = false;
+                    }
+                    else if (!sSQLStatement.StartsWith("UPDATE ", StringComparison.OrdinalIgnoreCase) && !sSQLStatement.StartsWith("DELETE ", StringComparison.OrdinalIgnoreCase) && !IsSelectStatement)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "The SQL Statement must begin with the \"UPDATE\" or \"DELETE\" keyword";
+                        IsBasicSyntaxCorrect = false;
+                    }
+
+                    if (!IsSelectStatement && sSQLStatement.IndexOf("<YourTable>", StringComparison.OrdinalIgnoreCase) != -1)
+                    {
+                        sSQLStatement = "";
+                    }
+
+                    var oTable = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(sTableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (IsBasicSyntaxCorrect && !string.IsNullOrEmpty(sSQLStatement))
+                    {
+                        if (!IsSelectStatement)
+                        {
+                            sSQLStatement = sSQLStatement.Replace("%ID%", "0", StringComparison.OrdinalIgnoreCase);
+                            sSQLStatement = CommonFunctions.InjectWhereIntoSQL(sSQLStatement, "0=1");
+                        }
+                        else if (IsSelectStatement)
+                        {
+                            sSQLStatement = sSQLStatement.Replace("%ID%", "0", StringComparison.OrdinalIgnoreCase);
+                        }
+
+                        responseMessage = CommonFunctions.ValidateSQLStatement(sSQLStatement, ConnectionString);
+
+                        if (string.IsNullOrEmpty(responseMessage))
+                        {
+                            model.ErrorType = "s";
+                        }
+                        else if (lError == -2147217865 && IsSelectStatement)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "The SQL Statement contains an Invalid Table Name" + Environment.NewLine + Environment.NewLine + "Error: " + responseMessage;
+                        }
+                        else if (lError == -2147217865 && !IsSelectStatement)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "The Update SQL Statement contains an Invalid Table Name" + Environment.NewLine + Environment.NewLine + "Error: " + responseMessage;
+                        }
+                        else if (!IsSelectStatement)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "The Update SQL Statement is Invalid" + Environment.NewLine + Environment.NewLine + "Error: " + responseMessage;
+                        }
+                        else
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = responseMessage;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+
+            return model;
+        }
+
+
+        [Route("FormTABQUIKSelectSQLStatement")]
+        [HttpPost]
+        public async Task<ReturnFormTABQUIKSelectSQLStatement> FormTABQUIKSelectSQLStatement(FormTABQUIKSelectSQLStatementParam formTABQUIKSelectSQLStatementParam) //completed testing
+        {
+            var model = new ReturnFormTABQUIKSelectSQLStatement();
+
+            var tabQuikUI = formTABQUIKSelectSQLStatementParam.TabQuikUI;
+            var ConnectionString = formTABQUIKSelectSQLStatementParam.ConnectionString;
+
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    string pTableName = tabQuikUI.pTableName;
+                    string dtTABQUIKData = tabQuikUI.dtTABQUIKData;
+                    string strSQLStatement = "SELECT ";
+                    string sTmpParentTable = "";
+                    var lstAllColumnNames = new List<string>();
+                    var lstParentTables = new List<string>();
+                    int index = 0;
+                    int lParentPos = 0;
+
+                    var oTable = await context.Tables.Where(x => (x.TableName) == (pTableName)).FirstOrDefaultAsync();
+
+                    var lstTABQUIKModels = JsonConvert.DeserializeObject<List<TABQUIKAdminModel>>(dtTABQUIKData);
+
+                    lstAllColumnNames = formTABQUIKSelectSQLStatementParam.lstAllColumnNames;
+
+                    foreach (var tabquikmodel in lstTABQUIKModels)
+                    {
+                        string sTABFusionRMSField = "";
+
+                        if (!string.IsNullOrEmpty(tabquikmodel.TABFusionRMSField))
+                        {
+                            sTABFusionRMSField = lstAllColumnNames[Convert.ToInt32(tabquikmodel.TABFusionRMSField)];
+                        }
+
+                        string sManualField = tabquikmodel.Manual;
+
+                        if (!string.IsNullOrEmpty(sTABFusionRMSField) && !sTABFusionRMSField.Contains(">"))
+                        {
+                            strSQLStatement += $"[{pTableName}].[{sTABFusionRMSField}], ";
+                        }
+                        else if (!string.IsNullOrEmpty(sTABFusionRMSField))
+                        {
+                            sTmpParentTable = sTABFusionRMSField.Substring(1, sTABFusionRMSField.IndexOf('.') - 1).Trim();
+                            if (!lstParentTables.Contains(sTmpParentTable))
+                            {
+                                lstParentTables.Add(sTmpParentTable);
+                            }
+                            strSQLStatement += $"[{sTABFusionRMSField.Substring(1).Replace(".", "].[")}]";
+                        }
+
+                        if (!string.IsNullOrEmpty(sManualField))
+                        {
+                            strSQLStatement += $"({sManualField}) AS ManualField{index}, ";
+                        }
+
+                        index++;
+                    }
+
+                    if (string.Equals(strSQLStatement.Trim(), "SELECT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        strSQLStatement += "*  ";
+                    }
+
+                    strSQLStatement = strSQLStatement.Substring(0, strSQLStatement.Length - 2) + " ";
+                    strSQLStatement += "FROM ";
+                    lParentPos = strSQLStatement.Length;
+                    strSQLStatement += pTableName + " ";
+
+                    foreach (var sParentTable in lstParentTables)
+                    {
+                        var oRelationShips = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableName) & (x.UpperTableName) == (sParentTable)).FirstOrDefaultAsync();
+
+                        strSQLStatement = strSQLStatement.Substring(0, lParentPos) + "(" + strSQLStatement.Substring((int)lParentPos + 1);
+                        strSQLStatement += "LEFT JOIN " + sParentTable + " ON ";
+                        strSQLStatement += oRelationShips.LowerTableFieldName + " = " + oRelationShips.UpperTableFieldName + ") ";
+                    }
+
+                    strSQLStatement = strSQLStatement + "WHERE " + oTable.IdFieldName + " = ";
+
+                    bool IsIdFieldIdFieldIsString = false;
+                    var columnSchema = await GetInfoUsingDapper.GetCoulmnSchemaInfo(ConnectionString, oTable.TableName, DatabaseMap.RemoveTableNameFromField(oTable.IdFieldName));
+                    if (columnSchema.DATA_TYPE == "varchar")
+                    {
+                        IsIdFieldIdFieldIsString = true;
+                    }
+                    if (IsIdFieldIdFieldIsString)
+                    {
+                        strSQLStatement = strSQLStatement + "'%ID%'";
+                    }
+                    else
+                    {
+                        strSQLStatement = strSQLStatement + "%ID%";
+                    }
+
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "";
+                    model.SQLStatement = strSQLStatement;
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+
+        [Route("SaveTABQUIKFields")]
+        [HttpPost]
+        public async Task<ReturnErrorTypeErrorMsg> SaveTABQUIKFields(SaveTABQUIKFieldsParam saveTABQUIKFieldsParam) //completed testing 
+        {
+            var model = new ReturnErrorTypeErrorMsg();
+            var tabQuickSaveTABQUIKFields = saveTABQUIKFieldsParam.TabQuickSaveTABQUIKFields;
+            var ConnectionString = saveTABQUIKFieldsParam.ConnectionString;
+            var lstAllColumnNames = saveTABQUIKFieldsParam.lstAllColumnNames;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    string sOperation = tabQuickSaveTABQUIKFields.sOperation;
+                    string JobName = tabQuickSaveTABQUIKFields.JobName;
+                    string TableName = tabQuickSaveTABQUIKFields.TableName;
+                    string SQLSelectString = tabQuickSaveTABQUIKFields.SQLSelectString;
+                    string SQLUpdateString = tabQuickSaveTABQUIKFields.SQLUpdateString;
+                    string dtTABQUIKData = tabQuickSaveTABQUIKFields.dtTABQUIKData;
+                    //int index = 0;
+
+                    var lstTABQUIKModels = JsonConvert.DeserializeObject<List<TABQUIKAdminModel>>(dtTABQUIKData);
+
+                    if (sOperation.Equals("Add"))
+                    {
+                        var isJobAlreadyExist = await IsJobAlreadyExists(JobName, ConnectionString);
+
+                        if (!isJobAlreadyExist)
+                        {
+                            var oOneStripJob = new OneStripJob();
+                            oOneStripJob.Name = JobName;
+                            oOneStripJob.TableName = TableName;
+                            oOneStripJob.Inprint = (short?)5;
+                            oOneStripJob.SQLString = SQLSelectString;
+                            oOneStripJob.SQLUpdateString = SQLUpdateString;
+                            oOneStripJob.Sampling = 0;
+                            if (!(saveTABQUIKFieldsParam.FLDColumns == null))
+                            {
+                                oOneStripJob.FLDFieldNames = saveTABQUIKFieldsParam.FLDColumns;
+                            }
+                            context.OneStripJobs.Add(oOneStripJob);
+                            await context.SaveChangesAsync();
+
+                            oOneStripJob = await context.OneStripJobs.Where(x => x.Name == JobName && x.Inprint == 5).FirstOrDefaultAsync();
+                            await AddOneStripJobFields(TableName, lstTABQUIKModels, oOneStripJob.Id, lstAllColumnNames, ConnectionString);
+                        }
+                    }
+                    else if (sOperation.Equals("Edit") & !string.IsNullOrEmpty(JobName))
+                    {
+                        var oOneStripJob = new OneStripJob();
+                        IEnumerable<OneStripJobField> oOneStripJobFields;
+                        int oneStripJobId = 0;
+                        oOneStripJob = await context.OneStripJobs.Where(x => x.Name == JobName && x.Inprint == 5).FirstOrDefaultAsync();
+                        oOneStripJob.TableName = TableName;
+                        oOneStripJob.SQLString = SQLSelectString;
+                        oOneStripJob.SQLUpdateString = SQLUpdateString;
+                        oOneStripJob.Sampling = 0;
+                        if (!(saveTABQUIKFieldsParam.FLDColumns == null))
+                        {
+                            oOneStripJob.FLDFieldNames = saveTABQUIKFieldsParam.FLDColumns;
+                        }
+                        context.Entry(oOneStripJob).State = EntityState.Modified;
+                        await context.SaveChangesAsync();
+
+                        oneStripJobId = oOneStripJob.Id;
+
+                        oOneStripJobFields = await context.OneStripJobFields.Where(x => x.OneStripJobsId == oneStripJobId).ToListAsync();
+                        //_iOneStripJobField.DeleteRange(oOneStripJobFields);
+                        context.OneStripJobFields.RemoveRange(oOneStripJobFields);
+                        await context.SaveChangesAsync();
+
+                        await AddOneStripJobFields(TableName, lstTABQUIKModels, oOneStripJob.Id, lstAllColumnNames, ConnectionString);
+                    }
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Mapping for the selected table fields has been updated successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+            }
+            return model;
+        }
+
+        [Route("GetTABQUIKMappingGrid")]
+        [HttpPost]
+        public async Task<ReturnGetTABQUIKMappingGrid> GetTABQUIKMappingGrid(GetTABQUIKMappingGridParam gettABQUIKMappingGridParam) //completed testing 
+        {
+            var model = new ReturnGetTABQUIKMappingGrid();
+
+            var sJobName = gettABQUIKMappingGridParam.JobName;
+            var sTableName = gettABQUIKMappingGridParam.TableName;
+
+            model.OneStripJobField = null;
+            try
+            {
+                using (var context = new TABFusionRMSContext(gettABQUIKMappingGridParam.ConnectionString))
+                {
+                    model.OneStripJob = await context.OneStripJobs.Where(x => x.Name == sJobName && x.TableName == sTableName && x.Inprint == 5).FirstOrDefaultAsync();
+                    model.OneStripJobGeneral = await context.OneStripJobs.Where(x => x.Name == sJobName && x.Inprint == 5).FirstOrDefaultAsync();
+
+                    if (model.OneStripJob != null)
+                    {
+                        model.OneStripJobField = await context.OneStripJobFields.Where(x => x.OneStripJobsId == model.OneStripJob.Id).ToListAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+            return model;
+        }
+
+        private List<string> GetColumnListOfTable(string pTableName, string ConnectionString, bool IncludeTableNameInField = false)
+        {
+            var lstColumnNames = new List<string>();
+            string sNewColumnName = "";
+            SchemaIndex PrimaryKeyField = null;
+            string sPrimaryKeyField = "";
+            try
+            {
+                if (!string.IsNullOrEmpty(pTableName))
+                {
+                    var pSchemaIndexList = new List<SchemaIndex>();
+                    pSchemaIndexList = SchemaIndex.GetTableIndexes(pTableName, ConnectionString);
+                    PrimaryKeyField = pSchemaIndexList.Where(x => x.PrimaryKey == "True").FirstOrDefault();
+                    if (!(PrimaryKeyField == null))
+                    {
+                        sPrimaryKeyField = PrimaryKeyField.ColumnName;
+                    }
+
+                    var oCurrentTableSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableName, ConnectionString);
+
+                    foreach (var oSchemaColumn in oCurrentTableSchemaColumns)
+                    {
+                        if (!SchemaInfoDetails.IsSystemField(oSchemaColumn.ColumnName))
+                        {
+                            if (!IncludeTableNameInField)
+                            {
+                                lstColumnNames.Add(oSchemaColumn.ColumnName);
+                            }
+                            else if (!oSchemaColumn.ColumnName.Equals(sPrimaryKeyField))
+                            {
+                                sNewColumnName = ">" + oSchemaColumn.TableName + "." + oSchemaColumn.ColumnName;
+                                lstColumnNames.Add(sNewColumnName);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
+
+            return lstColumnNames;
+        }
+
+        private async Task AddOneStripJobFields(string sTableName, List<TABQUIKAdminModel> lstTABQUIKModels, int oneStripJobId, List<string> LstAllColumnNames, string ConnectionString)
+        {
+            int index = 0;
+            string sTABFusionRMSField = "";
+            var lstAllColumnNames = new List<string>();
+
+            lstAllColumnNames = LstAllColumnNames;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    foreach (var tabquikModel in lstTABQUIKModels)
+                    {
+                        if (!string.IsNullOrEmpty(tabquikModel.TABFusionRMSField))
+                        {
+                            var oOneStripJobField = new OneStripJobField();
+                            oOneStripJobField.OneStripJobsId = oneStripJobId;
+                            oOneStripJobField.FontName = tabquikModel.TABQUIKField;
+                            sTABFusionRMSField = lstAllColumnNames[Convert.ToInt32(tabquikModel.TABFusionRMSField)];
+                            if (!sTABFusionRMSField.Contains("."))
+                            {
+                                sTABFusionRMSField = sTableName + "." + sTABFusionRMSField;
+                            }
+                            else if (sTABFusionRMSField.Contains(".") & sTABFusionRMSField.Contains(">"))
+                            {
+                                sTABFusionRMSField = sTABFusionRMSField.Remove(0, 1);
+                            }
+                            oOneStripJobField.FieldName = sTABFusionRMSField;
+                            oOneStripJobField.Format = string.IsNullOrEmpty(tabquikModel.Format) ? null : tabquikModel.Format;
+                            oOneStripJobField.Type = "T";
+                            oOneStripJobField.SetNum = (short?)0;
+                            oOneStripJobField.XPos = 0;
+                            oOneStripJobField.YPos = 0;
+                            oOneStripJobField.FontSize = 0;
+                            context.OneStripJobFields.Add(oOneStripJobField);
+                            await context.SaveChangesAsync();
+                        }
+                        else if (!string.IsNullOrEmpty(tabquikModel.Manual))
+                        {
+                            var oOneStripJobField = new OneStripJobField();
+                            oOneStripJobField.OneStripJobsId = oneStripJobId;
+                            oOneStripJobField.FontName = tabquikModel.TABQUIKField;
+                            oOneStripJobField.FieldName = "ManualField" + index + Constants.vbNullChar + tabquikModel.Manual;
+                            oOneStripJobField.Format = string.IsNullOrEmpty(tabquikModel.Format) ? null : tabquikModel.Format;
+                            oOneStripJobField.Type = "T";
+                            oOneStripJobField.SetNum = (short?)0;
+                            oOneStripJobField.XPos = 0;
+                            oOneStripJobField.YPos = 0;
+                            oOneStripJobField.FontSize = 0;
+                            context.OneStripJobFields.Add(oOneStripJobField);
+                            await context.SaveChangesAsync();
+                        }
+                        index = index + 1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+            }
         }
 
         #endregion
@@ -12471,10 +13116,6 @@ namespace MSRecordsEngine.Controllers
                     var lTabsetsEntities = await context.TabSets.ToListAsync();
                     var lRelationShipEntities = await context.RelationShips.ToListAsync();
 
-                    TreeView treeView = new TreeView();
-
-                    treeView = DatabaseMap.GetBindTreeControl(lSystemEntities, lTableEntities, lTabletabEntities, lTabsetsEntities, lRelationShipEntities);
-
                     var Items = Enumerable.Repeat(new SelectListItem()
                     {
                         Value = lSystemEntities.FirstOrDefault().UserName,
@@ -12485,9 +13126,25 @@ namespace MSRecordsEngine.Controllers
                     var DatabaseList = Items.Concat(context.Databases.CreateSelectList<Databas>("DBName", "DBName", null));
                     var FieldTypeList = context.LookupTypes.Where(x => x.LookupTypeForCode.Trim().ToUpper().Equals("FLDSZ")).CreateSelectList<LookupType>("LookupTypeCode", "LookupTypeValue", default(int?), "SortOrder", System.ComponentModel.ListSortDirection.Ascending);
 
-                    model.TreeView = treeView;
+                    model.RelationShips = lRelationShipEntities;
+                    model.TabSets = lTabsetsEntities;
+                    model.TableTabs = lTabletabEntities;
+                    model.Tables = lTableEntities;
+
+                    var lstSystem = new List<SystemEntity>();
+
+                    foreach (var item in lSystemEntities)
+                    {
+                        var sys = new SystemEntity();
+                        sys.Id = item.Id;
+                        sys.UserName = item.UserName;
+
+                        lstSystem.Add(sys);
+                    }
                     model.DatabaseList = DatabaseList;
                     model.FieldTypeList = FieldTypeList;
+                    model.SystemEntities = lstSystem;
+                    
                 }
             }
             catch (Exception ex)

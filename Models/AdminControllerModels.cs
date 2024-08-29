@@ -1253,7 +1253,11 @@ namespace MSRecordsEngine.Models
 
     public class ReturnLoadMapView
     {
-        public TreeView TreeView { get; set; }
+        public List<SystemEntity> SystemEntities { get; set; }
+        public List<RelationShip> RelationShips { get; set; }
+        public List<Table> Tables { get; set; }
+        public List<TableTab> TableTabs { get; set; }
+        public List<TabSet> TabSets { get; set; }
         public IEnumerable<SelectListItem> DatabaseList { get; set; }
         public SelectList FieldTypeList { get; set; }
     }
@@ -1380,5 +1384,85 @@ namespace MSRecordsEngine.Models
     {
         public string ChkEditable {  get; set; }
         public string ChkDropDownSuggest {  get; set; }
+    }
+
+    public class ReturnIsFLDNamesExists : ReturnErrorTypeErrorMsg
+    {
+        public bool FldNamesExists { get; set; }
+    }
+
+    public class ReturnGetTableFieldsListAndParentTableFields : ReturnErrorTypeErrorMsg
+    {
+        public List<string> LstAllColumnNames { get; set; }
+    }
+
+    public class ValidateTABQUIKSQLStatmentsParams
+    {
+        public TabQuickSQL TabQuickSQL { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class TabQuickSQL
+    {
+        public string SQLStatement { get; set; }
+        public string sTableName { get; set; }
+        public bool IsSelectStatement { get; set; }
+    }
+
+    public class FormTABQUIKSelectSQLStatementParam
+    {
+        public TabQuikUI TabQuikUI { get; set; }
+        public string ConnectionString { get; set; }
+        public List<string> lstAllColumnNames { get; set; }
+    }
+
+    public class TabQuikUI
+    {
+        public string pTableName { get; set; }
+        public string dtTABQUIKData { get; set; }
+    }
+
+    public class ReturnFormTABQUIKSelectSQLStatement : ReturnErrorTypeErrorMsg
+    {
+        public string SQLStatement { get; set; }
+    }
+
+    public class TabQuickSaveTABQUIKFields
+    {
+        public string sOperation { get; set; }
+        public string JobName { get; set; }
+        public string TableName { get; set; }
+        public string SQLSelectString { get; set; }
+        public string SQLUpdateString { get; set; }
+        public string dtTABQUIKData { get; set; }
+
+    }
+
+    public class SaveTABQUIKFieldsParam
+    {
+        public TabQuickSaveTABQUIKFields TabQuickSaveTABQUIKFields { get; set; }
+        public string ConnectionString { get; set; }
+        public string FLDColumns { get; set; }
+        public List<string> lstAllColumnNames { get; set; }
+    }
+
+    public class GetTABQUIKMappingGridParam
+    {
+        public string JobName { get; set; }
+        public string TableName { get; set; }
+        public string ConnectionString { get; set; }
+    }
+
+    public class ReturnGetTABQUIKMappingGrid
+    {
+        public OneStripJob OneStripJob { get; set; }
+        public OneStripJob OneStripJobGeneral { get; set; }
+        public List<OneStripJobField> OneStripJobField { get; set; }
+    }
+
+    public class SystemEntity
+    {
+        public int Id { get; set; }
+        public string UserName { get; set; }
     }
 }
