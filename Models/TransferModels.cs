@@ -1,5 +1,6 @@
 ﻿using MSRecordsEngine.Models.FusionModels;
 using Smead.Security;
+using System;
 using System.Collections.Generic;
 
 namespace MSRecordsEngine.Models
@@ -62,4 +63,14 @@ namespace MSRecordsEngine.Models
         public string RootPath { get; set; }
     }
 
+    public class BackgroundTransferTask_Request
+    {
+        public string TableName { get; set; }
+        public string TableId { get; set; }
+        public string DestinationTableName { get; set; }
+        public string DestinationTableId { get; set; }
+        public DateTime DueBackDate { get; set; }
+        public string UserName { get; set; }
+        public Passport passport { get; set; }
+    }
 }

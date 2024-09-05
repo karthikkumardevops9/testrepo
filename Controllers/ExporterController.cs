@@ -252,6 +252,39 @@ namespace MSRecordsEngine.Controllers
             return model;
         }
 
+        [Route("BackgroundExportTask")]
+        [HttpPost]
+        public void BackgroundExportTask(BackgroundExportTask_Request _Request)
+        {
+            try
+            {
+                Export.ExportFiles(_Request.TaskId, _Request.Passport, _Request.IsCsv);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+        }
+
+        [Route("SendEmail")]
+        [HttpPost]
+        public void SendEmail(SendEmail_Request _Request)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(_Request.ConnectionString))
+                {
+                    Navigation.SendEmail(_Request.message, _Request.ToAddressList, _Request.FromAddress, _Request.Subject, _Request.AttachmentList, conn); 
+                }
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+        }
+
         #region Private Method
         private async Task<Enums.BackgroundTaskProcess> CheckIfBackgroungProcessing(ExporterJsonModel @params,string connectionString)
         {

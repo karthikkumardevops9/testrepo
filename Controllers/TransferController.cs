@@ -181,6 +181,21 @@ namespace MSRecordsEngine.Controllers
             return TotalRows;
         }
 
+        [Route("BackgroundTransferTask")]
+        [HttpPost]
+        public void BackgroundTransferTask(BackgroundTransferTask_Request _Request)
+        {
+            try
+            {
+                Tracking.Transfer(_Request.TableName, _Request.TableId, _Request.DestinationTableName, _Request.DestinationTableId, _Request.DueBackDate, _Request.UserName, _Request.passport, _Request.passport.Connection(), null, null, true);
+            }
+            catch (Exception ex)
+            {
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                throw new Exception(ex.Message);
+            }
+        }
+
         private async Task SubmitTransferdata(List<string> idlst, UserInterfaceJsonModel @params,Passport passport)
         {
             foreach (string tableId in idlst)
