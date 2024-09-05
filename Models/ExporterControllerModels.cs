@@ -46,4 +46,20 @@ namespace MSRecordsEngine.Models
         public string OffSetVal { get; set; }
     }
 
+    public class BackgroundExportTask_Request
+    {
+        public int TaskId { get; set; }
+        public bool IsCsv { get; set; }
+        public Passport Passport { get; set; }
+    }
+
+    public class SendEmail_Request
+    {
+        public string message { get; set; }
+        public string ToAddressList { get; set; }
+        public string FromAddress { get; set; }
+        public string Subject { get; set; }
+        public string AttachmentList { get; set; }
+        public string ConnectionString { get; set; }
+    }
 }
