@@ -687,6 +687,28 @@ namespace MSRecordsEngine.RecordsManager
             return isDuplicated;
         }
 
+        public static async Task<bool> CheckIfDuplicatePrimaryKeyAsync(Passport passsport, string tablename, string pkeyname, string pkeyValue)
+        {
+            bool isDuplicated;
+            using (var conn = new SqlConnection(passsport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(string.Format("SELECT COUNT(*) FROM {0} WHERE {1} = @pkeyvalue", tablename, pkeyname), conn))
+                {
+                    cmd.Parameters.AddWithValue("@pkeyvalue", pkeyValue);
+                    try
+                    {
+                        isDuplicated = Conversions.ToBoolean(cmd.ExecuteScalar());
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex.Message);
+                        isDuplicated = false;
+                    }
+                }
+            }
+            return isDuplicated;
+        }
         public static DataRow GetPullList(int id, Passport passport)
         {
             using (var conn = passport.Connection())
@@ -1553,8 +1575,9 @@ namespace MSRecordsEngine.RecordsManager
 
         public static string GetItemName(string tableName, string tableId, Passport passport, bool includePrefix, DataRow drTableInfo = null)
         {
-            using (var conn = passport.Connection())
+            using (var conn = new SqlConnection(passport.ConnectionString))
             {
+                conn.Open();
                 return GetItemName(tableName, tableId, passport, conn, includePrefix, drTableInfo);
             }
         }
@@ -2687,8 +2710,17 @@ namespace MSRecordsEngine.RecordsManager
 
         public static void VerifyLegalDeletion(string tableName, List<string> tableIds, Passport passport)
         {
-            using (var conn = passport.Connection())
+            using (var conn = new SqlConnection(passport.ConnectionString))
             {
+                conn.Open();
+                VerifyLegalDeletion(tableName, tableIds, conn);
+            }
+        }
+        public static async Task VerifyLegalDeletionAsync(string tableName, List<string> tableIds, Passport passport)
+        {
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
                 VerifyLegalDeletion(tableName, tableIds, conn);
             }
         }

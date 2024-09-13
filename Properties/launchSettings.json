@@ -1,13 +1,5 @@
 {
   "profiles": {
-    "IIS Express": {
-      "commandName": "IIS",
-      "launchBrowser": true,
-      "launchUrl": "swagger",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
     "IIS": {
       "commandName": "IIS",
       "launchBrowser": true,

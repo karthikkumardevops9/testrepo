@@ -46,6 +46,7 @@ namespace MSRecordsEngine.Controllers
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"MS-RecordEngine > ImagingController: {ex.Message}");
+                throw;
             }
 
         }

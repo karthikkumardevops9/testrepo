@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
@@ -2203,6 +2204,35 @@ namespace MSRecordsEngine.RecordsManager
                 }
             }
         }
+
+        public static async Task<DataTable> GetContainerContentsCountAsync(string containerTableName, string containerTableId, Passport passport)
+        {
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                var tableInfo = Navigation.GetTableInfo(containerTableName, conn);
+                string sql = string.Format("SELECT count(*) FROM TrackingStatus WHERE [{0}] = @containerTableId", tableInfo["TrackingStatusFieldName"].ToString());
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    if (Navigation.FieldIsAString(tableInfo, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@containerTableId", containerTableId);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@containerTableId", containerTableId.PadLeft(30, '0'));
+                    }
+
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dt = new DataTable(Navigation.GetItemName(containerTableName, containerTableId, passport, conn));
+                        da.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
+        }
         public static DataTable GetPagedContainerContents(string containerTableName, string containerTableId, Parameters @params, Passport passport)
         {
             using (var conn = passport.Connection())
@@ -3359,6 +3389,32 @@ namespace MSRecordsEngine.RecordsManager
                 }
             }
         }
+        public async Task<DataTable> GetTrackableHistoryCountAsync()
+        {
+            _tableid = Navigation.PrepPad(_tableName, _tableid, _passport);
+            if (_tableName.Length == 0 | _tableid.Length == 0)
+                return null;
+            var query = new Query(_passport);
+
+            string sql = "SELECT count(*) FROM TrackingHistory LEFT JOIN SecureUser ON TrackingHistory.UserName = SecureUser.UserName " + "WHERE TrackedTable = @TrackedTable AND TrackedTableId = @TrackedTableId";
+            using (var conn = new SqlConnection(_passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@TrackedTable", _tableName);
+                    cmd.Parameters.AddWithValue("@TrackedTableId", _tableid);
+
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dtTracking = new DataTable();
+                        da.Fill(dtTracking);
+                        return dtTracking;
+                    }
+                }
+            }
+        }
+
         public List<TrackingTransaction> GetTrackableHistoryPaging(int PageNumber, int PerPageRecord)
         {
             _tableid = Navigation.PrepPad(_tableName, _tableid, _passport);

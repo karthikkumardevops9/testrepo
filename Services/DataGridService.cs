@@ -3,31 +3,38 @@ using MSRecordsEngine.Models;
 using MSRecordsEngine.Models.FusionModels;
 using MSRecordsEngine.RecordsManager;
 using MSRecordsEngine.Services.Interface;
-using Smead.Security;
 using System.Text;
 using System;
 using System.Threading.Tasks;
-using System.Globalization;
 using System.Data;
 using System.Linq;
-using MSRecordsEngine.Repository;
-using System.Data.Entity.Infrastructure;
 using System.Collections.Generic;
-using Microsoft.Identity.Client;
-using Microsoft.AspNetCore.Http;
-using System.Net.Http;
-using Microsoft.VisualBasic;
-using static MSRecordsEngine.Models.FusionModels.MyFavorite;
-using System.Collections;
 using SecureObject = Smead.Security.SecureObject;
 using static MSRecordsEngine.Models.Enums;
 using System.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using static MSRecordsEngine.Models.FusionModels.LinkScriptModel;
-using Microsoft.AspNetCore.Hosting;
-using System.Xml.Linq;
-using Microsoft.VisualBasic.CompilerServices;
+using Permissions = Smead.Security.Permissions;
+using System.Data.Entity;
+using System.Net;
+using AuditType = MSRecordsEngine.RecordsManager.AuditType;
+using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
+using Microsoft.AspNetCore.Http;
+using Newtonsoft.Json;
+using Smead.Security;
+using static Leadtools.Annotations.WinForms.StringManager;
+using Microsoft.Identity.Client;
+using static MSRecordsEngine.Models.ReportingPerRow;
+using System.Net.Http;
+using MSRecordsEngine.Repository;
+using Microsoft.VisualBasic;
+using System.Runtime.InteropServices;
+using System.Configuration;
+using static MSRecordsEngine.Models.RetentionInfo;
+using System.Globalization;
+using MSRecordsEngine.Properties;
+using static MSRecordsEngine.Models.AuditReportSearch;
+using MSRecordsEngine.Entities.Mapping;
 
 namespace MSRecordsEngine.Services
 {
@@ -79,16 +86,79 @@ namespace MSRecordsEngine.Services
             }
             return m;
         }
-        public async Task<GridDataBinding> BuildNewData(SearchQueryRequestModal props)
+        public async Task<GridDataBinding> RunQuery(SearchQueryRequestModal props)
         {
             var model = new GridDataBinding();
-            model.ItemDescription = Navigation.GetItemName(props.paramss.preTableName, props.paramss.Childid, props.passport);
-            if (props.searchQuery != null)
+            model.IsWhereClauseRequest = props.GridDataBinding.IsWhereClauseRequest;
+            model.WhereClauseStr = props.GridDataBinding.WhereClauseStr;
+            model.GsIsGlobalSearch = props.GridDataBinding.GsIsGlobalSearch;
+            model.GsSearchText = props.GridDataBinding.GsSearchText;
+            model.GsIncludeAttchment = props.GridDataBinding.GsIncludeAttchment;
+            model.GsIsAllGlobalRequest = props.GridDataBinding.GsIsAllGlobalRequest;
+
+            props.GridDataBinding.ItemDescription = Navigation.GetItemName(props.paramss.preTableName, props.paramss.Childid, props.passport);
+            if (props.searchQuery.Count > 0)
+                model.fvList = CreateQuery(props);
+            await BuildNewTableData(props, model);
+
+            return model;
+        }
+        public async Task<GridDataBinding> BuildNewFavoriteData(ReturnFavoritTogridReqModel prop)
+        {
+            var model = new GridDataBinding();
+            model.ViewId = prop.paramss.ViewId;
+            model.PageNumber = prop.paramss.pageNum;
+            model.crumbLevel = 0;
+            model.fViewType = (int)ViewType.Favorite;
+            model.IsWhereClauseRequest = true;
+            model.WhereClauseStr = string.Format("select [TableId] from s_SavedChildrenFavorite where SavedCriteriaId = {0}", prop.paramss.FavCriteriaid);
+
+            var props = new SearchQueryRequestModal();
+            props.passport = prop.passport;
+            props.DateFormat = prop.DateFormat;
+            props.paramss.pageNum = prop.paramss.pageNum;
+            props.paramss.ViewId = prop.paramss.ViewId;
+            props.paramss.crumbLevel = 0;
+            props.searchQuery = prop.searchQuery;
+
+            if (prop.searchQuery != null)
                 model.fvList = CreateQuery(props);
 
             await BuildNewTableData(props, model);
 
             return model;
+        }
+        public async Task<bool> DeleteSavedCriteria(FavoriteRecordReqModel props)
+        {
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                if (props.paramss.FavCriteriaType == "1")
+                {
+                    var saveCriteria = context.s_SavedCriteria.Where(a => a.Id == props.paramss.FavCriteriaid);
+                    var SavedChildrenFavorite = context.s_SavedChildrenFavorite.Where(x => x.SavedCriteriaId == props.paramss.FavCriteriaid).ToList();
+                    if (saveCriteria != null)
+                    {
+                        context.s_SavedCriteria.Remove(saveCriteria.FirstOrDefault());
+                        if (SavedChildrenFavorite.Count != 0)
+                        {
+                            context.s_SavedChildrenFavorite.RemoveRange(SavedChildrenFavorite);
+                        }
+
+                        await context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    var querycert = context.s_SavedChildrenQuery.Where(a => a.SavedCriteriaId == props.paramss.FavCriteriaid).ToList();
+                    if (querycert.Count != 0)
+                    {
+                        context.s_SavedChildrenQuery.RemoveRange(querycert);
+                        await context.SaveChangesAsync();
+                    }
+
+                }
+            }
+            return true;
         }
         public async Task<string> GetTotalRowsForGrid(SearchQueryRequestModal props)
         {
@@ -120,7 +190,7 @@ namespace MSRecordsEngine.Services
 
             return TotalRows + "|" + TotalPages + "|" + @params.RequestedRows;
         }
-        public async Task<ScriptReturn> LinkscriptButtonClick([FromBody] linkscriptPropertiesUI props)
+        public async Task<ScriptReturn> LinkscriptButtonClick(linkscriptPropertiesUI props)
         {
             var _param = new Parameters(props.ViewId, props.passport);
             var scriptflow = await ScriptEngine.RunScriptWorkFlowAsync(props.WorkFlow, _param.TableName, props.TableId, props.ViewId, props.passport, props.Rowids);
@@ -265,7 +335,7 @@ namespace MSRecordsEngine.Services
         public async Task<TabquikApi> TabQuikInitiator(TabquickpropUI props)
         {
             var model = new TabquikApi();
-            
+
             using (var conn = new SqlConnection(props.passport.ConnectionString))
             {
                 await conn.OpenAsync();
@@ -274,6 +344,1877 @@ namespace MSRecordsEngine.Services
             }
 
             return model;
+
+        }
+        public async Task<TrackingModeld> GetTrackingPerRow(trackableUiParams props)
+        {
+            var model = new TrackingModeld();
+
+            await Task.Run(() =>
+            {
+                GetTrackingInfo(model, props);
+                GetRequestWaitlist(model, props);
+            });
+            return model;
+        }
+        public async Task<MyFavorite> AddNewFavorite(FavoriteRecordReqModel props)
+        {
+            var listOfKeys = new List<string>();
+            var model = new MyFavorite();
+
+            using (var contex = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                if (contex.s_SavedCriteria.Where(a => a.SavedName.Trim() == props.paramss.NewFavoriteName.Trim()).ToList().Count > 0)
+                {
+                    model.isWarning = true;
+                    model.Msg = string.Format("'{0}' already exists, Please try other name for favorite", props.paramss.NewFavoriteName);
+                }
+                else
+                {
+                    foreach (var rec in props.recordkeys)
+                        listOfKeys.Add(rec.rowKeys);
+                    var msg = "";
+                    var ps_SavedCriteriaId = await SaveSavedCriteria(props.passport.UserId, msg, props.paramss.NewFavoriteName, props.paramss.ViewId, props.passport.ConnectionString);
+                    if (ps_SavedCriteriaId != default)
+                    {
+                        var pOutPut = await SaveSavedChildrenFavourite(msg, true, ps_SavedCriteriaId, props.paramss.ViewId, listOfKeys, props.passport.ConnectionString);
+                        model.SaveCriteriaId = ps_SavedCriteriaId;
+                    }
+                }
+            }
+
+            return model;
+        }
+        public async Task<MyFavorite> UpdateFavorite(FavoriteRecordReqModel props)
+        {
+            var model = new MyFavorite();
+            var listOfKeys = new List<string>();
+            foreach (var rec in props.recordkeys)
+                listOfKeys.Add(rec.rowKeys);
+            await SaveSavedChildrenFavourite("", true, props.paramss.FavCriteriaid, props.paramss.ViewId, listOfKeys, props.passport.ConnectionString);
+            model.SaveCriteriaId = props.paramss.FavCriteriaid;
+            return model;
+        }
+        public async Task<bool> DeleteFavoriteRecord(FavoriteRecordReqModel props)
+        {
+            bool isdeleted = false;
+            var lst = new List<string>();
+            foreach (var d in props.recordkeys)
+                lst.Add(d.rowKeys);
+
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                var SavedChildrenFavoriteList = await context.s_SavedChildrenFavorite.Where(m => m.SavedCriteriaId == props.paramss.FavCriteriaid && lst.Contains(m.TableId)).ToListAsync();
+                if (SavedChildrenFavoriteList != null)
+                    context.s_SavedChildrenFavorite.RemoveRange(SavedChildrenFavoriteList);
+                await context.SaveChangesAsync();
+                isdeleted = true;
+            }
+            return isdeleted;
+        }
+        public async Task<Myquery> SaveNewQuery(SaveNewUpdateDeleteQueryReqModel props)
+        {
+            var model = new Myquery();
+
+            model.Msg = "success";
+            s_SavedCriteria result = new s_SavedCriteria();
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                //check permission
+                if (!props.passport.CheckPermission(Common.SECURE_MYQUERY, Smead.Security.SecureObject.SecureObjectType.Application, Permissions.Permission.Access))
+                {
+                    model.IsError = true;
+                    model.Msg = "You don't have sufficient permission to add new query.";
+                    return model;
+                }
+                //check if name exist 
+                var check = context.s_SavedCriteria.Where(x => x.SavedName == props.paramss.SaveName & x.UserId == props.passport.UserId).FirstOrDefault();
+                if (check != null)
+                {
+                    model.isNameExist = true;
+                    return model;
+                }
+                // first save in parent table
+                s_SavedCriteria savedCriteria = new s_SavedCriteria();
+                savedCriteria.SavedName = props.paramss.SaveName;
+                savedCriteria.SavedType = (int)Enums.SavedType.Query;
+                savedCriteria.UserId = props.passport.UserId;
+                savedCriteria.ViewId = props.paramss.ViewId;
+                context.s_SavedCriteria.Add(savedCriteria);
+                await context.SaveChangesAsync();
+                result = context.s_SavedCriteria.Where(x => x.SavedName == props.paramss.SaveName & x.UserId == props.passport.UserId).FirstOrDefault();
+                if (result != null)
+                {
+                    s_SavedChildrenQuery savedChildrenQuery = new s_SavedChildrenQuery();
+                    foreach (queryListparams item in props.Querylist)
+                    {
+                        savedChildrenQuery.SavedCriteriaId = result.Id;
+                        savedChildrenQuery.Operator = item.operators;
+                        savedChildrenQuery.ColumnName = item.columnName;
+                        savedChildrenQuery.CriteriaValue = item.values == null ? "" : item.values;
+                        context.s_SavedChildrenQuery.Add(savedChildrenQuery);
+                        await context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    model.IsError = true;
+                    model.Msg = "We couldn't add a new query. Please contact the system administrator";
+                }
+            }
+
+            model.uiparam = string.Format("{0}_{1}_{2}", props.paramss.ViewId, result.Id, 0);
+            return model;
+        }
+        public async Task<Myquery> UpdateQuery(SaveNewUpdateDeleteQueryReqModel props)
+        {
+            var model = new Myquery();
+            s_SavedCriteria s_SavedCriteria = new s_SavedCriteria();
+
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                context.s_SavedCriteria.Where(a => a.Id == props.paramss.SavedCriteriaid).FirstOrDefault();
+                s_SavedCriteria.SavedName = props.paramss.SaveName;
+                s_SavedCriteria.SavedType = (int)Enums.SavedType.Query;
+                s_SavedCriteria.UserId = props.passport.UserId;
+                s_SavedCriteria.ViewId = props.paramss.ViewId;
+                await context.SaveChangesAsync();
+                var savedChildrenQuery = context.s_SavedChildrenQuery.Where(a => a.SavedCriteriaId == props.paramss.SavedCriteriaid).ToList();
+                int index = 0;
+                foreach (var prop in savedChildrenQuery)
+                {
+                    var item = props.Querylist[index];
+                    prop.SavedCriteriaId = props.paramss.SavedCriteriaid;
+                    prop.Operator = item.operators;
+                    prop.ColumnName = item.columnName;
+                    prop.CriteriaValue = item.values == null ? "" : item.values;
+                    await context.SaveChangesAsync();
+                    index += 1;
+                }
+            }
+            return model;
+        }
+        public async Task<Myquery> DeleteQuery(SaveNewUpdateDeleteQueryReqModel props)
+        {
+            var model = new Myquery();
+            model.Msg = "success";
+            s_SavedCriteria s_SavedCriteria = new s_SavedCriteria();
+            s_SavedChildrenQuery s_SavedChildrenQuery = new s_SavedChildrenQuery();
+
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                var delparent = context.s_SavedCriteria.Where(a => a.Id == props.paramss.SavedCriteriaid & a.UserId == props.passport.UserId).FirstOrDefault();
+                context.s_SavedCriteria.Remove(delparent);
+                var delchild = context.s_SavedChildrenQuery.Where(x => x.SavedCriteriaId == props.paramss.SavedCriteriaid).ToList();
+                context.s_SavedChildrenQuery.RemoveRange(delchild);
+                await context.SaveChangesAsync();
+            }
+            return model;
+        }
+        public async Task<GlobalSearch> RunglobalSearch(GlobalSearchReqModel props)
+        {
+            var model = new GlobalSearch();
+            if (props.paramss.SearchInput is null || props.paramss.SearchInput.Length == 0)
+                return model;
+
+            var qry = new Query(props.passport);
+            var @params = new Parameters(props.passport);
+            var savedSearches = new List<string>();
+
+            CheckBoxesconditions(@params, props);
+            @params.Text = props.paramss.SearchInput;
+
+            @params.IncludeAttachments = props.paramss.ChkAttch;
+
+            @params.QueryType = queryTypeEnum.Text;
+            // params.RequestedRows = 500
+            string sMaxVal = string.Empty;
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                sMaxVal = await context.Settings.Where(x => x.Section == "GlobalSearch" & x.Item == "MaxRecordsFetch").Select(y => y.ItemValue).FirstOrDefaultAsync();
+            }
+            int globalSearchMaxVal = 25;
+            //string sMaxVal = _iSettings.All().Where(x => x.Section == "GlobalSearch" & x.Item == "MaxRecordsFetch").Select(y => y.ItemValue).FirstOrDefault();
+            if (!string.IsNullOrEmpty(sMaxVal))
+            {
+                globalSearchMaxVal = Convert.ToInt32(sMaxVal);
+            }
+            @params.RequestedRows = globalSearchMaxVal;
+            @params.IsMVCCall = true;
+            qry.Search(@params);
+            model.HTMLSearchResults = @params.HTMLSearchResults;
+
+            return model;
+
+        }
+        public async Task<GridDataBinding> GlobalSearchClick(GlobalSearchReqModel props)
+        {
+            var model = new GridDataBinding();
+            model.ViewId = props.paramss.ViewId;
+            model.crumbLevel = 0;
+
+            model.GsIsGlobalSearch = true;
+            model.GsKeyvalue = WebUtility.UrlDecode(props.paramss.KeyValue).Replace("'", "''");
+            model.GsSearchText = props.paramss.SearchInput;
+            model.GsIsAllGlobalRequest = false;
+
+            var prop = new SearchQueryRequestModal();
+            prop.passport = props.passport;
+            prop.DateFormat = props.DateFormat;
+            prop.paramss.ViewId = props.paramss.ViewId;
+            prop.paramss.crumbLevel = 0;
+
+
+            await BuildNewTableData(prop, model);
+            return model;
+        }
+        public async Task<GridDataBinding> GlobalSearchAllClick(GlobalSearchReqModel props)
+        {
+            var model = new GridDataBinding();
+
+
+            model.GsIsGlobalSearch = true;
+            model.GsSearchText = props.paramss.SearchInput;
+            model.GsIncludeAttchment = props.paramss.IncludeAttchment;
+            model.GsIsAllGlobalRequest = true;
+
+            var prop = new SearchQueryRequestModal();
+            prop.passport = props.passport;
+            prop.DateFormat = props.DateFormat;
+            prop.paramss.ViewId = props.paramss.ViewId;
+            prop.paramss.crumbLevel = 0;
+
+            await BuildNewTableData(prop, model);
+
+            return model;
+        }
+        public async Task<Saverows> SetDatabaseChanges(DatabaseChangesReq props)
+        {
+            var model = new Saverows();
+            var pkeyId = props.Rowdata[props.Rowdata.Count - 1].value;
+
+            //model = new Saverows(passport, req.paramss, Keys.GetClientIpAddress(httpContext), req.Rowdata, pkeyId, httpContext);
+            if ((string.IsNullOrEmpty(pkeyId)))
+            {
+                // insert new row
+                await AddNewRow(props, model);
+            }
+            else
+            {
+                // save edit row
+                await EditRow(props, model);
+            }
+            return model;
+        }
+        public async Task DeleteRowsFromGrid(DeleteRowsFromGridReqModel req, Deleterows model)
+        {
+            var param = new Parameters(req.paramss.ViewId, req.passport);
+            model.isError = false;
+
+            if (req.passport.CheckPermission(param.ViewName, SecureObject.SecureObjectType.View, Permissions.Permission.Delete))
+            {
+                await Navigation.VerifyLegalDeletionAsync(param.TableName, req.rowData.ids, req.passport);
+                ScriptReturn result = null;
+
+                foreach (string item in req.rowData.ids)
+                {
+                    // run linkscript before delete
+                    if (model.scriptDone == false)
+                    {
+                        LinkScriptRunBeforeDelete(result, param, item, model, req);
+                        if (model.scriptReturn.isBeforeDeleteLinkScript)
+                            return;
+                    }
+                    else
+                    {
+                        result = new ScriptReturn(true, "", 0.ToString(), false);
+                    }
+                    Query.DeleteTableItem(param.TableName, item, "00:00", false, true, false, req.passport);
+                    // run linkscript after delete
+                    LinkScriptRunAfterDelete(result, param, model, req);
+                }
+            }
+            else
+            {
+                model.Msg = "You don't have sufficient Permission to Delete";
+                model.isError = true;
+            }
+
+        }
+        public async Task<GridDataBinding> TaskBarClick(UserInterfaceProps props)
+        {
+            var model = new GridDataBinding();
+            model.IsOpenWhereClause = true;
+            model.IsWhereClauseRequest = true;
+            model.WhereClauseStr = "";
+            model.ViewId = props.ViewId;
+            model.fViewType = (int)ViewType.FusionView;
+
+            var prop = new SearchQueryRequestModal();
+            prop.paramss.ViewId = props.ViewId;
+            prop.paramss.pageNum = 1;
+            prop.paramss.crumbLevel = 0;
+            prop.passport = props.passport;
+
+            await BuildNewTableData(prop, model);
+            return model;
+        }
+        public async Task<ReportingPerRow> ExecuteReporting(ReportingReqModel props)
+        {
+            // offset pages start from 
+            var report = new ReportingPerRow();
+            int offsetPages;
+            if (props.paramss.pageNumber == 1)
+            {
+                offsetPages = 0;
+            }
+            else
+            {
+                offsetPages = props.paramss.pageNumber * 300;
+            }
+            // get item description
+            string tablename = props.paramss.tableName.Replace("'", "''");
+            string tableid = props.paramss.Tableid.Replace("'", "''");
+            report.ItemDescription = Navigation.GetItemName(tablename, tableid, props.passport);
+            var reportName = (ReportingPerRow.Reports)props.paramss.reportNum;
+            switch (reportName)
+            {
+                case Reports.AuditHistoryPerRow:
+                    {
+
+                        await GenerateAuditHistoryPerRow(offsetPages, report, props);
+                        break;
+                    }
+                case Reports.TrackingHistoryPerRow:
+                    {
+                        await GenerateTrackingHistoryPerRow(offsetPages, report, props);
+                        break;
+                    }
+                case Reports.ContentsRow:
+                    {
+                        GenerateContentPerRow(offsetPages, report, props);
+                        break;
+                    }
+
+                default:
+                    {
+                        break;
+                    }
+            }
+            return report;
+        }
+        public async Task<PagingModel> ExecuteReportingCount(ReportingReqModel props)
+        {
+            // offset pages start from 
+            //var report = new ReportingPerRow();
+            //report.ItemDescription = Navigation.GetItemName(req.paramss.tableName,req.paramss.Tableid, req.passport);
+            var model = new PagingModel();
+            switch ((Reports)props.paramss.reportNum)
+            {
+                case Reports.AuditHistoryPerRow:
+                    {
+                        //GenerateAuditHistoryPerRowCount(report,req);
+                        if (props.passport.CheckPermission(" Auditing", SecureObject.SecureObjectType.Reports, Permissions.Permission.View))
+                        {
+                            model = await GenerateRowsAuditCount(props);
+                        }
+
+                        break;
+                    }
+                case Reports.TrackingHistoryPerRow:
+                    {
+                        if (props.passport.CheckPermission(" Tracking", SecureObject.SecureObjectType.Reports, Permissions.Permission.View))
+                        {
+                            //GenerateTrackingHistoryPerRowCount(this, _httpContext);
+                            model = await GenerateRowsTrackingCount(props);
+                        }
+                        break;
+                    }
+                case Reports.ContentsRow:
+                    {
+                        //model.GenerateContentPerRowCount(this);
+                        model = await GenerateRowsContentsCount(props);
+                        break;
+                    }
+
+                default:
+                    {
+                        break;
+                    }
+            }
+            return model;
+        }
+        public async Task<RetentionInfo> OnDropdownChange(RetentionInfoUpdateReqModel req)
+        {
+            var model = new RetentionInfo();
+            var @params = new Parameters(req.ViewId, req.passport);
+            model.RetentionItem = "Record Details";
+            SetActiveItem(model, @params, req);
+            var tableInfo = Navigation.GetTableInfo(@params.TableName, req.passport);
+            var codeRow = Retention.GetRetentionCode(req.props.RetentionItemText, req.passport);
+            RetentionArchiveDate(tableInfo, codeRow, model, req);
+            RetentionInactiveDate(tableInfo, codeRow, model, req);
+            SetRetentionStatus(tableInfo, codeRow, model, req);
+            await RetentionArchiveinfo(model, req);
+            return model;
+        }
+        public async Task<RetentionInfo> RetentionInfoUpdate(RetentionInfoUpdateReqModel req)
+        {
+            var model = new RetentionInfo();
+            await UpdateRetentionCodeInTableRecord(req);
+            await DeleteDestructCertItem(req);
+            await UpdateDestructCertItem(req);
+            model.ReturnOnerow = await ReturnOnerow(req);
+            using (var conn = new SqlConnection(req.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                if (GetDestructionCertChildrenCount(req.props.SldestructionCertId, conn) == 0)
+                    Retention.DeleteDestructionCertRecord(req.props.SldestructionCertId, conn);
+            }
+            return model;
+        }
+        public async Task<List<List<string>>> ReturnOnerow(RetentionInfoUpdateReqModel req)
+        {
+            var param = new Parameters(req.props.viewid, req.passport);
+            var model = new SearchQueryRequestModal();
+            model.passport = req.passport;
+            model.ViewId = req.props.viewid;
+            model.GridDataBinding.IsWhereClauseRequest = true;
+            if (Navigation.IsAStringType(param.IdFieldDataType) || Navigation.IsADateType(param.IdFieldDataType))
+                model.GridDataBinding.WhereClauseStr = string.Format("SELECT [{0}] FROM [{1}] where [{0}] = '{2}'", Navigation.MakeSimpleField(param.KeyField), param.TableName, req.props.rowid.Replace("'", "''"));
+            else
+                model.GridDataBinding.WhereClauseStr = string.Format("SELECT [{0}] FROM [{1}] where [{0}] = {2}", Navigation.MakeSimpleField(param.KeyField), param.TableName, req.props.rowid);
+            var grid = new GridDataBinding();
+            grid = await RunQuery(model);
+            return grid.ListOfDatarows;
+        }
+        public async Task<bool> CheckBeforeAddTofavorite(UserInterfaceProps props)
+        {
+            bool hasList = false;
+            try
+            {
+                using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+                {
+                    var criteriaList = await context.s_SavedCriteria.Where(a => a.ViewId == props.ViewId & a.SavedType == 1).ToListAsync();
+                    if (criteriaList.Count > 0)
+                        hasList = true;
+                    return hasList;
+                }
+
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+        public async Task<MyFavorite> StartDialogAddToFavorite(UserInterfaceProps props)
+        {
+            var model = new MyFavorite();
+            model.placeholder = "Select Favorite";
+            model.label = "Favorite: ";
+
+            IRepository<s_SavedCriteria> _is_SavedCriteria = new Repository.Repositories<s_SavedCriteria>();
+            using (var contex = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                var criteriaList = await contex.s_SavedCriteria.Where(a => a.ViewId == props.ViewId & a.SavedType == 1).ToListAsync();
+                if (criteriaList.Count > 0)
+                {
+                    foreach (var lst in criteriaList)
+                    {
+                        var ddl = new MyFavorite.FavoritedropdownList();
+                        var name = lst.SavedName;
+                        ddl.text = name;
+                        ddl.value = lst.Id.ToString();
+                        model.ListAddtoFavorite.Add(ddl);
+                    }
+                }
+            }
+            return model;
+        }
+        public async Task<AuditReportSearch> loadDialogReportSearch(UserInterfaceProps props)
+        {
+            var model = new AuditReportSearch();
+            await BindUserDDL(props, model);
+            await BindTableDDL(props, model);
+            model.dateFormat = props.DateFormat;
+            return model;
+        }
+        public async Task<RetentionInfo> GetRetentionInfoPerRow(RetentionInfoUpdateReqModel req)
+        {
+            var model = new RetentionInfo();
+            var @params = new Parameters(req.props.viewid, req.passport);
+            req.props.TableName = @params.TableName;
+            var tableInfo = Navigation.GetTableInfo(@params.TableName, req.passport);
+            model.RetentionItem = "Record Details";
+
+            SetActiveItem(model, @params, req);
+            var codeRow = BuildDropdwonList(model, req, tableInfo);
+            SetRetentionStatus(tableInfo, codeRow, model, req);
+            await RetentionArchiveinfo(model, req);
+            await GenerateHoldingTable(model, @params, req);
+            CheckIfRetentionAssign(@params, model);
+            return model;
+        }
+        public List<string> DialogMsgConfirmDelete(DialogMsgConfirm req)
+        {
+            var lst = new List<string>();
+
+            foreach (string id in req.paramss.ids)
+                lst.Add(Navigation.GetItemName(req.paramss.TableName, id, req.passport));
+
+            return lst;
+        }
+        private void CheckIfRetentionAssign(Parameters @params, RetentionInfo model)
+        {
+            // check if disable the dropdown in case there is no retention policy 
+            if (@params.TableInfo["RetentionAssignmentMethod"] is DBNull)
+            {
+                model.DDLDrop = false;
+            }
+            else if (Convert.ToInt32(@params.TableInfo["RetentionAssignmentMethod"]) == 0)
+            {
+                try
+                {
+                    model.DDLDrop = Convert.ToInt32(model.retentionItemRow["%slRetentionDispositionStatus"]) == 0;
+                }
+                catch (Exception)
+                {
+                    model.DDLDrop = true;
+                }
+            }
+            else
+            {
+                model.DDLDrop = false;
+            }
+        }
+        private async Task GenerateHoldingTable(RetentionInfo model, Parameters @params, RetentionInfoUpdateReqModel req)
+        {
+            model.ListOfHeader.Add("Hold Type");
+            model.ListOfHeader.Add("Snooze");
+            model.ListOfHeader.Add("Reason");
+            var result = new List<SLDestructCertItem>();
+            using (var context = new TABFusionRMSContext(req.passport.ConnectionString))
+            {
+                result = await context.SLDestructCertItems.Where(x => x.TableName == @params.TableName && x.TableId == req.props.rowid && (x.RetentionHold == true || x.LegalHold == true)).OrderBy(x => x.Id).ToListAsync();
+                if (result.Count == 0)
+                {
+                    var certid = await context.SLDestructCertItems.Where(x => x.TableName == @params.TableName && x.TableId == req.props.rowid).OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    if (certid is not null)
+                        model.SldestructionCertid = (int)certid.SLDestructionCertsId;
+                }
+            }
+
+
+
+            for (int index = 0, loopTo = result.Count - 1; index <= loopTo; index++)
+            {
+                var cell = new List<string>();
+                var objNewSLDestructCertItem = new NewSLDestructCertItem();
+                if (true is var arg12 && result[index].LegalHold is { } arg11 && arg11 == arg12)
+                {
+                    cell.Add("Legal");
+                }
+                else if (true is var arg14 && result[index].RetentionHold is { } arg13 && arg13 == arg14)
+                {
+                    cell.Add("Retention");
+                }
+                if (!string.IsNullOrEmpty(Convert.ToString(result[index].SnoozeUntil)))
+                {
+                    //DateTime.Parse(row["TransactionDateTime"].ToString()).ToString(props.DateFormat)
+                    cell.Add(DateTime.Parse(result[index].SnoozeUntil.ToString()).ToString(req.DateFormat));
+                }
+                else
+                {
+                    cell.Add("");
+                }
+                cell.Add(result[index].HoldReason);
+                model.ListOfRows.Add(cell);
+
+                // TableHoldingTemp.Add(New holdingTableprop With {.Id = result(index).Id, .HoldReason = result(index).HoldReason, .LegalHold = result(index).LegalHold, .RetentionCode = result(index).RetentionCode, .RetentionHold = result(index).RetentionHold, .SLDestructionCertsId = result(index).SLDestructionCertsId, .SnoozeUntil = result(index).SnoozeUntil, .TableId = result(index).TableId, .TableName = result(index).TableName})
+            }
+        }
+        private DataRow BuildDropdwonList(RetentionInfo model, RetentionInfoUpdateReqModel req, DataRow tableinfo)
+        {
+            model.selectedItemText = "";
+            model.RetentionDescription = "";
+            var dtRetention = Retention.GetRetentionCodes(req.passport);
+            string retentionField = tableinfo["RetentionFieldName"].ToString();
+            foreach (DataRow retRow in dtRetention.Rows)
+            {
+                if (string.Compare(model.retentionItemRow[retentionField].ToString(), retRow["id"].ToString(), true) == 0)
+                {
+                    model.RetentionDescription = retRow["description"].ToString();
+                    model.selectedItemText = retRow["id"].ToString().ToUpper();
+                    model.DropdownRetentionCode.Add(new dropdownCode() { value = retRow["description"].ToString(), text = retRow["id"].ToString().ToUpper(), selected = true });
+                }
+                else
+                {
+                    model.DropdownRetentionCode.Add(new dropdownCode() { value = retRow["description"].ToString(), text = retRow["id"].ToString().ToUpper(), selected = false });
+                }
+            }
+            var codeRow = Retention.GetRetentionCode(model.selectedItemText, req.passport);
+            RetentionArchiveDate(tableinfo, codeRow, model, req);
+            RetentionInactiveDate(tableinfo, codeRow, model, req);
+            return codeRow;
+        }
+        private async Task BindTableDDL(UserInterfaceProps props, AuditReportSearch model)
+        {
+            string sSQL;
+            var dsObject = new DataTable();
+            //sSQL = "select UserName,TableName +'|'+cast((select COUNT(*) from [dbo].[FNGetChildTables](TableName))AS varchar(20)) as ObjectValue from Tables where TableName = 'true' or AuditUpdate = 'true' or AuditConfidentialData = 'true'";
+            sSQL = "select t.UserName, t.TableName + '|' + cast((select COUNT(*) from [dbo].[FNGetChildTables](t.TableName)) AS varchar(20)) as ObjectValue from Tables t inner join (select distinct SO.Name as TableName from SecureUserGroup as SUG inner join SecureObjectPermission as SOP on SUG.GroupID = SOP.GroupID inner join SecureObject as SO on SOP.SecureObjectID = SO.SecureObjectID where SUG.UserID = @UserId and SO.BaseID = 2) as virtualtable on virtualtable.TableName = t.TableName where t.TableName = 'true' or t.AuditUpdate = 'true' or t.AuditConfidentialData = 'true'";
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sSQL, conn))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", props.passport.UserId);
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dsObject);
+                    }
+                }
+            }
+            model.objectDDL.Add(new DDLprops() { text = "Select Table", valuetxt = "-1" });
+            model.objectDDL.Add(new DDLprops() { text = "All Tables", valuetxt = "All" });
+            foreach (DataRow row in dsObject.Rows)
+            {
+                bool isIdstring = Navigation.FieldIsAString(row["UserName"].ToString(), props.passport);
+                model.objectDDL.Add(new DDLprops() { text = row["UserName"].ToString(), valuetxt = row["ObjectValue"].ToString(), isIdstring = isIdstring });
+            }
+
+        }
+        private async Task BindUserDDL(UserInterfaceProps props, AuditReportSearch model)
+        {
+            var bReturnAllUsers = default(bool);
+            string sSQL;
+            var dsSettings = new DataSet();
+            var dsUser = new DataTable();
+            if (props.passport.UsingActiveDirectory)
+            {
+                sSQL = "SELECT UserName, ISNULL(DisplayName,'<unknown user>') AS DispName FROM SecureUser WHERE AccountType = 'A'";
+            }
+            else if (props.passport.UsingAzureActiveDirectory)
+            {
+                sSQL = "SELECT UserName, ISNULL(DisplayName,'<unknown user>') AS DispName FROM SecureUser WHERE AccountType = 'Z'";
+            }
+            else
+            {
+                sSQL = "SELECT UserName, ISNULL(DisplayName,'<unknown user>') AS DispName FROM SecureUser WHERE AccountType = 'S'";
+            }
+
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand("select * from Settings where Section='AuditReport' and Item='ReturnAll'", conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dsSettings);
+                    }
+                }
+            }
+
+            if (dsSettings is not null)
+            {
+                if (dsSettings.Tables.Count > 0 && dsSettings.Tables[0].Rows.Count > 0)
+                {
+
+                    if (Convert.ToInt32(dsSettings.Tables[0].Rows[0]["Id"]) != 0 & Convert.ToString(dsSettings.Tables[0].Rows[0]["ItemValue"]).Length > 0)
+                    {
+                        bReturnAllUsers = Convert.ToBoolean(Convert.ToString(dsSettings.Tables[0].Rows[0]["ItemValue"]));
+                    }
+                }
+                if (!bReturnAllUsers)
+                {
+                    sSQL = sSQL + " AND UserName IN " + Constants.vbCrLf;
+                    sSQL = sSQL + " (SELECT DISTINCT [OperatorsId] FROM [SLAuditUpdates] UNION" + Constants.vbCrLf;
+                    sSQL = sSQL + "  SELECT DISTINCT [OperatorsId] FROM [SLAuditConfData] UNION" + Constants.vbCrLf;
+                    sSQL = sSQL + "  SELECT DISTINCT [OperatorsId] FROM [SLAuditLogins]" + Constants.vbCrLf;
+                    sSQL = sSQL + "  WHERE [OperatorsId] IS NOT NULL AND [OperatorsId] > '')";
+                }
+            }
+
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sSQL, conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dsUser);
+                    }
+                }
+            }
+            model.userDDL.Add(new DDLprops() { text = "All Users", value = -1 });
+            int ddlOrder = 0;
+            foreach (DataRow row in dsUser.Rows)
+            {
+                model.userDDL.Add(new DDLprops() { text = row["UserName"].ToString(), value = ddlOrder });
+                ddlOrder = ddlOrder + 1;
+            }
+        }
+        private int GetDestructionCertChildrenCount(int destructionCertID, SqlConnection conn)
+        {
+            if (destructionCertID == 0)
+                return 0;
+
+            using (var cmd = new SqlCommand(Resources.GetDestructionCertChildrenCount, conn))
+            {
+                cmd.Parameters.AddWithValue("@DestructionCertID", destructionCertID);
+
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    var dt = new DataTable();
+                    da.Fill(dt);
+                    if (dt.Rows.Count == 0)
+                        return 0;
+                    return Convert.ToInt32(dt.Rows[0]["ItemCount"]);
+                }
+            }
+        }
+        private async Task UpdateDestructCertItem(RetentionInfoUpdateReqModel param)
+        {
+            if (param.props.RetTableHolding.Count == 0)
+                return;
+            using (var context = new TABFusionRMSContext(param.passport.ConnectionString))
+            {
+                for (int index = 0, loopTo = param.props.RetTableHolding.Count - 1; index <= loopTo; index++)
+                {
+                    var objSLDestructCertItem = new SLDestructCertItem();
+
+                    try
+                    {
+                        objSLDestructCertItem.ScheduledDestruction = CommonFunctions.ConvertStringToCulture(param.props.RetnArchive, param.DateFormat);
+                    }
+                    catch (Exception)
+                    {
+                        objSLDestructCertItem.ScheduledDestruction = default;
+                    }
+
+                    try
+                    {
+                        objSLDestructCertItem.ScheduledInactivity = CommonFunctions.ConvertStringToCulture(param.props.RetnArchive, param.DateFormat);
+                    }
+                    catch (Exception)
+                    {
+                        objSLDestructCertItem.ScheduledInactivity = default;
+                    }
+
+                    objSLDestructCertItem.RetentionCode = !string.IsNullOrEmpty(param.props.RetentionItemCode) ? param.props.RetentionItemCode : null;
+                    objSLDestructCertItem.RetentionHold = Convert.ToBoolean(param.props.RetTableHolding[index].RetentionHold);
+                    objSLDestructCertItem.LegalHold = Convert.ToBoolean(param.props.RetTableHolding[index].LegalHold);
+                    objSLDestructCertItem.SnoozeUntil = param.props.RetTableHolding[index].SnoozeUntil;
+                    objSLDestructCertItem.TableId = param.props.RetTableHolding[index].TableId;
+                    objSLDestructCertItem.TableName = param.props.RetTableHolding[index].TableName;
+                    objSLDestructCertItem.SLDestructionCertsId = Convert.ToInt32(param.props.RetTableHolding[index].SLDestructionCertsId);
+                    objSLDestructCertItem.HoldReason = param.props.RetTableHolding[index].HoldReason;
+
+                    if ((param.props.RetTableHolding[index].SnoozeUntil is null | (DateTime.Today is var arg16 && param.props.RetTableHolding[index].SnoozeUntil is { } arg15 ? arg15 > arg16 : (bool?)null)) == true)
+                    {
+                        context.SLDestructCertItems.Add(objSLDestructCertItem);
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
+        }
+        private async Task DeleteDestructCertItem(RetentionInfoUpdateReqModel param)
+        {
+            using (var context = new TABFusionRMSContext(param.passport.ConnectionString))
+            {
+                var deleteRecord = await context.SLDestructCertItems.Where(x => (x.TableId ?? "") == (param.props.rowid ?? "") & (x.TableName ?? "") == (param.props.TableName ?? "")).ToListAsync();
+                context.SLDestructCertItems.RemoveRange(deleteRecord);
+            }
+
+        }
+        private async Task UpdateRetentionCodeInTableRecord(RetentionInfoUpdateReqModel param)
+        {
+            string query = "UPDATE [{0}] SET [{1}] = @retentionCode WHERE [{2}] = @tableID";
+            using (var conn = new SqlConnection(param.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(string.Format(query, param.props.TableName, Navigation.GetRetentionFieldName(param.props.TableName, conn), Navigation.GetPrimaryKeyFieldName(param.props.TableName, conn)), conn))
+                {
+                    cmd.Parameters.AddWithValue("@retentionCode", param.props.RetentionItemCode);
+                    cmd.Parameters.AddWithValue("@tableID", param.props.rowid);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+
+        }
+        private async Task RetentionArchiveinfo(RetentionInfo model, RetentionInfoUpdateReqModel req)
+        {
+            if (model.retentionItemRow is null)
+                return;
+
+            using (var context = new TABFusionRMSContext(req.passport.ConnectionString))
+            {
+                var objTables = await context.Tables.FirstOrDefaultAsync(x => (x.TableName ?? "") == (req.props.TableName ?? ""));
+                if (objTables is not null)
+                {
+                    if (1 is var arg2 && objTables.RetentionFinalDisposition is { } arg1 && arg1 == arg2)
+                    {
+                        model.lblRetentionArchive = "Archive date:";
+                    }
+                    else if (2 is var arg4 && objTables.RetentionFinalDisposition is { } arg3 && arg3 == arg4)
+                    {
+                        model.lblRetentionArchive = "Destruction date:";
+                    }
+                    else if (3 is var arg6 && objTables.RetentionFinalDisposition is { } arg5 && arg5 == arg6)
+                    {
+                        model.lblRetentionArchive = "Purge date:";
+                    }
+                    else
+                    {
+                        model.lblRetentionArchive = "Archive date:";
+                    }
+                }
+                else
+                {
+                    model.lblRetentionArchive = "Archive date:";
+                }
+            }
+            // ceSnoozeDate.Format = Keys.GetCultureCookies().DateTimeFormat.ShortDatePattern
+            // RetentionArchive = "Record Details"
+        }
+        private void SetRetentionStatus(DataRow tableinfo, DataRow codeRow, RetentionInfo model, RetentionInfoUpdateReqModel req)
+        {
+            if (!string.IsNullOrWhiteSpace(model.RetentionDescription))
+            {
+                if (Convert.ToBoolean(codeRow["RetentionLegalHold"]))
+                {
+                    model.RetentionStatus.text = "On Hold";
+                }
+                else
+                {
+                    model.RetentionStatus.text = "Retention Set";
+                }
+            }
+
+            checkRetentionStatus(model, req);
+        }
+        private void checkRetentionStatus(RetentionInfo model, RetentionInfoUpdateReqModel req)
+        {
+            var destCert = Retention.GetDescCertRow(req.props.TableName, req.props.rowid, req.passport);
+
+            if (destCert is not null)
+            {
+                bool disposed = false;
+                var dispositiontype = meFinalDisposition.fdNone;
+                bool isHold = Convert.ToBoolean(destCert["RetentionHold"]) | Convert.ToBoolean(destCert["LegalHold"]);
+                if (destCert["DispositionDate"] is not null && !string.IsNullOrEmpty(destCert["DispositionDate"].ToString()))
+                    disposed = true;
+                if (destCert["DispositionType"] is not null)
+                    dispositiontype = (meFinalDisposition)Convert.ToInt32(destCert["DispositionType"]);
+                model.Disposed = disposed;
+                model.DispositionType = (int)dispositiontype;
+
+                if (isHold & dispositiontype == 0)
+                {
+                    model.RetentionStatus.text = "On Hold";
+                }
+                else if (dispositiontype == meFinalDisposition.fdDestruction)
+                {
+                    if (Convert.ToInt32(destCert["SLDestructionCertsId"]) == 0)
+                    {
+                        model.RetentionStatus.text = "Destroyed (parent disposed)";
+                        model.RetentionStatus.color = "red";
+                    }
+                    else if (disposed)
+                    {
+                        var cert = Retention.GetDescCert(Convert.ToInt32(destCert["SLDestructionCertsId"]), req.passport);
+                        // lblStatus.Text = "Destroyed [" + cert("Id").ToString + " - " + CDate(cert("DateCreated")).ToClientDateFormat + "]"
+                        model.RetentionStatus.text = string.Format("Destroyed [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                        model.RetentionStatus.color = "red";
+                    }
+                    else
+                    {
+                        var cert = Retention.GetDescCert(Convert.ToInt32(destCert["SLDestructionCertsId"]), req.passport);
+                        // lblStatus.Text = "Eligible to be Destroyed [" + cert("Id").ToString + " - " + CDate(cert("DateCreated")).ToClientDateFormat + "]"
+                        model.RetentionStatus.text = string.Format("Eligible to be Destroyed [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                    }
+                }
+                else if (dispositiontype == meFinalDisposition.fdPermanentArchive)
+                {
+                    if (Convert.ToInt32(destCert["SLDestructionCertsId"]) == 0)
+                    {
+                        model.RetentionStatus.text = "Archived (parent disposed)";
+                        model.RetentionStatus.color = "red";
+                    }
+                    else if (disposed)
+                    {
+                        var cert = Retention.GetDescCert(Convert.ToInt32(destCert["SLDestructionCertsId"]), req.passport);
+                        // lblStatus.Text = "Archived [" + cert("Id").ToString + " - " + CDate(cert("DateCreated")).ToClientDateFormat + "]"
+                        model.RetentionStatus.text = string.Format("Archived [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                        model.RetentionStatus.color = "red";
+                    }
+                    else
+                    {
+                        var cert = Retention.GetDescCert(Convert.ToInt32(destCert["SLDestructionCertsId"]), req.passport);
+                        model.RetentionStatus.text = string.Format("Eligible to be Archived [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        var cert = Retention.GetDescCert(Convert.ToInt32(destCert["SLDestructionCertsId"]), req.passport);
+                        dispositiontype = (meFinalDisposition)Convert.ToInt32(cert["RetentionDispositionType"]);
+
+                        if (dispositiontype == meFinalDisposition.fdPermanentArchive)
+                        {
+                            model.RetentionStatus.text = string.Format("Eligible to be Archived [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                        }
+                        else if (dispositiontype == meFinalDisposition.fdDestruction)
+                        {
+                            model.RetentionStatus.text = string.Format("Eligible to be Destroyed [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                        }
+                        else if (dispositiontype == meFinalDisposition.fdPurge)
+                        {
+                            model.RetentionStatus.text = string.Format("Eligible for Purging [{0}- {1}]", cert["Id"].ToString(), CommonFunctions.ToClientDateFormats(Convert.ToDateTime(cert["DateCreated"])));
+                        }
+                        else
+                        {
+                            model.RetentionStatus.text = "Retention Set";
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        model.RetentionStatus.text = "Retention Set";
+                    }
+                }
+            }
+        }
+        private void RetentionInactiveDate(DataRow tableInfo, DataRow codeRow, RetentionInfo model, RetentionInfoUpdateReqModel req)
+        {
+            meFinalDisposition dispositionType;
+
+            if (!Convert.ToBoolean(tableInfo["RetentionInactivityActive"]))
+            {
+                model.RetentionInfoInactivityDate.text = "N/A";
+                model.RetentionInfoInactivityDate.color = "black";
+                return;
+            }
+
+            try
+            {
+                dispositionType = (meFinalDisposition)Convert.ToInt32(model.retentionItemRow["%slRetentionDispositionStatus"]);
+            }
+            catch (Exception)
+            {
+                dispositionType = meFinalDisposition.fdNone;
+            }
+
+            if (dispositionType != meFinalDisposition.fdNone)
+            {
+                model.RetentionInfoInactivityDate.text = "N/A";
+                model.RetentionInfoInactivityDate.color = "black";
+                return;
+            }
+
+            string dateField = string.Empty;
+
+            switch (codeRow["InactivityEventType"].ToString() ?? "")
+            {
+                case "Date Opened":
+                    {
+                        dateField = tableInfo["RetentionDateOpenedField"].ToString();
+                        break;
+                    }
+                case "Date Created":
+                    {
+                        dateField = tableInfo["RetentionDateCreateField"].ToString();
+                        break;
+                    }
+                case "Date Closed":
+                    {
+                        dateField = tableInfo["RetentionDateClosedField"].ToString();
+                        break;
+                    }
+                case "Date Other":
+                    {
+                        dateField = tableInfo["RetentionDateOtherField"].ToString();
+                        break;
+                    }
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(dateField))
+                {
+                    var dDispositionDate = Navigation.ApplyYearEndToDate(Convert.ToDateTime(model.retentionItemRow[dateField]), Convert.ToDouble(codeRow["InactivityPeriod"]), Convert.ToBoolean(codeRow["InactivityForceToEndOfYear"]), req.passport);
+                    model.RetentionInfoInactivityDate.text = CommonFunctions.ToClientDateFormats(dDispositionDate);
+                    model.RetentionInfoInactivityDate.color = Convert.ToString(Interaction.IIf(DateTime.Parse(model.RetentionInfoInactivityDate.text) > DateTime.Today, "black", "red"));
+                }
+                else
+                {
+                    model.RetentionInfoInactivityDate.text = "N/A";
+                    model.RetentionInfoInactivityDate.color = "red";
+                }
+            }
+            catch (Exception)
+            {
+                model.RetentionInfoInactivityDate.text = "NO DATE ENTERED";
+                model.RetentionInfoInactivityDate.color = "red";
+            }
+        }
+        private void RetentionArchiveDate(DataRow tableInfo, DataRow codeRow, RetentionInfo model, RetentionInfoUpdateReqModel req)
+        {
+            meFinalDisposition dispositionType;
+
+            if (!Convert.ToBoolean(tableInfo["RetentionPeriodActive"]))
+            {
+                model.RetentionArchive.text = "N/A";
+                model.RetentionArchive.color = "black";
+                return;
+            }
+
+            try
+            {
+                dispositionType = (meFinalDisposition)Convert.ToInt32(model.retentionItemRow["%slRetentionDispositionStatus"]);
+            }
+            catch (Exception)
+            {
+                dispositionType = meFinalDisposition.fdNone;
+            }
+
+            if (dispositionType != meFinalDisposition.fdNone)
+            {
+                model.RetentionArchive.text = "N/A";
+                model.RetentionArchive.color = "black";
+                return;
+            }
+
+            string dateField = string.Empty;
+
+            switch (codeRow["RetentionEventType"].ToString() ?? "")
+            {
+                case "Date Opened":
+                    {
+                        dateField = tableInfo["RetentionDateOpenedField"].ToString();
+                        break;
+                    }
+                case "Date Created":
+                    {
+                        dateField = tableInfo["RetentionDateCreateField"].ToString();
+                        break;
+                    }
+                case "Date Closed":
+                    {
+                        dateField = tableInfo["RetentionDateClosedField"].ToString();
+                        break;
+                    }
+                case "Date Other":
+                    {
+                        dateField = tableInfo["RetentionDateOtherField"].ToString();
+                        break;
+                    }
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(dateField))
+                {
+                    var dDispositionDate = Navigation.ApplyYearEndToDate(Convert.ToDateTime(model.retentionItemRow[dateField]), Convert.ToDouble(codeRow["RetentionPeriodTotal"]), Convert.ToBoolean(codeRow["RetentionPeriodForceToEndOfYear"]), req.passport);
+                    model.RetentionArchive.text = CommonFunctions.ToClientDateFormats(dDispositionDate);
+                    model.RetentionArchive.color = Interaction.IIf(DateTime.Parse(Convert.ToString(model.RetentionArchive.text)) > DateTime.Today, "black", "red");
+                }
+                else
+                {
+                    model.RetentionArchive.text = "N/A";
+                    model.RetentionArchive.color = "black";
+                }
+            }
+            catch
+            {
+                model.RetentionArchive.text = "NO DATE ENTERED";
+                model.RetentionArchive.color = "red";
+            }
+        }
+        private void SetActiveItem(RetentionInfo model, Parameters @params, RetentionInfoUpdateReqModel req)
+        {
+
+            string query = string.Empty;
+            if (Navigation.FieldIsAString(@params.TableInfo, @params.KeyField, req.passport))
+            {
+                query = string.Format("Select * from {0} where {1} = '{2}'", @params.TableName, @params.KeyField, req.props.rowid);
+            }
+            else
+            {
+                query = string.Format("Select * from {0} where {1} = {2}", @params.TableName, @params.KeyField, req.props.rowid);
+            }
+
+            DataSet loutput = new DataSet();
+            using (SqlConnection connection = new SqlConnection(req.passport.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                    {
+                        adapter.Fill(loutput);
+                    }
+                }
+            }
+
+            model.retentionItemRow = loutput.Tables[0].Rows[0];
+        }
+        private async Task<PagingModel> GenerateRowsContentsCount(ReportingReqModel props)
+        {
+            var dt = await Tracking.GetContainerContentsCountAsync(props.paramss.tableName, props.paramss.Tableid, props.passport);
+            if (dt.Rows.Count > 0)
+            {
+                return Execute(Convert.ToInt32(dt.Rows[0][0]), 100);
+            }
+            else
+            {
+                return Execute(0, 100);
+            }
+        }
+        private async Task<PagingModel> GenerateRowsTrackingCount(ReportingReqModel props)
+        {
+            var model = new TrackingReport(props.passport, props.paramss.tableName, props.paramss.Tableid);
+            var list = await model.GetTrackableHistoryCountAsync();
+            if (list.Rows.Count > 0)
+            {
+                return Execute(Convert.ToInt32(list.Rows[0][0]), 100);
+            }
+            else
+            {
+                return Execute(0, 100);
+            }
+        }
+        private async Task<PagingModel> GenerateRowsAuditCount(ReportingReqModel props)
+        {
+            // rows
+            var data = await sqlQueryPagingCount(props);
+            if (data.Rows.Count > 0)
+            {
+                return Execute(Convert.ToInt32(data.Rows[0][0]), 100);
+            }
+            else
+            {
+                return Execute(0, 100);
+            }
+        }
+        private PagingModel Execute(int totalRecord, int recordePerpage)
+        {
+            var model = new PagingModel();
+            model.PerPageRecord = recordePerpage;
+            model.TotalRecord = totalRecord;
+            if (model.TotalRecord > 0)
+            {
+                if (model.TotalRecord / (double)model.PerPageRecord > 0d & model.TotalRecord / (double)model.PerPageRecord < 1d)
+                {
+                    model.TotalPage = 1;
+                }
+                else if (model.TotalRecord % model.PerPageRecord == 0)
+                {
+                    model.TotalPage = (int)Math.Round(model.TotalRecord / (double)model.PerPageRecord);
+                }
+                else
+                {
+                    int tp = (int)Math.Round(Conversion.Int(model.TotalRecord / (double)model.PerPageRecord));
+                    model.TotalPage = tp + 1;
+                }
+            }
+            return model;
+        }
+        private async Task<DataTable> sqlQueryPagingCount(ReportingReqModel props)
+        {
+            string tableid = Navigation.PrepPad(props.paramss.tableName, props.paramss.Tableid, props.passport);
+            // sql query
+            string sql = string.Format(string.Format("SELECT count(*) FROM [SLAuditUpdates]" + " WHERE TableName = '{0}' AND TableId = '{1}' ", props.paramss.tableName, tableid));
+
+            var data = new DataTable();
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(data);
+                    }
+                }
+            }
+            return data;
+        }
+        private void GenerateContentPerRow(int offsetValue, ReportingPerRow report, ReportingReqModel props)
+        {
+            report.hasPermission = true;
+            GenerateHeaderContent(report);
+            GenerateRows(report, props);
+        }
+        private void GenerateHeaderContent(ReportingPerRow report)
+        {
+            report.ListOfHeader.Add("Tran Date");
+            report.ListOfHeader.Add("Item Name");
+            report.ListOfHeader.Add("UserName");
+        }
+        private void GenerateRows(ReportingPerRow report, ReportingReqModel props)
+        {
+            var dt = Tracking.GetContainerContentsPaging(props.paramss.tableName, props.paramss.Tableid, props.passport, report.Paging.PageNumber, report.Paging.PerPageRecord);
+            var idsByTable = new Dictionary<string, string>();
+            var permissionsByTable = new Dictionary<string, bool>();
+            var listOfTableNames = new List<string>();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                if (!idsByTable.ContainsKey(row["TrackedTable"].ToString()))
+                {
+                    idsByTable.Add(row["TrackedTable"].ToString(), "");
+                    listOfTableNames.Add(row["TrackedTable"].ToString());
+                    permissionsByTable.Add(row["TrackedTable"].ToString(), props.passport.CheckPermission(Convert.ToString(row["TrackedTable"]), SecureObject.SecureObjectType.Table, Permissions.Permission.View));
+                }
+                if (string.IsNullOrEmpty(idsByTable[row["TrackedTable"].ToString()]))
+                {
+                    idsByTable[row["TrackedTable"].ToString()] += "'" + row["TrackedTableID"].ToString() + "'";
+                }
+                else
+                {
+                    idsByTable[row["TrackedTable"].ToString()] += ",'" + row["TrackedTableID"].ToString().Replace("'", "''") + "'";
+                }
+            }
+
+            var tablesInfo = Navigation.GetMultipleTableInfo(listOfTableNames, props.passport);
+            var descriptions = new Dictionary<string, DataTable>();
+
+            foreach (DataRow tableInfo in tablesInfo.Rows)
+            {
+                string ids = string.Empty;
+                if (idsByTable.TryGetValue(tableInfo["TableName"].ToString(), out ids)) // If we have ids, prepopulate; otherwise it'll have to get each one individually
+                {
+                    descriptions.Add(tableInfo["TableName"].ToString(), Navigation.GetItemNames(tableInfo["TableName"].ToString(), props.passport, tableInfo, ids));
+                }
+            }
+
+            foreach (DataRow row in dt.Rows)
+            {
+                bool permission = false;
+                if (!permissionsByTable.TryGetValue(row["TrackedTable"].ToString(), out permission))
+                {
+                    permission = props.passport.CheckPermission(Convert.ToString(row["TrackedTable"]), SecureObject.SecureObjectType.Table, Permissions.Permission.View);
+                }
+                if (permission)
+                {
+                    var cell = new List<string>();
+                    cell.Add(DateTime.Parse(row["TransactionDateTime"].ToString()).ToString(props.DateFormat));
+                    cell.Add(Navigation.ExtractItemName(row["TrackedTable"].ToString(), row["TrackedTableID"].ToString(), descriptions, tablesInfo, props.passport));
+                    cell.Add(Convert.ToString(row["UserName"]).ToString());
+                    report.ListOfRows.Add(cell);
+                }
+            }
+        }
+        private async Task GenerateTrackingHistoryPerRow(int offsetValue, ReportingPerRow report, ReportingReqModel props)
+        {
+
+            if (!props.passport.CheckSetting(props.paramss.tableName, SecureObject.SecureObjectType.Table, Permissions.Permission.Transfer))
+            {
+                report.Msg = "the tracking history report";
+                report.hasPermission = false;
+                return;
+            }
+            else
+            {
+                report.hasPermission = true;
+            }
+            GenerateHeaderTrackingHistory(report, props);
+            await GenerateRowsTrackingHistory(report, props);
+        }
+        private void GenerateHeaderTrackingHistory(ReportingPerRow report, ReportingReqModel props)
+        {
+            //IRepository<TabFusionRMS.Models.System> _iSystem = new Repositories<TabFusionRMS.Models.System>();
+            //var pSystemEntity = _iSystem.All().OrderBy(x => x.Id).FirstOrDefault();
+            report.ListOfHeader.Add("Transaction Date");
+            report.ListOfHeader.Add("Location");
+            report.ListOfHeader.Add("Scan Operator");
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+                var pSystemEntity = context.Systems.OrderBy(x => x.Id).FirstOrDefault();
+                if (pSystemEntity.TrackingAdditionalField1Desc != null)
+                    report.ListOfHeader.Add(pSystemEntity.TrackingAdditionalField1Desc);
+                if (pSystemEntity.TrackingAdditionalField2Desc != null)
+                    report.ListOfHeader.Add(pSystemEntity.TrackingAdditionalField2Desc);
+            }
+        }
+        private async Task GenerateRowsTrackingHistory(ReportingPerRow report, ReportingReqModel props)
+        {
+            var model = new TrackingReport(props.passport, props.paramss.tableName, props.paramss.Tableid);
+            var list = model.GetTrackableHistoryPaging(report.Paging.PageNumber, report.Paging.PerPageRecord);
+            if (list is null)
+                return;
+
+            using (var context = new TABFusionRMSContext(props.passport.ConnectionString))
+            {
+
+                var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                for (int i = 0, loopTo = list.Count - 1; i <= loopTo; i++)
+                {
+                    var cell = new List<string>();
+                    var sb = new StringBuilder();
+                    cell.Add(Convert.ToString(list[i].TransactionDate));
+                    for (int j = 0, loopTo1 = list[i].Containers.Count - 1; j <= loopTo1; j++)
+                        sb.AppendLine(list[i].Containers[j].Type + ":       " + list[i].Containers[j].Name);
+                    cell.Add(sb.ToString());
+                    cell.Add(list[i].UserName);
+                    if (pSystemEntity.TrackingAdditionalField1Desc != null)
+                        cell.Add(list[i].TrackingAdditionalField1);
+                    if (pSystemEntity.TrackingAdditionalField2Desc != null)
+                        cell.Add(list[i].TrackingAdditionalField2);
+
+                    report.ListOfRows.Add(cell);
+                }
+            }
+        }
+        private async Task GenerateAuditHistoryPerRow(int offsetValue, ReportingPerRow report, ReportingReqModel props)
+        {
+            if (!props.passport.CheckPermission(" Auditing", SecureObject.SecureObjectType.Reports, Permissions.Permission.View))
+            {
+                report.Msg = "the audit history report";
+                report.hasPermission = false;
+                return;
+            }
+            else
+            {
+                report.hasPermission = true;
+            }
+            // headers
+            GenerateHeaderAuditHistory(report);
+            await GenerateRowsAuditHistory(offsetValue, report, props);
+        }
+        private void GenerateHeaderAuditHistory(ReportingPerRow report)
+        {
+            report.ListOfHeader.Add("Date");
+            report.ListOfHeader.Add("User");
+            report.ListOfHeader.Add("Network Login");
+            report.ListOfHeader.Add("Domain");
+            report.ListOfHeader.Add("ComputerName");
+            report.ListOfHeader.Add("MacAddress");
+            report.ListOfHeader.Add("IP");
+            report.ListOfHeader.Add("Action");
+            report.ListOfHeader.Add("DataBefore");
+            report.ListOfHeader.Add("DataAfter");
+        }
+        private async Task GenerateRowsAuditHistory(int offsetValue, ReportingPerRow report, ReportingReqModel props)
+        {
+            // rows
+            var data = await sqlQueryPaging(offsetValue, report, props);
+            foreach (DataRow row in data.Rows)
+            {
+                var cell = new List<string>();
+                foreach (DataColumn col in data.Columns)
+                    cell.Add(row[col.Caption].ToString());
+                report.ListOfRows.Add(cell);
+            }
+        }
+        private async Task<DataTable> sqlQueryPaging(int offsetValue, ReportingPerRow report, ReportingReqModel props)
+        {
+            string tableid = Navigation.PrepPad(props.paramss.tableName, props.paramss.Tableid, props.passport);
+            // sql query
+            string sql = string.Format(string.Format("SELECT CONVERT(VARCHAR, [UpdateDateTime], 100) AS 'Date', [OperatorsId] AS 'User', [NetworkLoginName] AS 'Network Login'," + " [Domain], [ComputerName], [MacAddress], [IP], [Action], [DataBefore], [DataAfter] FROM [SLAuditUpdates]" + " WHERE TableName = '{0}' AND TableId = '{1}' ORDER BY UpdateDateTime DESC ", props.paramss.tableName, tableid));
+
+            sql += Query.QueryPaging(report.Paging.PageNumber, report.Paging.PerPageRecord);
+
+            var data = new DataTable();
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(data);
+                    }
+                }
+            }
+            return data;
+        }
+        private void LinkScriptRunBeforeDelete(ScriptReturn result, Parameters param, string tableId, Deleterows model, DeleteRowsFromGridReqModel req)
+        {
+            result = ScriptEngine.RunScriptBeforeDelete(param.TableName, tableId, req.passport);
+            model.scriptReturn.Successful = result.Successful;
+            model.scriptReturn.GridRefresh = result.GridRefresh;
+            model.scriptReturn.ReturnMessage = result.ReturnMessage;
+            // check if there is a script and if script is not finished
+            // check if script doesn't need any user interaction.
+            if (result.Engine is not null)
+            {
+                model.LinkScriptSession = result.Engine;
+                if (result.Engine.ShowPromptBool)
+                {
+                    model.scriptReturn.isBeforeDeleteLinkScript = true;
+                    model.scriptReturn.ScriptName = result.Engine.ScriptName;
+                }
+                else
+                {
+                    model.scriptReturn.isBeforeDeleteLinkScript = false;
+                    model.scriptReturn.ScriptName = "";
+                }
+            }
+            else
+            {
+                model.scriptReturn.isBeforeDeleteLinkScript = false;
+                model.scriptReturn.ScriptName = "";
+            }
+            if (!model.scriptReturn.Successful)
+                return;
+        }
+        private void LinkScriptRunAfterDelete(ScriptReturn result, Parameters param, Deleterows model, DeleteRowsFromGridReqModel req)
+        {
+            result = ScriptEngine.RunScriptAfterDelete(param.TableName, param.KeyValue, req.passport);
+            model.scriptReturn.Successful = result.Successful;
+            model.scriptReturn.GridRefresh = result.GridRefresh;
+            model.scriptReturn.ReturnMessage = result.ReturnMessage;
+            if (result.Engine is not null)
+            {
+                model.LinkScriptSession = result.Engine;
+                if (result.Engine.ShowPromptBool)
+                {
+                    model.scriptReturn.isAfterDeleteLinkScript = true;
+                    model.scriptReturn.ScriptName = result.Engine.ScriptName;
+                }
+            }
+        }
+        private async Task AddNewRow(DatabaseChangesReq req, Saverows model)
+        {
+            // Dim _query = New Query(_passport)
+            var param = new Parameters(req.paramss.ViewId, req.passport);
+            model.TableName = param.TableName;
+            if (req.passport.CheckPermission(param.ViewName, SecureObject.SecureObjectType.View, Permissions.Permission.Add))
+            {
+                param.Scope = ScopeEnum.Table;
+                param.NewRecord = true;
+                param.AfterData = req.paramss.AfterChange;
+                model.IsNewRecord = true;
+                param.RequestedRows = 1;
+                ScriptReturn result = null;
+                if (req.paramss.scriptDone == false)
+                {
+                    LinkScriptRunBeforeAdd(result, model, req);
+                    if (model.scriptReturn.isBeforeAddLinkScript)
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    result = new ScriptReturn(true, "", 0.ToString(), false);
+                }
+
+                Query.Save(param, "", param.KeyField, "", DataFieldValues(req), req.passport, result);
+
+                if (string.IsNullOrWhiteSpace(model.keyvalue) && !string.IsNullOrWhiteSpace(param.KeyValue))
+                {
+                    param.AfterData += string.Format("{1}: {2}{0}", Environment.NewLine, param.KeyField, param.KeyValue);
+                }
+
+                model.keyvalue = param.KeyValue;
+                // save audit
+                {
+                    var withBlock = AuditType.WebAccess;
+                    withBlock.TableName = param.TableName;
+                    withBlock.TableId = param.KeyValue;
+                    withBlock.ClientIpAddress = "00:00";
+                    withBlock.ActionType = AuditType.WebAccessActionType.AddRecord;
+                    withBlock.AfterData = param.AfterDataTrimmed;
+                    withBlock.BeforeData = string.Empty;
+                }
+
+                Auditing.AuditUpdates(AuditType.WebAccess, req.passport);
+                // linkscript After
+                LinkScriptRunAfterAdd(result, model, req);
+
+                string retentionCode = Query.SetRetentionCode(param.TableName, param.TableInfo, param.KeyValue, req.passport);
+                DataRow row = Navigation.GetSingleRow(param.TableInfo, param.KeyValue, param.KeyField, req.passport);
+                Tracking.SetRetentionInactiveFlag(param.TableInfo, row, retentionCode, req.passport);
+
+                model.gridDatabinding = await GetLastRowadded(param, req);
+                model.Msg = "success";
+            }
+            // Me.ListOfDatarows = returnValueonrow.ListOfDatarows
+            // Me.ToolBarHtml = returnValueonrow.ToolBarHtml
+            // Me.ListOfHeaders = returnValueonrow.ListOfHeaders
+            // Me.HasDrillDowncolumn = returnValueonrow.HasDrillDowncolumn
+            else
+            {
+                model.Msg = "You do not have sufficient Permission to Add";
+                model.isError = true;
+            }
+        }
+        private async Task EditRow(DatabaseChangesReq req, Saverows model)
+        {
+            // Dim _query = New Query(_passport)
+            var param = new Parameters(req.paramss.ViewId, req.passport);
+            model.TableName = param.TableName;
+            if (req.passport.CheckPermission(param.ViewName, SecureObject.SecureObjectType.View, Permissions.Permission.Edit))
+            {
+                param.Scope = ScopeEnum.Table;
+                param.KeyValue = req.Rowdata[req.Rowdata.Count - 1].value;
+                param.NewRecord = false;
+                param.BeforeData = req.paramss.BeforeChange;
+                param.AfterData = req.paramss.AfterChange;
+                model.IsNewRecord = false;
+                model.keyvalue = req.Rowdata[req.Rowdata.Count - 1].value;
+                //param.Culture = Keys.GetCultureCookies(_httpContext);
+
+                // linkscript before
+                ScriptReturn result = null;
+                if (model.scriptDone == false)
+                {
+                    LinkScriptRunBeforeEdit(result, model, req);
+                    if (model.scriptReturn.isBeforeEditLinkScript)
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    result = new ScriptReturn(true, "", 0.ToString(), false);
+                }
+                // save row
+                Query.Save(param, "", param.KeyField, param.KeyValue, DataFieldValues(req), req.passport, result);
+                model.keyvalue = param.KeyValue;
+                // save audit
+                {
+                    var withBlock = AuditType.WebAccess;
+                    withBlock.TableName = param.TableName;
+                    withBlock.TableId = param.KeyValue;
+                    withBlock.ClientIpAddress = "00:00";
+                    withBlock.ActionType = AuditType.WebAccessActionType.UpdateRecord;
+                    withBlock.AfterData = param.AfterDataTrimmed;
+                    withBlock.BeforeData = param.BeforeDataTrimmed;
+                }
+
+                Auditing.AuditUpdates(AuditType.WebAccess, req.passport);
+
+                LinkScriptRunAfterEdit(result, model, req);
+
+                string retentionCode = Query.SetRetentionCode(param.TableName, param.TableInfo, param.KeyValue, req.passport);
+                DataRow row = Navigation.GetSingleRow(param.TableInfo, param.KeyValue, param.KeyField, req.passport);
+                Tracking.SetRetentionInactiveFlag(param.TableInfo, row, retentionCode, req.passport);
+                model.gridDatabinding = await GetLastRowadded(param, req);
+            }
+            else
+            {
+                model.Msg = "You do not have sufficient Permission to Edit";
+                model.isError = true;
+                return;
+            }
+            model.Msg = "success";
+        }
+        private void LinkScriptRunBeforeEdit(ScriptReturn result, Saverows model, DatabaseChangesReq req)
+        {
+            result = ScriptEngine.RunScriptBeforeEdit(model.TableName, model.keyvalue, req.passport);
+            model.scriptReturn.Successful = result.Successful;
+            model.scriptReturn.GridRefresh = result.GridRefresh;
+            model.scriptReturn.ReturnMessage = result.ReturnMessage;
+            // check if there is a script and if script is not finished
+            // check if script doesn't need any user interaction.
+            if (result.Engine is not null)
+            {
+                model.LinkScriptSession = result.Engine;
+                if (result.Engine.ShowPromptBool)
+                {
+                    model.scriptReturn.isBeforeEditLinkScript = true;
+                    model.scriptReturn.ScriptName = result.Engine.ScriptName;
+                }
+                else
+                {
+                    model.scriptReturn.isBeforeEditLinkScript = false;
+                    model.scriptReturn.ScriptName = "";
+                }
+            }
+            else
+            {
+                model.scriptReturn.isBeforeEditLinkScript = false;
+                model.scriptReturn.ScriptName = "";
+            }
+            if (!model.scriptReturn.Successful)
+                return;
+
+        }
+        private void LinkScriptRunAfterEdit(ScriptReturn result, Saverows model, DatabaseChangesReq req)
+        {
+            result = ScriptEngine.RunScriptAfterEdit(model.TableName, model.keyvalue, req.passport);
+            model.scriptReturn.Successful = result.Successful;
+            model.scriptReturn.GridRefresh = result.GridRefresh;
+            model.scriptReturn.ReturnMessage = result.ReturnMessage;
+            if (result.Engine is not null)
+            {
+                model.LinkScriptSession = result.Engine;
+                if (result.Engine.ShowPromptBool)
+                {
+                    model.scriptReturn.isAfterEditLinkScript = true;
+                    model.scriptReturn.ScriptName = result.Engine.ScriptName;
+                }
+            }
+        }
+        private async Task<GridDataBinding> GetLastRowadded(Parameters param, DatabaseChangesReq req)
+        {
+            //GridDataBinding q = new GridDataBinding();
+            var _query = new Query(req.passport);
+            //var q = new GridDataBinding(_passport, _viewId, 1, crumbLevel, (int)ViewType.FusionView, childkeyfield, _httpContext);
+            var model = new GridDataBinding();
+            model.IsWhereClauseRequest = true;
+            if (Navigation.IsAStringType(param.IdFieldDataType) || Navigation.IsADateType(param.IdFieldDataType))
+            {
+                model.WhereClauseStr = string.Format("SELECT [{0}] FROM [{1}] where [{0}] = '{2}'", Navigation.MakeSimpleField(param.KeyField), param.TableName, param.KeyValue.Replace("'", "''"));
+            }
+            else
+            {
+                model.WhereClauseStr = string.Format("SELECT [{0}] FROM [{1}] where [{0}] = {2}", Navigation.MakeSimpleField(param.KeyField), param.TableName, param.KeyValue);
+            }
+
+            var q = new SearchQueryRequestModal();
+            q.passport = req.passport;
+            q.paramss.ViewId = req.paramss.ViewId;
+            q.paramss.ChildKeyField = req.paramss.childkeyfield;
+            q.DateFormat = req.DateFormat;
+            await BuildNewTableData(q, model);
+
+            if (model.ListOfDatarows.Count == 0)
+            {
+                return model;
+            }
+            int counter = 0;
+            foreach (TableHeadersProperty f in model.ListOfHeaders)
+            {
+                string value = model.ListOfDatarows[0][counter];
+                if (f.DataTypeFullName == "System.DateTime" && !string.IsNullOrWhiteSpace(value))
+                {
+                    model.ListOfDatarows[0][counter] = DateTime.Parse(value.ToString()).ToString(req.DateFormat);
+                }
+                counter = counter + 1;
+            }
+
+            return model;
+        }
+        private void LinkScriptRunBeforeAdd(ScriptReturn result, Saverows model, DatabaseChangesReq req)
+        {
+            result = ScriptEngine.RunScriptBeforeAdd(model.TableName, req.passport);
+            model.scriptReturn.Successful = result.Successful;
+            model.scriptReturn.GridRefresh = result.GridRefresh;
+            model.scriptReturn.ReturnMessage = result.ReturnMessage;
+            // check if there is a script and if script is not finished
+            // check if script doesn't need any user interaction.
+            if (result.Engine is not null)
+            {
+                model.LinkScriptSession = result.Engine;
+                if (result.Engine.ShowPromptBool)
+                {
+                    model.scriptReturn.isBeforeAddLinkScript = true;
+                    model.scriptReturn.ScriptName = result.Engine.ScriptName;
+                }
+                else
+                {
+                    model.scriptReturn.isBeforeAddLinkScript = false;
+                    model.scriptReturn.ScriptName = "";
+                }
+            }
+
+            if (!model.scriptReturn.Successful)
+                return;
+        }
+        private void LinkScriptRunAfterAdd(ScriptReturn result, Saverows model, DatabaseChangesReq req)
+        {
+            result = ScriptEngine.RunScriptAfterAdd(model.TableName, model.keyvalue, req.passport);
+            model.scriptReturn.Successful = result.Successful;
+            model.scriptReturn.GridRefresh = result.GridRefresh;
+            model.scriptReturn.ReturnMessage = result.ReturnMessage;
+            model.scriptReturn.keyValue = model.keyvalue;
+            if (result.Engine is not null)
+            {
+                model.LinkScriptSession = result.Engine;
+                if (result.Engine.ShowPromptBool)
+                {
+                    model.scriptReturn.isAfterAddLinkScript = true;
+                    model.scriptReturn.ScriptName = result.Engine.ScriptName;
+                }
+            }
+        }
+        private List<FieldValue> DataFieldValues(DatabaseChangesReq p)
+        {
+            var lst = new List<FieldValue>();
+            foreach (var row in p.Rowdata)
+            {
+                if (!string.IsNullOrEmpty(row.columnName) && !string.IsNullOrEmpty(row.DataTypeFullName))
+                {
+                    // If param.KeyField = row.columnName Then
+                    // param.KeyValue = row.value
+                    // End If
+                    var field = new FieldValue(row.columnName, row.DataTypeFullName);
+                    if (row.value is null)
+                    {
+                        field.value = "";
+                    }
+                    else if (row.DataTypeFullName == "System.DateTime")
+                    {
+                        field.value = DateTime.Parse(row.value.ToString()).ToString(p.DateFormat);
+                    }
+                    else
+                    {
+                        field.value = row.value;
+
+                    }
+                    lst.Add(field);
+                }
+            }
+            return lst;
+        }
+        private void CheckBoxesconditions(dynamic @params, GlobalSearchReqModel req)
+        {
+            if (req.paramss.ChkUnderRow)
+            {
+                @params.Scope = ScopeEnum.Node;
+                if (@params.TableName is not null && !string.IsNullOrEmpty(@params.TableName))
+                {
+                    @params.ChangeViewID(@params.ViewId);
+                }
+                @params.CursorValue = req.paramss.Currentrow;
+            }
+            else if (req.paramss.ChkcurTable)
+            {
+                @params.Scope = ScopeEnum.Table;
+                if (@params.TableName is not null && !string.IsNullOrEmpty(@params.TableName))
+                {
+                    @params.ChangeViewID(Navigation.GetTableFirstSearchableViewId(@params.TableName, req.passport));
+                }
+            }
+            else
+            {
+                @params.Scope = ScopeEnum.Database;
+            }
+        }
+        private async Task<int> SaveSavedCriteria(int userId, string pErrorMessage, string FavouriteName, int pViewId, string ConnectionString)
+        {
+            s_SavedCriteria ps_SavedCriteria = new s_SavedCriteria();
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+
+                ps_SavedCriteria.UserId = userId;
+                ps_SavedCriteria.SavedName = FavouriteName;
+                ps_SavedCriteria.SavedType = (int)Enums.SavedType.Favorite;
+                ps_SavedCriteria.ViewId = pViewId;
+                context.s_SavedCriteria.Add(ps_SavedCriteria);
+                await context.SaveChangesAsync();
+            }
+
+            return ps_SavedCriteria.Id;
+        }
+        private async Task<bool> SaveSavedChildrenFavourite(string pErrorMessage, bool isNewRecord, int ps_SavedCriteriaId, int pViewId, List<string> lSelectedItemList, string ConnectionString)
+        {
+            var IsSuccess = false;
+
+            using (var context = new TABFusionRMSContext(ConnectionString))
+            {
+                List<s_SavedChildrenFavorite> ls_SavedChildrenFavorite = new List<s_SavedChildrenFavorite>();
+                var Lists_SavedChildrenFavorite = await context.s_SavedChildrenFavorite.ToListAsync();
+                var Lists_SavedCriteria = await context.s_SavedCriteria.ToListAsync();
+
+                var finalOutPut = from child in Lists_SavedChildrenFavorite
+                                  join par in Lists_SavedCriteria
+                                  on child.SavedCriteriaId equals par.Id
+                                  where par.Id == Convert.ToInt32(child.SavedCriteriaId)
+                                  select new { par.ViewId, child.TableId, par.Id };
+
+                foreach (string tableId in lSelectedItemList)
+                {
+                    if (isNewRecord | !(finalOutPut.Any(x => x.TableId == tableId && x.ViewId == pViewId && x.Id == ps_SavedCriteriaId)))
+                    {
+                        s_SavedChildrenFavorite ps_SavedChildrenFavorite = new s_SavedChildrenFavorite();
+                        ps_SavedChildrenFavorite.SavedCriteriaId = ps_SavedCriteriaId;
+                        ps_SavedChildrenFavorite.TableId = tableId;
+                        ls_SavedChildrenFavorite.Add(ps_SavedChildrenFavorite);
+                        await context.SaveChangesAsync();
+                    }
+                }
+
+                context.s_SavedChildrenFavorite.AddRange(ls_SavedChildrenFavorite);
+                await context.SaveChangesAsync();
+
+                IsSuccess = true;
+            }
+
+            return IsSuccess;
+        }
+        private void GetTrackingInfo(TrackingModeld model, trackableUiParams props)
+        {
+            var @params = new Parameters(props.ViewId, props.passport);
+            Dictionary<string, string> argidsByTable = null;
+            var tracks = Tracking.GetTrackableStatus(Navigation.GetViewTableName(props.ViewId, props.passport), props.RowKeyid.ToString(), props.passport, idsByTable: ref argidsByTable);
+            if (tracks is null | @params.NewRecord)
+            {
+                model.lblTracking = "Never Tracked";
+            }
+            else
+            {
+                model.lblTrackTime = string.Format("{0} by {1}", tracks[0].TransactionDate.ToString(props.DateFormat), tracks[0].UserName.ToString());
+                foreach (Container cont in tracks[0].Containers)
+                {
+                    model.lblTracking += Navigation.GetItemName(cont.Type, cont.ID.ToString(), props.passport, true) + "<br>";
+                    switch (cont.OutType)
+                    {
+                        case 0:
+                            {
+                                string trackingField = Navigation.GetTableInfo(cont.Type, props.passport)["TrackingOutFieldName"].ToString();
+                                if (!string.IsNullOrEmpty(trackingField) && Convert.ToBoolean(Navigation.GetSingleFieldValue(cont.Type, cont.ID, trackingField, props.passport)[0]))
+                                {
+                                    model.lblDueBack = "Out".ToUpper();
+                                    if (Convert.ToBoolean(Navigation.GetSystemSetting("DateDueOn", props.passport)))
+                                    {
+                                        if (!tracks[0].DateDue.Equals(new DateTime()))
+                                            model.lblDueBack = "";
+                                        model.lblDueBack += string.Format("{0} Due back on {1}", " - ", tracks[0].DateDue.ToString(props.DateFormat));
+                                    }
+                                }
+                                else
+                                {
+                                    model.lblDueBack = "In".ToUpper();
+                                }
+
+                                break;
+                            }
+                        case 1:
+                            {
+                                model.lblDueBack = "Out".ToUpper() + " ";
+                                if (Convert.ToBoolean(Navigation.GetSystemSetting("DateDueOn", props.passport)))
+                                {
+                                    if (!tracks[0].DateDue.Equals(new DateTime()))
+                                        model.lblDueBack += string.Format("{0} Due back on {1}", " - ", tracks[0].DateDue.ToString(props.DateFormat));
+                                }
+
+                                break;
+                            }
+                        case 2:
+                            {
+                                model.lblDueBack = "In".ToUpper();
+                                break;
+                            }
+                    }
+                }
+            }
+        }
+        private void GetRequestWaitlist(TrackingModeld model, trackableUiParams props)
+        {
+            var requests = new Requesting();
+            string trckid = props.RowKeyid.ToString();
+            foreach (Request req in requests.GetActiveRequests(props.ViewId, trckid, props.passport))
+            {
+                var rmodel = new Requestlist();
+                rmodel.DateRequested = req.DateRequested.ToString(props.DateFormat);
+                rmodel.EmployeeName = req.Name;
+                rmodel.DateNeeded = req.DateNeeded.ToString(props.DateFormat);
+                rmodel.Status = req.Status;
+                rmodel.reqid = req.RequestID.ToString();
+                model.ListofRequests.Add(rmodel);
+
+                if (props.passport.CheckPermission(" Requestor", SecureObject.SecureObjectType.Reports, Permissions.Permission.Configure))
+                {
+                    model.isDeleteAllow = true;
+                }
+            }
 
         }
         private async Task GetLicense(TabquikApi model, TabquickpropUI props, SqlConnection conn)
@@ -912,13 +2853,13 @@ namespace MSRecordsEngine.Services
                             if (row.values.Contains("|"))
                             {
                                 var dt = row.values.Split('|');
-                                string checkFieldDateStart = MSRecordsEngine.RecordsManager.DateFormat.get_ConvertCultureDate(dt[0].ToString());
-                                string checkFieldDateEnd = MSRecordsEngine.RecordsManager.DateFormat.get_ConvertCultureDate(dt[1].ToString());
+                                string checkFieldDateStart = DateTime.Parse(dt[0].ToString()).ToString(props.DateFormat);
+                                string checkFieldDateEnd = DateTime.Parse(dt[1].ToString()).ToString(props.DateFormat);
                                 fv.value = string.Format("{0}|{1}", checkFieldDateStart, checkFieldDateEnd);
                             }
                             else
                             {
-                                fv.value = MSRecordsEngine.RecordsManager.DateFormat.get_ConvertCultureDate(row.values.ToString());
+                                fv.value = DateTime.Parse(row.values.ToString()).ToString(props.DateFormat);
                             }
                         }
                         else
@@ -955,7 +2896,7 @@ namespace MSRecordsEngine.Services
                 m.MyqueryList.Add(myq);
             }
         }
-        private static bool ShowColumn(DataColumn col, int crumblevel, string parentField)
+        private bool ShowColumn(DataColumn col, int crumblevel, string parentField)
         {
             switch (Convert.ToInt32(col.ExtendedProperties["columnvisible"]))
             {
@@ -1228,4 +3169,5 @@ namespace MSRecordsEngine.Services
         }
 
     }
+
 }

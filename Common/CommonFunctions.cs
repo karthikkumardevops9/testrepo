@@ -13,7 +13,7 @@ using static MSRecordsEngine.RecordsManager.DateFormat;
 using System.Threading;
 using System.Collections;
 
-public sealed class CommonFunctions
+public static class CommonFunctions
 {
     private static IDbConnection CreateConnection(string connectionString)
             => new SqlConnection(connectionString);
@@ -594,6 +594,21 @@ public sealed class CommonFunctions
             sReturnErrorMessage = ex.Message;
         }
         return sReturnErrorMessage;
+    }
+    public static string ToClientDateFormats(this DateTime dt)
+    {
+        return string.Format(CultureInfo.CurrentCulture, "{0:d}", dt);
+    }
+    public static DateTime ConvertStringToCulture(string date, string dateformat, string culture = null)
+    {
+        if(culture == null)
+        {
+            return DateTime.ParseExact(date, dateformat, CultureInfo.CurrentCulture);
+        }
+        else
+        {
+            return DateTime.ParseExact(date, dateformat, new CultureInfo($"{culture}"));
+        }
     }
 }
 
