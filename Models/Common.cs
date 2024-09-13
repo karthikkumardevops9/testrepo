@@ -65,6 +65,118 @@ namespace MSRecordsEngine.Models
         public const string SECURE_REPORTS = "Reports";
     }
 
+    public class GridSettingsColumns
+    {
+        public bool hidden
+        {
+            get
+            {
+                return m_hidden;
+            }
+            set
+            {
+                m_hidden = value;
+            }
+        }
+        private bool m_hidden;
+        public string index
+        {
+            get
+            {
+                return m_index;
+            }
+            set
+            {
+                m_index = value;
+            }
+        }
+        private string m_index;
+        public bool key
+        {
+            get
+            {
+                return m_key;
+            }
+            set
+            {
+                m_key = value;
+            }
+        }
+        private bool m_key;
+        public string name
+        {
+            get
+            {
+                return m_name;
+            }
+            set
+            {
+                m_name = value;
+            }
+        }
+        private string m_name;
+        public bool resizable
+        {
+            get
+            {
+                return m_resizable;
+            }
+            set
+            {
+                m_resizable = value;
+            }
+        }
+        private bool m_resizable;
+        public bool sortable
+        {
+            get
+            {
+                return m_sortable;
+            }
+            set
+            {
+                m_sortable = value;
+            }
+        }
+        private bool m_sortable;
+        public bool title
+        {
+            get
+            {
+                return m_title;
+            }
+            set
+            {
+                m_title = value;
+            }
+        }
+        private bool m_title;
+        public int width
+        {
+            get
+            {
+                return m_width;
+            }
+            set
+            {
+                m_width = value;
+            }
+        }
+        private int m_width;
+        public int widthOrg
+        {
+            get
+            {
+                return m_widthOrg;
+            }
+            set
+            {
+                m_widthOrg = value;
+            }
+        }
+        private int m_widthOrg;
+    }
+
     public class Enums
     {
         public enum meFieldTypes

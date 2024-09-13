@@ -98,6 +98,10 @@ namespace MSRecordsEngine.RecordsManager
                                 try
                                 {
                                     string eventType = row["RetentionEventType"].ToString();
+                                    if (eventType.Trim().ToUpper() == "N/A")
+                                    {
+                                        eventType = row["InactivityEventType"].ToString();
+                                    }
 
                                     switch (eventType)
                                     {

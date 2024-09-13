@@ -70,4 +70,17 @@ namespace MSRecordsEngine.Models
         public string Status { get; set; }
         public string reqid { get; set; }
     }
+
+    public class InnerTruncateTrackingHistory_Response
+    {
+        public bool Success { get; set; }
+        public string KeysType { get; set; }
+    }
+
+    public class CheckaddNewAttachmentPermission_Response
+    {
+        public bool Success { get; set; }
+        public int ErrorNumber { get; set; }
+        public string ExpMaxSize { get; set; }
+    }
 }
