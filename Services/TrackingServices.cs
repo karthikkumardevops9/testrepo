@@ -2,6 +2,7 @@
 using Microsoft.VisualBasic;
 using MSRecordsEngine.Entities;
 using MSRecordsEngine.Models;
+using MSRecordsEngine.Repository;
 using MSRecordsEngine.Services.Interface;
 using Smead.Security;
 using System;
@@ -10,6 +11,7 @@ using System.Data;
 using System.Data.Entity;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace MSRecordsEngine.Services
@@ -268,6 +270,98 @@ namespace MSRecordsEngine.Services
             {
                 throw;
             }
+        }
+
+        public async Task<InnerTruncateTrackingHistory_Response> InnerTruncateTrackingHistory(string ConnectionString, List<MSRecordsEngine.Entities.System> iSystemQuery, string sTableName, [Optional, DefaultParameterValue("")] string sId, [Optional, DefaultParameterValue("")] string KeysType)
+        {
+            var model = new InnerTruncateTrackingHistory_Response();
+            bool returnFlag = true;
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystem = iSystemQuery.OrderBy(m => m.Id).FirstOrDefault();
+
+                    if ((bool)(0 is var arg18 && pSystem.MaxHistoryDays is { } arg17 ? arg17 > arg18 : (bool?)null))
+                    {
+                        var dMaxDate = DateTime.FromOADate((double)(DateTime.Now.ToOADate() - pSystem.MaxHistoryDays - 1));
+                        var dUTC = dMaxDate.ToUniversalTime();
+                        if (!string.IsNullOrEmpty(sTableName))
+                        {
+                            var pTrackingHistory = await context.TrackingHistories.Where(m => m.TransactionDateTime < dUTC && (m.TrackedTable.Trim().ToLower().Equals(sTableName.Trim().ToLower()) && m.TrackedTableId.Trim().ToLower().Equals(sId.Trim().ToLower()))).ToListAsync();
+                            if (pTrackingHistory.Count() == 0)
+                            {
+                                KeysType = "w";
+                            }
+                            else
+                            {
+                                context.TrackingHistories.RemoveRange(pTrackingHistory);
+                                await context.SaveChangesAsync();
+                                KeysType = "s";
+                            }
+                        }
+                        else
+                        {
+                            var pTrackingHistory = await context.TrackingHistories.Where(m => m.TransactionDateTime < dUTC).Take(100).ToListAsync();
+
+                            if (pTrackingHistory.Count() != 0)
+                            {
+                                context.TrackingHistories.RemoveRange(pTrackingHistory);
+                                await context.SaveChangesAsync();
+                                KeysType = "s";
+                            }
+                            else
+                            {
+                                KeysType = "w";
+                            }
+                        }
+                    }
+
+                    if ((bool)(0 is var arg26 && pSystem.MaxHistoryItems is { } arg25 ? arg25 > arg26 : (bool?)null))
+                    {
+                        if (string.IsNullOrEmpty(sTableName))
+                        {
+                            var trackHistory = await context.TrackingHistories.ToListAsync();
+                            var sSQL = (from tq in trackHistory
+                                        group tq by new { tq.TrackedTable, tq.TrackedTableId } into tGroup
+                                        let groupName = tGroup.Key
+                                        let TableIdCount = tGroup.Count()
+                                        orderby groupName.TrackedTableId, groupName.TrackedTable descending
+                                        select new { TableIdCount, groupName.TrackedTable, groupName.TrackedTableId }).ToList();
+                            if (sSQL is not null)
+                            {
+                                foreach (var Tracking in sSQL)
+                                {
+                                    if ((bool)(Tracking.TableIdCount is var arg27 && pSystem.MaxHistoryItems is { } arg28 ? arg27 < arg28 : (bool?)null))
+                                    {
+                                    }
+                                    // KeysType = "w"
+                                    else
+                                    {
+                                        var delExtraTrackingHistory = await DeleteExtraTrackingHistory(ConnectionString, iSystemQuery, Tracking.TrackedTable, Tracking.TrackedTableId, KeysType);
+                                        returnFlag = delExtraTrackingHistory.Success;
+                                        KeysType = delExtraTrackingHistory.KeysType;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var delExtraTrackingHistory = await DeleteExtraTrackingHistory(ConnectionString, iSystemQuery, sTableName, sId, KeysType);
+                            returnFlag = delExtraTrackingHistory.Success;
+                            KeysType = delExtraTrackingHistory.KeysType;
+                        }
+                    }
+
+                }
+                model.Success = returnFlag;
+                model.KeysType = KeysType;
+            }
+            catch (Exception)
+            {
+                model.Success = false;
+            }
+            return model;
         }
 
         public BuildTrackingLocationSQL BuildTrackingLocationSQL(List<Table> itableQuery, string ConnectionString, string sCurrentSQL, Table oTables)
@@ -535,6 +629,70 @@ namespace MSRecordsEngine.Services
             model.Tables = oTables;
             model.Joins = sJoins;
             return model;
+        }
+
+        private async Task<InnerTruncateTrackingHistory_Response> DeleteExtraTrackingHistory(string ConnectionString, List<MSRecordsEngine.Entities.System> iSystemQuery, string sTableName, string sId, [Optional, DefaultParameterValue("")] string KeysType)
+        {
+            var model = new InnerTruncateTrackingHistory_Response();
+            try
+            {
+                using (var context = new TABFusionRMSContext(ConnectionString))
+                {
+                    var pSystem = iSystemQuery.OrderBy(m => m.Id).FirstOrDefault();
+                    int pSystem1 = Convert.ToInt32(pSystem.MaxHistoryItems);
+
+                    var sSqlExtra = from tMain in context.TrackingHistories
+                                    where (tMain.TrackedTable ?? "") == (sTableName.Trim() ?? "")
+                                            & (tMain.TrackedTableId.Trim().ToLower() ?? "") == (sId.Trim().ToLower() ?? "")
+                                            && !(from tSub in context.TrackingHistories
+                                                 where (tSub.TrackedTable.Trim().ToLower() ?? "") == (sTableName.Trim().ToLower() ?? "")
+                                                 & (tSub.TrackedTableId.Trim().ToLower() ?? "") == (sId.Trim().ToLower() ?? "")
+                                                 orderby tSub.TransactionDateTime descending
+                                                 select tSub.Id)
+                                                 .Take(pSystem1)
+                                                 .Contains(tMain.Id)
+                                    select tMain;
+
+                    for (int index = 1; index <= 2; index++)
+                    {
+                        var sSqlTotal = (from tMain in context.TrackingHistories
+                                         where (tMain.TrackedTable ?? "") == (sTableName ?? "") && (tMain.TrackedTableId ?? "") == (sId ?? "")
+                                         group tMain by new { tMain.TrackedTableId, tMain.TrackedTable } into tGroup
+                                         let groupName = tGroup.Key
+                                         let TotalCount = tGroup.Count()
+                                         select new { TotalCount }).ToList();
+
+
+                        if (sSqlTotal != null)
+                        {
+                            if (!(sSqlTotal.Count() == 0))
+                            {
+                                foreach (var totalVar in sSqlTotal)
+                                {
+                                    if ((bool)(totalVar.TotalCount is var arg15 && pSystem.MaxHistoryItems is { } arg16 ? arg15 >= arg16 : (bool?)null))
+                                    {
+                                        //_iTrackingHistory.DeleteRange(sSqlExtra);
+                                        context.TrackingHistories.RemoveRange(sSqlExtra);
+                                        await context.SaveChangesAsync();
+                                    }
+                                }
+                                model.KeysType = "s";
+                            }
+                            else
+                            {
+                                model.KeysType = "w";
+                            }
+                        }
+                    }
+                    model.Success = true;
+                    return model;
+                }
+            }
+            catch (Exception)
+            {
+                model.Success = false;
+                return model;
+            }
         }
     }
 }
