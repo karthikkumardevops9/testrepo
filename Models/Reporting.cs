@@ -5,10 +5,11 @@ using System.Collections;
 using System.Data;
 using System;
 using System.Globalization;
+using MSRecordsEngine.Models.FusionModels;
 
-namespace MSRecordsEngine.Models.FusionModels
+namespace MSRecordsEngine.Models
 {
-    public class ReportingMenu :BaseModel
+    public class ReportingMenu : BaseModel
     {
         public string AccessMenu { get; set; }
         public string dateFormat { get; set; }
@@ -102,7 +103,7 @@ namespace MSRecordsEngine.Models.FusionModels
         public RetentionButtons Destruction { get; set; }
         public RetentionButtons SubmitDisposition { get; set; }
     }
-        public class RetentionButtons : BaseModel
+    public class RetentionButtons : BaseModel
     {
         public RetentionButtons()
         {
@@ -142,10 +143,10 @@ namespace MSRecordsEngine.Models.FusionModels
     }
     public class PagingModel
     {
-        public int TotalPage;
-        public int TotalRecord;
-        public int PerPageRecord = 100;
-        public int PageNumber;
+        public int TotalPage { get; set; }
+        public int TotalRecord { get; set; }
+        public int PerPageRecord { get; set; }
+        public int PageNumber { get; set; }
     }
     public class items
     {

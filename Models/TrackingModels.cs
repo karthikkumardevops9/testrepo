@@ -33,8 +33,12 @@ namespace MSRecordsEngine.Models
         public string SecondLookupHeading { get; set; }
         public DataTable Table { get; set; }
     }
-    public class TrackingModel : BaseModel
+    public class TrackingModeld
     {
+        public TrackingModeld()
+        {
+            ListofRequests = new List<Requestlist>();
+        }
         private Parameters @params { get; set; }
         private int ViewId { get; set; }
         private string TrackRowId { get; set; }
@@ -54,13 +58,15 @@ namespace MSRecordsEngine.Models
         public string RequestExceptionButtonLabel { get; set; }
         public string imgRequestExceptionButton { get; set; }
         public string ancRequestExceptionButton { get; set; }
+        public bool isError {  get; set; }
+        public string Msg { get; set; }
     }
-    public class trackableUiParams
-    {
-        public int ViewId { get; set; }
-        public string RowKeyid { get; set; }
-        public string TableName { get; set; }
-    }
+    //public class trackableUiParams
+    //{
+    //    public int ViewId { get; set; }
+    //    public string RowKeyid { get; set; }
+    //    public string TableName { get; set; }
+    //}
 
     public class Requestlist
     {

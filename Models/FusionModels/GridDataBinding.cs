@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace MSRecordsEngine.Models.FusionModels
 {
-    public class GridDataBinding : BaseModel
+    public class GridDataBinding
     {
         public GridDataBinding()
         {
@@ -24,7 +24,6 @@ namespace MSRecordsEngine.Models.FusionModels
             RightClickToolBar = new RightclickToolBar();
 
         }
-        internal Parameters @params { get; set; }
         public int fViewType;
         private TableColums Cell;
         private List<string> ListOfColumn { get; set; }
@@ -34,13 +33,13 @@ namespace MSRecordsEngine.Models.FusionModels
 
         //[JsonIgnore]
         //public IRepository<View> _iView { get; set; }
-        internal string WhereClauseStr { get; set; }
-        internal bool IsWhereClauseRequest { get; set; } = false;
-        internal bool GsIsGlobalSearch { get; set; } = false;
-        internal string GsKeyvalue { get; set; }
-        internal string GsSearchText { get; set; }
-        internal bool GsIsAllGlobalRequest { get; set; }
-        internal bool GsIncludeAttchment { get; set; }
+        public string WhereClauseStr { get; set; }
+        public bool IsWhereClauseRequest { get; set; } = false;
+        public bool GsIsGlobalSearch { get; set; } = false;
+        public string GsKeyvalue { get; set; }
+        public string GsSearchText { get; set; }
+        public bool GsIsAllGlobalRequest { get; set; }
+        public bool GsIncludeAttchment { get; set; }
         public string ToolBarHtml { get; set; }
         public List<FieldValue> fvList { get; set; }
         public List<TableHeadersProperty> ListOfHeaders { get; set; }

@@ -106,9 +106,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("DeleteTrackingRequest")]
         [HttpPost]
-        public TrackingModel DeleteTrackingRequest(DeleteTrackingRequestParam param)
+        public TrackingModeld DeleteTrackingRequest(DeleteTrackingRequestParam param)
         {
-            var model = new TrackingModel();
+            var model = new TrackingModeld();
             model.isDeleteAllow = true;
             try
             {
@@ -138,9 +138,9 @@ namespace MSRecordsEngine.Controllers
 
         [Route("UpdateRequest")]
         [HttpPost]
-        public TrackingModel UpdateRequest(UpdateRequestParam param)
+        public TrackingModeld UpdateRequest(UpdateRequestParam param)
         {
-            var model = new TrackingModel();
+            var model = new TrackingModeld();
             try
             {
                 Requesting.UpdateRequest(Convert.ToInt32(param.req.RequestID), param.req.Fulfilled, param.req.isException, param.req.txtComment, param.passport);
