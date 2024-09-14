@@ -33,7 +33,7 @@ namespace MSRecordsEngine.Models
         public retentionArchive RetentionArchive { get; set; }
         public string rowid { get; set; }
         public int viewid { get; set; }
-        public DataRow retentionItemRow { get; set; }
+        internal DataRow retentionItemRow { get; set; }
         public string selectedItemText { get; set; }
         public List<string> HoldingTable { get; set; }
         public List<List<string>> ListOfRows { get; set; }
