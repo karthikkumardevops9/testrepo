@@ -2,7 +2,7 @@
 
 namespace MSRecordsEngine.Models.FusionModels
 {
-    public class NewSLDestructCertItem : SLDestructCertItem
+    public class NewSLDestructCertItem
     {
         private string _holdType;
         public string HoldType
