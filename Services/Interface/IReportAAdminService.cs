@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace MSRecordsEngine.Services.Interface
 {
-    public interface IReportService
+    public interface IReportAAdminService
     {
         public string GetBindReportsMenus(string root, List<Table> lTableEntities, List<View> lViewEntities,
             List<ReportStyle> lReportStyleEntities, Passport _passport, int iCntRpt);
