@@ -37,7 +37,7 @@ namespace MSRecordsEngine.Controllers
     public class AdminController : ControllerBase
     {
         private readonly CommonControllersService<AdminController> _commonService;
-        private readonly IReportService _reportService;
+        private readonly IReportAAdminService _reportService;
         private readonly IViewService _viewService;
         private readonly IDataServices _dataServices;
         private readonly ITrackingServices _trackingServices;
@@ -46,7 +46,7 @@ namespace MSRecordsEngine.Controllers
         private IDbConnection CreateConnection(string connectionString)
             => new SqlConnection(connectionString);
         public AdminController(CommonControllersService<AdminController> commonControllersService,
-                               IReportService reportService,
+                               IReportAAdminService reportService,
                                IViewService viewService,
                                IDataServices dataServices,
                                ITrackingServices trackingServices,
@@ -4598,7 +4598,7 @@ namespace MSRecordsEngine.Controllers
                             }
                             if (ShouldIncludeLocation)
                             {
-                                FieldNameList.Add(new KeyValuePair<string, string>(ReportsService.TRACKED_LOCATION_NAME, ReportsService.TRACKED_LOCATION_NAME));
+                                FieldNameList.Add(new KeyValuePair<string, string>(ReportsAdminService.TRACKED_LOCATION_NAME, ReportsAdminService.TRACKED_LOCATION_NAME));
                             }
 
                             break;
@@ -6403,7 +6403,7 @@ namespace MSRecordsEngine.Controllers
                     if (LookupType == Enums.geViewColumnsLookupType.ltLookup)
                     {
                         lError = 1L;
-                        lError = Convert.ToInt64(ReportsService.mcLevel[FieldName]);
+                        lError = Convert.ToInt64(ReportsAdminService.mcLevel[FieldName]);
                         if (lError == 1L)
                         {
                             editSettings["DropDown"] = true;

@@ -10,7 +10,7 @@ namespace MSRecordsEngine.Services
         {
             //register your service here...
             services.AddTransient<IDataServices, DataServices>();
-            services.AddTransient<IReportService, ReportsService>();
+            services.AddTransient<IReportAAdminService, ReportsAdminService>();
             services.AddTransient<ITrackingServices, TrackingServices>();
             services.AddTransient<IViewService, ViewService>();
             services.AddTransient<IExporterService, ExporterService>();
@@ -20,6 +20,7 @@ namespace MSRecordsEngine.Services
             services.AddTransient<IDatabaseMapService, DatabaseMapService>();
             services.AddTransient<ILayoutDataService, LayoutDataService>();
             services.AddTransient<IDataGridService,  DataGridService>();
+            services.AddTransient<IReportsService, ReportsService>();
         }
     }
 }

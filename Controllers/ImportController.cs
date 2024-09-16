@@ -96,7 +96,7 @@ namespace MSRecordsEngine.Controllers
         {
             try
             {
-                Tracking.Transfer(
+               await Tracking.TransferAsync(
                     doTransferParam.TableName,
                     doTransferParam.TableId,
                     doTransferParam.DestinationTableName,

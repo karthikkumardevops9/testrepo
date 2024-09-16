@@ -1805,11 +1805,358 @@ namespace MSRecordsEngine.RecordsManager
                 throw new Exception(result.ReturnMessage);
         }
 
+        public async static Task TransferAsync(string trackableTableName, string trackableId, string destinationTableName, string destinationId, DateTime DueBackDate, string userName, Passport passport, SqlConnection conn, string trackingAdditionalField1 = null, string trackingAdditionalField2 = null, bool IsTransferedFromBackground = false, DateTime dtTransactionDateTime = default)
+        {
+
+            if (!passport.CheckPermission(trackableTableName, SecureObject.SecureObjectType.Table, Permissions.Permission.View))
+                throw new Exception("Not authorized to transfer");
+            if (!passport.CheckSetting(trackableTableName, SecureObject.SecureObjectType.Table, Permissions.Permission.Transfer))
+                throw new Exception(string.Format("{0} are not transferable", trackableTableName));
+            if (!passport.CheckPermission(trackableTableName, SecureObject.SecureObjectType.Table, Permissions.Permission.Transfer))
+                throw new Exception("Not authorized to transfer");
+
+            trackableId = Navigation.PrepPad(trackableTableName, trackableId, conn);
+            destinationId = Navigation.PrepPad(destinationTableName, destinationId, conn);
+
+            string strSQL = string.Empty;
+            userName = userName.Replace("'", "''");
+            string tempSQL = "IF OBJECT_ID('tempdb..#InputRecordDataListForHistory') IS NOT NULL DROP TABLE #InputRecordDataListForHistory " + Constants.vbCrLf + "CREATE TABLE #InputRecordDataListForHistory " + Constants.vbCrLf + "( " + Constants.vbCrLf + "    ObjectTableId VARCHAR(50) COLLATE DATABASE_DEFAULT, " + Constants.vbCrLf + "    ObjectTable VARCHAR(50) COLLATE DATABASE_DEFAULT " + Constants.vbCrLf + ") " + Constants.vbCrLf + "INSERT INTO #InputRecordDataListForHistory VALUES ('{0}','{1}'); ";
+            // Create temp table for strore object ids as well as existing record in tracking status table for current object
+            string strCreateTempTableSQL = string.Format(tempSQL, trackableId, trackableTableName) + Constants.vbCrLf;
+            // Fetch trackable tables
+            string SQL = "SELECT TrackingTable,TableName,TrackingStatusFieldName,OutTable,TrackingOutFieldName,TrackingRequestableFieldName,IdFieldName FROM [dbo].[Tables] WHERE TrackingTable > 0 ORDER BY TrackingTable";
+            var TrackingTablesModel = new List<TrackingTablesModel>();
+
+            using (var cmd = new SqlCommand(SQL, conn))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var oTrackingTablesModel = new TrackingTablesModel();
+                        oTrackingTablesModel.TrackingTable = Conversions.ToInteger(reader["TrackingTable"]);
+                        oTrackingTablesModel.TableName = reader["TableName"].ToString().ToLower();
+                        oTrackingTablesModel.TrackingStatusFieldName = reader["TrackingStatusFieldName"].ToString();
+                        string outTable = reader["OutTable"].ToString();
+                        oTrackingTablesModel.OutTable = Conversions.ToShort(Interaction.IIf(string.IsNullOrEmpty(outTable), 0, outTable));
+                        oTrackingTablesModel.TrackingOutFieldName = reader["TrackingOutFieldName"].ToString();
+                        oTrackingTablesModel.TrackingRequestableFieldName = reader["TrackingRequestableFieldName"].ToString();
+                        oTrackingTablesModel.IdFieldName = reader["IdFieldName"].ToString();
+                        TrackingTablesModel.Add(oTrackingTablesModel);
+                    }
+                }
+            }
+            // Find destination table field name to exclude from build update tracking field string
+            string strDestinationTableFieldName = string.Empty;
+            var oDestinationTable = TrackingTablesModel.Where(x => (x.TableName.Trim() ?? "") == (destinationTableName.Trim().ToLower() ?? "")).FirstOrDefault();
+            if (oDestinationTable is null)
+                throw new Exception("Destination table does not exists.");
+
+            strDestinationTableFieldName = oDestinationTable.TrackingStatusFieldName.ToString().Trim();
+            // Prepare variables for dynamic fields which eligible to update in child effected records into tracking status
+            int iCount = 0;
+            string strTrackingColumnsDeclare = string.Empty;
+            string strTrackingColumnsForUpdate = string.Empty;
+            string strTrackingColumnsForUpdateValues = string.Empty;
+            string strTrackingColumnsForInsert = string.Empty;
+            string strTrackingColumnsForTrackingHistory = string.Empty;
+            string strTrackingColumnsForUpdateFromVariables = string.Empty;
+            var TrackableFieldNameList = TrackingTablesModel.Where(m => !string.IsNullOrEmpty(m.TrackingStatusFieldName)).OrderBy(x => x.TrackingTable).Select(x => x.TrackingStatusFieldName).ToList();
+            // Loop to concate fields eligible to update for current object
+            foreach (string strFieldName in TrackableFieldNameList)
+            {
+                iCount += 1;
+                if ((strFieldName.Trim().ToLower() ?? "") != (strDestinationTableFieldName.Trim().ToLower() ?? ""))
+                {
+                    strTrackingColumnsDeclare += Constants.vbCrLf + string.Format("DECLARE @v_{0} AS VARCHAR(50)", Query.ReplaceInvalidParameterCharacters(strFieldName));
+                    strTrackingColumnsForUpdate += " @v_" + Query.ReplaceInvalidParameterCharacters(strFieldName) + " = [" + strFieldName + "], ";
+                    strTrackingColumnsForUpdateFromVariables += " [" + strFieldName + "] = @v_" + Query.ReplaceInvalidParameterCharacters(strFieldName) + ", ";
+                    strTrackingColumnsForUpdateValues += " @v_" + Query.ReplaceInvalidParameterCharacters(strFieldName) + ", ";
+                    strTrackingColumnsForInsert += " [" + strFieldName + "], ";
+                }
+                // Prepared string with all trackable fields for history table updates
+                strTrackingColumnsForTrackingHistory += " [" + strFieldName + "], ";
+                // Removed extra comma from concated fields string
+                if (iCount == TrackableFieldNameList.Count)
+                {
+                    var MyChar = new[] { ',', ' ' };
+                    strTrackingColumnsForUpdate = strTrackingColumnsForUpdate.Trim().TrimEnd(MyChar);
+                    strTrackingColumnsForUpdateFromVariables = strTrackingColumnsForUpdateFromVariables.Trim().TrimEnd(MyChar);
+                    strTrackingColumnsForUpdateValues = strTrackingColumnsForUpdateValues.Trim().TrimEnd(MyChar);
+                    strTrackingColumnsForInsert = strTrackingColumnsForInsert.Trim().TrimEnd(MyChar);
+                    strTrackingColumnsForTrackingHistory = strTrackingColumnsForTrackingHistory.Trim().TrimEnd(MyChar);
+                }
+            }
+            // Set SQL string for get destination existing value from database into dynamic tracking columns
+            string strSQLSetDestinationValueInTrackableColumns = strTrackingColumnsDeclare + Constants.vbCrLf + string.Format("SELECT TOP 1 {0} FROM [dbo].[TrackingStatus] WHERE TrackedTableId = '{1}' AND TrackedTable = '{2}'", strTrackingColumnsForUpdate, destinationId, destinationTableName) + Constants.vbCrLf;
+            // Date Due manipulation and calculation before insert into table
+            string strDateDueConditionForNull = "";
+            string strDateDue = null;
+            if (DueBackDate != DateTime.MinValue)
+            {
+                var dtDateDueDestCheck = default(DateTime);
+                string SQLDueDate = string.Format("SELECT TOP 1 DateDue FROM TrackingStatus WHERE TrackedTableId='{0}' AND TrackedTable = '{1}'", destinationId, destinationTableName);
+                using (var cmd = new SqlCommand(SQLDueDate, conn))
+                {
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (!string.IsNullOrEmpty(reader["DateDue"].ToString()))
+                            {
+                                dtDateDueDestCheck = Conversions.ToDate(reader["DateDue"].ToString());
+                            }
+                        }
+                    }
+                }
+                // dtDateDueDestCheck = _iTrackingStatus.Where(Function(x) x.TrackedTableId = strDestinationTableId And x.TrackedTable = strDestinationTableName).Select(Function(x) x.DateDue).FirstOrDefault()
+                if (dtDateDueDestCheck != DateTime.MinValue)
+                {
+                    if (dtDateDueDestCheck < DueBackDate)
+                    {
+                        DueBackDate = Conversions.ToDate(dtDateDueDestCheck);
+                    }
+                }
+                strDateDue = " '" + DueBackDate.ToString("yyyy-MM-dd hh:mm:ss tt") + "' ";
+                strDateDueConditionForNull += string.Format(" DateDue = CASE WHEN (DateDue > CAST('{0}' AS DATETIME) OR DateDue IS NULL) THEN {1} ELSE DateDue END ", DueBackDate.ToString("yyyy-MM-dd hh:mm:ss tt"), strDateDue.ToString());
+            }
+            else
+            {
+                strDateDueConditionForNull += " DateDue = CASE WHEN DateDue = NULL THEN NULL ELSE DateDue END ";
+            }
+
+            // Set Transaction date if passed
+            // if its null then hardcode otherwise use the params pass
+            string strTransactionDateTime = null;
+            if (dtTransactionDateTime == default)
+            {
+                dtTransactionDateTime = DateTime.Now;
+                strTransactionDateTime = " '" + dtTransactionDateTime.ToString("yyyy-MM-dd hh:mm:ss tt") + "' ";
+            }
+            else
+            {
+                strTransactionDateTime = " '" + dtTransactionDateTime.ToString("yyyy-MM-dd hh:mm:ss tt") + "' ";
+                // strTransactionDateTime = " '" & dtTransactionDateTime.ToString() & "' "
+            }
+
+            // Tracking history only needed if we do not selected Reconciliation mode
+            TrackingTransaction.OutTypes outType;
+            var OutField = default(bool);
+            try
+            {
+                outType = (TrackingTransaction.OutTypes)(int)oDestinationTable.OutTable;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                outType = TrackingTransaction.OutTypes.UseOutField;
+            }
+
+            switch (outType)
+            {
+                case TrackingTransaction.OutTypes.UseOutField:
+                    {
+                        try
+                        {
+                            OutField = Navigation.CBoolean(Navigation.GetSingleFieldValue(destinationTableName, destinationId, oDestinationTable.TrackingOutFieldName.ToString(), passport)[0]);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine(ex.Message);
+                            OutField = false;
+                        } // No out field, assume always in
+
+                        break;
+                    }
+                case TrackingTransaction.OutTypes.AlwaysOut:
+                    {
+                        OutField = true;
+                        break;
+                    }
+                case TrackingTransaction.OutTypes.AlwaysIn:
+                    {
+                        OutField = false;
+                        break;
+                    }
+            }
+
+            string strSQLObjectDest = "";
+            string strSQLTrackingHistory = "";
+            string strTrackableFieldNameforObjectTable = "";
+            // Get container field name for Object table
+            var oObjectTable = TrackingTablesModel.Where(x => (x.TableName.Trim() ?? "") == (trackableTableName.Trim().ToLower() ?? "")).FirstOrDefault();
+            if (oObjectTable is not null) // Start : oObjectTable
+            {
+                strTrackableFieldNameforObjectTable = oObjectTable.TrackingStatusFieldName.ToString().Trim();
+                if (!string.IsNullOrEmpty(strTrackableFieldNameforObjectTable))
+                {
+                    // Query set for add existing tracking for object table into temp table
+                    tempSQL = Constants.vbCrLf + "DECLARE @tmpTblObjectDestUpdateIds AS TABLE (Id INT); " + Constants.vbCrLf + "INSERT INTO @tmpTblObjectDestUpdateIds " + Constants.vbCrLf + "SELECT Id FROM TrackingStatus " + Constants.vbCrLf + "WHERE {0} = '{1}'" + Constants.vbCrLf;
+                    strSQLObjectDest += string.Format(tempSQL, strTrackableFieldNameforObjectTable.Trim(), trackableId);
+                    // Update tracking status child records
+                    tempSQL = Constants.vbCrLf + ";UPDATE TS SET {0} = '{1}',TransactionDateTime = {2},{3},[Out] = {4}, UserName = {6} " + Constants.vbCrLf + "FROM dbo.TrackingStatus TS " + Constants.vbCrLf + "INNER JOIN @tmpTblObjectDestUpdateIds tmpID ON tmpID.Id = TS.Id " + Constants.vbCrLf + "WHERE TransactionDateTime <= CAST('{5}' AS DATETIME); " + Constants.vbCrLf;
+                    strSQLObjectDest += string.Format(tempSQL, strDestinationTableFieldName, destinationId, strTransactionDateTime, strDateDueConditionForNull, Interaction.IIf(OutField.ToString().ToLower() == "true", "1", "0"), dtTransactionDateTime.ToString("yyyy-MM-dd hh:mm:ss tt"), Interaction.IIf(string.IsNullOrEmpty(userName), "NULL", "'" + userName + "'"));
+                    // Insert child effected records into temp created tables into SQL
+                    tempSQL = Constants.vbCrLf + "INSERT INTO #InputRecordDataListForHistory " + Constants.vbCrLf + "Select TrackedTableId,TrackedTable " + Constants.vbCrLf + "FROM TrackingStatus TS " + Constants.vbCrLf + "INNER JOIN @tmpTblObjectDestUpdateIds tmpID On tmpID.Id = TS.Id;" + Constants.vbCrLf;
+                    strSQLObjectDest += tempSQL;
+                    // Update child record in tracking status
+                    string strTrackingColumnsBasedonTrackingOrder = "";
+                    int intObjectTableTrackingOrder = oObjectTable.TrackingTable;
+
+                    var oTrackingTablesBasedOnTrackingOrder = TrackingTablesModel.Where(x => x.TrackingTable < intObjectTableTrackingOrder & (x.TableName.Trim() ?? "") != (destinationTableName.Trim().ToLower() ?? "")).ToList();
+                    if (oTrackingTablesBasedOnTrackingOrder is not null)
+                    {
+                        iCount = 0;
+                        var lstringTracableFieldsNameByTrackingOrder = oTrackingTablesBasedOnTrackingOrder.Where(m => !string.IsNullOrEmpty(m.TrackingStatusFieldName)).OrderBy(x => x.TrackingTable).Select(x => x.TrackingStatusFieldName).ToList();
+                        foreach (string strFieldName in lstringTracableFieldsNameByTrackingOrder)
+                        {
+                            iCount = iCount + 1;
+                            strTrackingColumnsBasedonTrackingOrder = strTrackingColumnsBasedonTrackingOrder + " [" + strFieldName + "] = @v_" + Query.ReplaceInvalidParameterCharacters(strFieldName) + ", ";
+                            if (iCount == lstringTracableFieldsNameByTrackingOrder.Count)
+                            {
+                                var MyChar = new[] { ',', ' ' };
+                                strTrackingColumnsBasedonTrackingOrder = strTrackingColumnsBasedonTrackingOrder.Trim().TrimEnd(MyChar);
+                            }
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(strTrackingColumnsBasedonTrackingOrder))
+                    {
+                        strSQLObjectDest += Constants.vbCrLf + string.Format("UPDATE TS Set {0} FROM TrackingStatus TS INNER JOIN @tmpTblObjectDestUpdateIds tmpID On tmpID.Id = TS.Id; ", strTrackingColumnsBasedonTrackingOrder);
+                    }
+                }
+            } // End : oObjectTable
+
+            tempSQL = Constants.vbCrLf + "INSERT INTO [dbo].[TrackingHistory] ([TrackedTableId], [TrackedTable], [TransactionDateTime], [IsActualScan], [BatchId], " + Constants.vbCrLf + "[UserName], [TrackingAdditionalField1], [TrackingAdditionalField2], " + Constants.vbCrLf + "[" + strDestinationTableFieldName + "]," + strTrackingColumnsForInsert + ") " + Constants.vbCrLf + "VALUES " + Constants.vbCrLf + "('{0}', '{1}', {2}, 1, CAST({3} As VARCHAR(20)), {4} , {5}, {6} , '" + destinationId + "', {7}); ";
+            strSQLTrackingHistory += string.Format(tempSQL, trackableId, trackableTableName, Interaction.IIf(string.IsNullOrEmpty(strTransactionDateTime), "NULL", "" + strTransactionDateTime + ""), 0, Interaction.IIf(string.IsNullOrEmpty(userName), "NULL", "'" + userName + "'"), Interaction.IIf(string.IsNullOrEmpty(trackingAdditionalField1), "NULL", "'" + trackingAdditionalField1 + "'"), Interaction.IIf(string.IsNullOrEmpty(trackingAdditionalField2), "NULL", "'" + trackingAdditionalField2 + "'"), strTrackingColumnsForUpdateValues) + Constants.vbCrLf;
+
+            if (!string.IsNullOrEmpty(strTrackableFieldNameforObjectTable))
+            {
+                tempSQL = Constants.vbCrLf + "INSERT INTO TrackingHistory (TrackedTableId, TrackedTable, TransactionDateTime, IsActualScan, BatchId, UserName, TrackingAdditionalField1, TrackingAdditionalField2, {0}) " + Constants.vbCrLf + "SELECT TrackedTableId, TrackedTable, TransactionDateTime, 0,CAST({1} AS VARCHAR(20)),{3},TrackingAdditionalField1, " + Constants.vbCrLf + "TrackingAdditionalField2, {2} " + Constants.vbCrLf + "FROM TrackingStatus TS " + Constants.vbCrLf + "INNER JOIN @tmpTblObjectDestUpdateIds tmpID ON tmpID.Id = TS.Id; ";
+                strSQLTrackingHistory += string.Format(tempSQL, strTrackingColumnsForTrackingHistory, 0, strTrackingColumnsForTrackingHistory, Interaction.IIf(string.IsNullOrEmpty(userName), "NULL", "'" + userName + "'"));
+            }
+
+            bool bRecExists = false;
+            string SQLcheckExists = string.Format("SELECT Id FROM TrackingStatus WHERE TrackedTableId='{0}' AND TrackedTable = '{1}'", trackableId, trackableTableName);
+            using (var cmd = new SqlCommand(SQLcheckExists, conn))
+            {
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (reader.HasRows)
+                    {
+                        bRecExists = true;
+                    }
+                }
+            }
+
+            if (bRecExists)
+            {
+                tempSQL = Constants.vbCrLf + "UPDATE [dbo].[TrackingStatus] " + Constants.vbCrLf + "    SET [TrackedTableId] = '{0}' " + Constants.vbCrLf + "    ,[TrackedTable] = '{1}' " + Constants.vbCrLf + "    ,[TransactionDateTime] =  {2} " + Constants.vbCrLf + "    ,[Out] = {3}  " + Constants.vbCrLf + "    ,[TrackingAdditionalField1] = {4} " + Constants.vbCrLf + "    ,[TrackingAdditionalField2] = {5} " + Constants.vbCrLf + "    ,[UserName] = {6} " + Constants.vbCrLf + "    ,[DateDue] = {7} " + Constants.vbCrLf + "    ,[" + strDestinationTableFieldName + "] = '{8}' " + Constants.vbCrLf + "    , " + strTrackingColumnsForUpdateFromVariables + Constants.vbCrLf + "WHERE TrackedTableId= '{9}' AND TrackedTable='{10}' " + Constants.vbCrLf + "AND TransactionDateTime < CAST('" + dtTransactionDateTime.ToString("yyyy-MM-dd hh:mm:ss tt") + "' AS DATETIME); ";
+                strSQL += strSQLSetDestinationValueInTrackableColumns + Constants.vbCrLf + string.Format(tempSQL, trackableId, trackableTableName, strTransactionDateTime, Interaction.IIf(OutField.ToString().ToLower() == "true", "1", "0"), Interaction.IIf(string.IsNullOrEmpty(trackingAdditionalField1), "NULL", "'" + trackingAdditionalField1 + "'"), Interaction.IIf(string.IsNullOrEmpty(trackingAdditionalField2), "NULL", "'" + trackingAdditionalField2 + "'"), Interaction.IIf(string.IsNullOrEmpty(userName), "NULL", "'" + userName + "'"), Interaction.IIf(string.IsNullOrEmpty(strDateDue), "NULL", strDateDue), destinationId, trackableId, trackableTableName) + Constants.vbCrLf;
+
+                strSQL += strSQLObjectDest + Constants.vbCrLf;
+                strSQL += strSQLTrackingHistory + Constants.vbCrLf;
+            }
+            else
+            {
+                tempSQL = Constants.vbCrLf + "INSERT INTO [dbo].[TrackingStatus] ([TrackedTableId], [TrackedTable], [Out], [TrackingAdditionalField1], [TrackingAdditionalField2], [UserName], [DateDue], [TransactionDateTime], " + Constants.vbCrLf + "[" + strDestinationTableFieldName + "]," + strTrackingColumnsForInsert + ") " + Constants.vbCrLf + "VALUES " + Constants.vbCrLf + "('{0}', '{1}', {2} , {3} , {4}, {5}, {6}, {7} , '" + destinationId + "', {8}); ";
+                strSQL += strSQLSetDestinationValueInTrackableColumns + Constants.vbCrLf + string.Format(tempSQL, trackableId, trackableTableName, Interaction.IIf(OutField.ToString().ToLower() == "true", "1", "0"), Interaction.IIf(string.IsNullOrEmpty(trackingAdditionalField1), "NULL", "'" + trackingAdditionalField1 + "'"), Interaction.IIf(string.IsNullOrEmpty(trackingAdditionalField2), "NULL", "'" + trackingAdditionalField2 + "'"), Interaction.IIf(string.IsNullOrEmpty(userName), "NULL", "'" + userName + "'"), Interaction.IIf(string.IsNullOrEmpty(strDateDue), "NULL", strDateDue), Interaction.IIf(string.IsNullOrEmpty(strTransactionDateTime), "NULL", "" + strTransactionDateTime + ""), strTrackingColumnsForUpdateValues) + Constants.vbCrLf;
+
+                strSQL += strSQLObjectDest + Constants.vbCrLf;
+                strSQL += strSQLTrackingHistory + Constants.vbCrLf;
+            }
+
+            strSQL = strCreateTempTableSQL + " " + strSQL + " ;";
+
+            string requestorTableName = GetRequestorTableName(conn);
+            // 'Update status of most eligible requests (Commented below if condition because of needs to update relevant child records during transfer)
+            // If destinationType = requestorTableName Then
+            strSQL += Constants.vbCrLf + UpdateRequestsQuery(TrackingTablesModel, trackableTableName, trackableId, conn, passport, destinationId);
+            // End If
+            // 'Delete tracking history based on admin settings
+            strSQL += Constants.vbCrLf + DeleteTrackingHistoryQuery(conn);
+
+            int output;
+            using (var cmd = new SqlCommand(strSQL, conn))
+            {
+                try
+                {
+                    output = await cmd.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
+                }
+
+            }
+
+            if (!IsTransferedFromBackground)
+            {
+                if (Navigation.CBoolean(Navigation.GetSystemSetting("EMailDeliveryEnabled", conn)))
+                {
+                    if ((destinationTableName ?? "") == (requestorTableName ?? ""))
+                    {
+                        string message = "The following item(s) are en route to: ";
+                        string employeeID = destinationId;
+                        var employee = new Employee(conn);
+                        employee.LoadByID(employeeID, passport);
+                        message = message + employee.Description + Environment.NewLine + Environment.NewLine;
+                        message = message + "Item             Description                       Due Back" + Environment.NewLine;
+                        message = message + "-----------------------------------------------------------" + Environment.NewLine;
+                        string item = trackableTableName + ": " + Navigation.StripLeadingZeros(trackableId);
+                        string description = Navigation.GetItemName(trackableTableName, trackableId, passport);
+                        string dueBack = DueBackDate.ToShortDateString();
+                        int firstlength = 17 - item.Length;
+                        int secondlength = 0;
+                        if (firstlength < 0)
+                        {
+                            secondlength = 50 - (description.Length + 17 - firstlength);
+                            firstlength = 0;
+                        }
+                        else
+                        {
+                            secondlength = 50 - (description.Length + 17);
+                        }
+                        if (secondlength < 0)
+                            secondlength = 0;
+                        message = message + item + new string(' ', firstlength) + description + new string(' ', secondlength) + dueBack;
+                        var waitLists = Requesting.GetActiveRequests(trackableTableName, trackableId, passport);
+                        if (waitLists.Count > 0)
+                        {
+                            string waitListMessage = Environment.NewLine + Environment.NewLine + "                WaitList                                      Requested";
+                            waitListMessage = waitListMessage + Environment.NewLine + "                -------------------------------------------------------";
+                            foreach (Request req in waitLists)
+                            {
+                                waitListMessage = waitListMessage + Environment.NewLine + new string(' ', 16);
+                                string employeeDesc = Navigation.GetItemName(destinationTableName, req.EmployeeID, passport);
+                                string reqDate = req.DateRequested.ToShortDateString();
+                                int length = 55 - employeeDesc.Length - reqDate.Length;
+                                if (length < 0)
+                                    length = 1;
+                                waitListMessage = waitListMessage + employeeDesc + new string(' ', length) + reqDate;
+                            }
+                            message = message + waitListMessage;
+                        }
+                        Navigation.SendEmail(message, Navigation.GetEmployeeEmailByID(employeeID, passport), Navigation.GetUserEmail(passport), "Delivery Notification", "", conn);
+                    }
+                }
+            }
+
+            var result = ScriptEngine.RunScriptAfterTrackingComplete(trackableTableName, trackableId, destinationTableName, destinationId, trackingAdditionalField1, trackingAdditionalField2, passport, conn);
+            if (!result.Successful)
+                throw new Exception(result.ReturnMessage);
+        }
         public static void Transfer(string trackableType, string trackableID, string destinationType, string destinationID, DateTime DueBackDate, string userName, Passport passport, string trackingAdditionalField1 = null, string trackingAdditionalField2 = null, DateTime dtTransactionDateTime = default)
         {
             using (var conn = passport.Connection())
             {
                 Transfer(trackableType, trackableID, destinationType, destinationID, DueBackDate, userName, passport, conn, trackingAdditionalField1, trackingAdditionalField2, false, dtTransactionDateTime);
+            }
+        }
+        public async static Task TransferAsync(string trackableType, string trackableID, string destinationType, string destinationID, DateTime DueBackDate, string userName, Passport passport, string trackingAdditionalField1 = null, string trackingAdditionalField2 = null, DateTime dtTransactionDateTime = default)
+        {
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+              await TransferAsync(trackableType, trackableID, destinationType, destinationID, DueBackDate, userName, passport, conn, trackingAdditionalField1, trackingAdditionalField2, false, dtTransactionDateTime);
             }
         }
 
