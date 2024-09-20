@@ -16,7 +16,7 @@ using System.ComponentModel;
 using Microsoft.Identity.Client;
 using System.Net;
 using System.Collections.Generic;
-namespace FusionWebApi.Controllers
+namespace MsRecordEngine.Controllers
 {
     [Route("[controller]")]
     [ApiController]

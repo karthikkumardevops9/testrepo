@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.CompilerServices;
 using MSRecordsEngine.Properties;
@@ -557,7 +558,7 @@ namespace MSRecordsEngine.RecordsManager
             }
         }
 
-        private static void SaveDestructionCertItem(string tableName, string tableID, int destructionCertItemID, int destructionCertID, string oldRetentionCode, string newRetentionCode, bool onHold, string holdReason, RetentionHoldTypes holdType, DateTime snoozeUntil, DateTime scheduledDestructionDate, DateTime scheduledInactivityDate, bool dispositionFlag, SqlConnection conn)
+        public static void SaveDestructionCertItem(string tableName, string tableID, int destructionCertItemID, int destructionCertID, string oldRetentionCode, string newRetentionCode, bool onHold, string holdReason, RetentionHoldTypes holdType, DateTime snoozeUntil, DateTime scheduledDestructionDate, DateTime scheduledInactivityDate, bool dispositionFlag, SqlConnection conn)
         {
             string sql = Resources.UpdateDestructionCertificateItem;
             if (destructionCertItemID == 0)
@@ -624,7 +625,7 @@ namespace MSRecordsEngine.RecordsManager
             }
         }
 
-        private static int CreateDestructionCert(string createdBy, DateTime dateCreated, string loginName, string domain, string computerName, string macAddress, string ip, int retentionDispositionType, Passport passport)
+        public static int CreateDestructionCert(string createdBy, DateTime dateCreated, string loginName, string domain, string computerName, string macAddress, string ip, int retentionDispositionType, Passport passport)
         {
             string sql = "INSERT INTO SLDestructionCerts (CreatedBy, DateCreated, NetworkLoginName, Domain, ComputerName, MacAddress, IP, RetentionDispositionType) " + "VALUES (@CreatedBy, @DateCreated, @NetworkLoginName, @Domain, @ComputerName, @MacAddress, @IP, @RetentionDispositionType)  SELECT scope_identity() ";
             using (var conn = passport.Connection())
@@ -1186,6 +1187,26 @@ namespace MSRecordsEngine.RecordsManager
         {
             using (var conn = passport.Connection())
             {
+                string sql = "UPDATE [SLDestructionCerts] SET [ApprovedBy] = @userName, [DateDestroyed] = @dispositionDate WHERE Id = @Id";
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("@userName", new User(passport, true).UserName);
+                    cmd.Parameters.AddWithValue("@dispositionDate ", dispositionDate);
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.ExecuteNonQuery();
+
+                    cmd.CommandText = "SELECT COUNT(*) FROM [SLDestructCertItems] WHERE [SLDestructionCertsId] = @Id AND [DispositionDate] IS NULL";
+                }
+            }
+        }
+
+        public static async Task ApproveDestructionAsync(string id, DateTime dispositionDate, Passport passport)
+        {
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
                 string sql = "UPDATE [SLDestructionCerts] SET [ApprovedBy] = @userName, [DateDestroyed] = @dispositionDate WHERE Id = @Id";
 
                 using (var cmd = new SqlCommand(sql, conn))

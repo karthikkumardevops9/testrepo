@@ -9,14 +9,14 @@ using MSRecordsEngine.Models.FusionModels;
 
 namespace MSRecordsEngine.Models
 {
-    public class ReportingMenu : BaseModel
+    public class ReportingMenu
     {
         public string AccessMenu { get; set; }
         public string dateFormat { get; set; }
         public PagingModel Paging { get; set; } = new PagingModel();
     }
 
-    public class AuditReportSearch : BaseModel
+    public class AuditReportSearch
     {
         public AuditReportSearch()
         {
@@ -32,22 +32,6 @@ namespace MSRecordsEngine.Models
         public List<ArrayList> ListOfRows { get; set; }
         public List<string> ListOfHeader { get; set; }
         public string dateFormat { get; set; }
-        public class UIproperties
-        {
-            public string UserName { get; set; }
-            public string UserDDLId { get; set; }
-            public string ObjectId { get; set; }
-            public string ObjectName { get; set; }
-            public string Id { get; set; }
-            public string StartDate { get; set; }
-            public string EndDate { get; set; }
-            public bool AddEditDelete { get; set; } = false;
-            public bool SuccessLogin { get; set; } = false;
-            public bool ConfDataAccess { get; set; } = false;
-            public bool FailedLogin { get; set; } = false;
-            public bool ChildTable { get; set; } = false;
-            public int PageNumber { get; set; } = 0;
-        }
         public class DDLprops
         {
             public string text { get; set; }
@@ -55,10 +39,6 @@ namespace MSRecordsEngine.Models
             public string valuetxt { get; set; }
             public bool isIdstring { get; set; }
         }
-    }
-    public class RunAuditSearchReqModel
-    {
-        public AuditReportSearch.UIproperties paramss { get; set; }
     }
     public class ReportsModels : BaseModel
     {
@@ -71,8 +51,8 @@ namespace MSRecordsEngine.Models
 
         public PagingModel Paging { get; set; } = new PagingModel();
         public ReportingJsonModel UI { get; set; }
-        private Dictionary<string, string> IdsByTable = null;
-        private Dictionary<string, DataTable> Descriptions = null;
+        public Dictionary<string, string> IdsByTable = null;
+        public Dictionary<string, DataTable> Descriptions = null;
         public List<string> ListOfHeader { get; set; }
         public List<List<string>> ListOfRows { get; set; }
         public string DisplayNotAuthorized { get; set; }
@@ -81,13 +61,13 @@ namespace MSRecordsEngine.Models
         public string lblSubtitle { get; set; }
         public string lblReportDate { get; set; }
         public string TotalRowsCount { get; set; }
-        protected CultureInfo CultureInfo { get; set; }
-        private DateTime dateFromTxt { get; set; }
-        protected DataTable _TrackingTables { get; set; }
+        public CultureInfo CultureInfo { get; set; }
+        public DateTime dateFromTxt { get; set; }
+        public DataTable _TrackingTables { get; set; }
         public string lblSelectReport { get; set; }
         public List<DDLItems> ddlSelectReport { get; set; }
-        protected int ddlid { get; set; }
-        private bool isPullListDDLCall { get; set; }
+        public int ddlid { get; set; }
+        public bool isPullListDDLCall { get; set; }
     }
     public class RetentionReportModel : ReportsModels
     {
@@ -118,29 +98,6 @@ namespace MSRecordsEngine.Models
         public string btnSetSubmitType { get; set; }
     }
 
-    public class ReportingJsonModel
-    {
-        public int reportType { get; set; }
-        public int pageNumber { get; set; }
-        public string tableName { get; set; } = "";
-        public List<items> ListofPullItem { get; set; }
-        public string id { get; set; } = "";
-        public bool isQueryFromDDL { get; set; }
-        public bool isBatchRequest { get; set; }
-        public List<string> ids { get; set; }
-        public string udate { get; set; }
-        public string ddlSelected { get; set; }
-        public string username { get; set; }
-        public string locationId { get; set; }
-        public string submitType { get; set; }
-        public int reportId { get; set; }
-        public bool isCountRecord { get; set; }
-    }
-
-    public class ReportingJsonModelReq
-    {
-        public ReportingJsonModel paramss { get; set; }
-    }
     public class PagingModel
     {
         public int TotalPage { get; set; }
@@ -148,17 +105,20 @@ namespace MSRecordsEngine.Models
         public int PerPageRecord { get; set; }
         public int PageNumber { get; set; }
     }
-    public class items
-    {
-        public string tableName { get; set; }
-        public string tableid { get; set; }
-    }
 
     public class DDLItems
     {
         public string text { get; set; }
         public string value { get; set; }
         public string Id { get; set; }
+    }
+    public class ReportCommonModel
+    {
+        public bool isError { get; set; }
+        public string errortype { get; set; }
+        public int iscreated { get; set; }
+        public string message { get; set; }
+        public string Msg { get; set; }
     }
 
 }
