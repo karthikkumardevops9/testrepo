@@ -46,7 +46,7 @@ namespace MSRecordsEngine.Models.FusionModels
     }
     public class ExporterReportJsonModel : ExporterJsonModel
     {
-        public AuditReportSearch.UIproperties ReportAuditFilterProperties { get; set; }
+        //public AuditReportSearch.UIproperties ReportAuditFilterProperties { get; set; }
         public string ReportType { get; set; }
     }
     public class ExporterReportJsonModelReq

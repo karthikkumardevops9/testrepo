@@ -695,6 +695,43 @@ namespace MSRecordsEngine.RecordsManager
             }
         }
 
+        public async static Task<List<TrackingTransaction>> GetCurrentItemsOutReportListAsync(Parameters @params,
+    Passport passport, int perPageRecord,
+    [Optional, DefaultParameterValue(null)] DataTable trackingTables,
+    [Optional, DefaultParameterValue(null)] DataTable trackedTables,
+    [Optional, DefaultParameterValue(null)] Dictionary<string, string> idsByTable)
+        {
+
+            var sb = new System.Text.StringBuilder();
+            var row = GetRequestorTableInfo(passport);
+            string tableName = row["TableName"].ToString();
+            string idFieldName = Navigation.MakeSimpleField(row["IdFieldName"].ToString());
+            var dataType = Navigation.GetFieldType(tableName, idFieldName, passport);
+
+            sb = Tracking.CurrentItemsOutReportQuery(false, passport, @params, dataType, tableName, idFieldName, row);
+
+            string orderClause = string.Format(" ORDER BY [{0}].[{1}]", tableName, idFieldName);
+            sb.Append(orderClause);
+
+            // NOTE: query will through exception if does not include ORDER BY
+            sb.Append(Query.QueryPaging(@params.PageIndex, perPageRecord).ToString());
+
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sb.ToString(), conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dtTracking = new DataTable();
+                        da.Fill(dtTracking);
+                        Dictionary<string, DataTable> argdescriptions = null;
+                        return BuildTracking(dtTracking, passport, conn, trackingTables, trackedTables, ref idsByTable, descriptions: ref argdescriptions);
+                    }
+                }
+            }
+        }
+
         public static DataTable GetCurrentItemsOutReportCount(Parameters @params,
             Passport passport,
             [Optional, DefaultParameterValue(null)] DataTable trackingTables,
@@ -2358,11 +2395,6 @@ namespace MSRecordsEngine.RecordsManager
         {
             string sql = "SELECT TableName, TrackingTable, IdFieldName, TrackingStatusFieldName, OutTable, BarCodePrefix, DescFieldNameOne, " + "DescFieldNameTwo, DescFieldPrefixOne, DescFieldPrefixTwo, [TrackingPhoneFieldName], [TrackingMailStopFieldName], " + "[TrackingRequestableFieldName], UserName " + "FROM [Tables] " + "WHERE (Not (TrackingStatusFieldName Is NULL)) " + "  AND TableName NOT IN (SELECT CAST(ItemValue AS VARCHAR(30)) AS ItemValue FROM Settings WHERE Section = 'Transfer' AND Item = 'ExcludeTable') " + "ORDER BY TrackingTable";
 
-
-
-
-
-
             using (var cmd = new SqlCommand(sql, conn))
             {
                 using (var da = new SqlDataAdapter(cmd))
@@ -2372,6 +2404,24 @@ namespace MSRecordsEngine.RecordsManager
                     return dt;
                 }
             }
+        }
+        public async static Task<DataTable> GetTrackingContainerTypesAsync(string connectionstring)
+        {
+            string sql = "SELECT TableName, TrackingTable, IdFieldName, TrackingStatusFieldName, OutTable, BarCodePrefix, DescFieldNameOne, " + "DescFieldNameTwo, DescFieldPrefixOne, DescFieldPrefixTwo, [TrackingPhoneFieldName], [TrackingMailStopFieldName], " + "[TrackingRequestableFieldName], UserName " + "FROM [Tables] " + "WHERE (Not (TrackingStatusFieldName Is NULL)) " + "  AND TableName NOT IN (SELECT CAST(ItemValue AS VARCHAR(30)) AS ItemValue FROM Settings WHERE Section = 'Transfer' AND Item = 'ExcludeTable') " + "ORDER BY TrackingTable";
+            using (var conn = new SqlConnection(connectionstring))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dt = new DataTable();
+                        da.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
+            
         }
 
         public static DataTable GetTrackableContainerTypeInfos(SqlConnection conn)
@@ -3035,6 +3085,18 @@ namespace MSRecordsEngine.RecordsManager
             }
         }
 
+        public async static Task<string> GetLocationsTableNameAsync(string connstring)
+        {
+            using (var conn = new SqlConnection(connstring))
+            {
+                await conn.OpenAsync();
+                using (var cmdRequestor = new SqlCommand("SELECT [tableName] FROM [Tables] WHERE [TrackingTable]=1", conn))
+                {
+                    return cmdRequestor.ExecuteScalar().ToString();
+                }
+            }
+        }
+
         public static string GetLocationsTableName(Passport passport)
         {
             using (var conn = passport.Connection())
@@ -3081,7 +3143,30 @@ namespace MSRecordsEngine.RecordsManager
                 }
             }
         }
+        public static async Task<Dictionary<string, string>> GetArchiveLocationsAsync(Passport passport)
+        {
+            var archiveLocationTable = GetArchiveLocationTable(passport);
+            var list = new Dictionary<string, string>();
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand("SELECT * FROM [" + archiveLocationTable["TableName"].ToString() + "] WHERE [" + archiveLocationTable["ArchiveLocationField"].ToString() + "]=1", conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dt = new DataTable();
+                        da.Fill(dt);
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            string id = row[Navigation.MakeSimpleField(archiveLocationTable["idFieldName"].ToString())].ToString();
+                            list.Add(id, Navigation.ItemRowToItemName(row, archiveLocationTable, passport, id));
 
+                        }
+                    }
+                }
+            }
+            return list;
+        }
         public static Dictionary<string, string> GetArchiveLocations(Passport passport)
         {
             var archiveLocationTable = GetArchiveLocationTable(passport);
@@ -3151,7 +3236,30 @@ namespace MSRecordsEngine.RecordsManager
             }
             return list;
         }
-        // moti mashiah working on this function. 
+
+        public async static Task<Dictionary<string, string>> GetInactiveLocationsAsync(Passport passport)
+        {
+            var inactiveLocationTable = GetInactiveLocationTable(passport);
+            var list = new Dictionary<string, string>();
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand("SELECT * FROM [" + inactiveLocationTable["TableName"].ToString() + "] WHERE [" + inactiveLocationTable["InactiveLocationField"].ToString() + "]=1", conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dt = new DataTable();
+                        da.Fill(dt);
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            string id = row[Navigation.MakeSimpleField(inactiveLocationTable["idFieldName"].ToString())].ToString();
+                            list.Add(id, Navigation.ItemRowToItemName(row, inactiveLocationTable, passport, id));
+                        }
+                    }
+                }
+            }
+            return list;
+        }
         public static DataTable GetTrackingContainers(string containerTableName, string find, bool requestOnBehalf, Passport passport, SqlConnection conn)
         {
             var tblInfo = Navigation.GetTableInfo(containerTableName, conn);
@@ -3417,13 +3525,6 @@ namespace MSRecordsEngine.RecordsManager
         {
             string sql = " SELECT TBL.*, case trackingtable when 0 then 9999 else TrackingTable end as o " + "FROM [dbo].[Tables] TBL INNER JOIN [dbo].[SecureObject] SO on SO.Name = TBL.TableName " + "INNER JOIN [dbo].[SecureObjectPermission] SOP on SO.SecureObjectID = SOP.SecureObjectID " + "WHERE(SOP.PermissionID = 8 And SOP.GroupID = 0 And SOP.SecureObjectID <> 0 And SOP.SecureObjectID <> 2 And tbl.TrackingTable > 0) " + "UNION " + "SELECT TBL.*,case trackingtable when 0 then 9999 else TrackingTable end as o FROM [dbo].[Tables] TBL " + " INNER JOIN [dbo].[SecureObject] SO on SO.Name = TBL.TableName " + "INNER JOIN [dbo].[SecureObjectPermission] SOP on SO.SecureObjectID = SOP.SecureObjectID " + "WHERE(SOP.PermissionID = 8 And SOP.GroupID = 0 And SOP.SecureObjectID <> 0 And SOP.SecureObjectID <> 2 And tbl.TrackingTable = 0) " + "ORDER BY o, tbl.TableName";
 
-
-
-
-
-
-
-
             using (var cmd = new SqlCommand(sql, conn))
             {
                 using (var da = new SqlDataAdapter(cmd))
@@ -3440,6 +3541,24 @@ namespace MSRecordsEngine.RecordsManager
             using (var conn = passport.Connection())
             {
                 return GetTrackableTables(conn);
+            }
+        }
+
+        public async static Task<DataTable> GetTrackableTablesAsync(Passport passport)
+        {
+            string sql = " SELECT TBL.*, case trackingtable when 0 then 9999 else TrackingTable end as o " + "FROM [dbo].[Tables] TBL INNER JOIN [dbo].[SecureObject] SO on SO.Name = TBL.TableName " + "INNER JOIN [dbo].[SecureObjectPermission] SOP on SO.SecureObjectID = SOP.SecureObjectID " + "WHERE(SOP.PermissionID = 8 And SOP.GroupID = 0 And SOP.SecureObjectID <> 0 And SOP.SecureObjectID <> 2 And tbl.TrackingTable > 0) " + "UNION " + "SELECT TBL.*,case trackingtable when 0 then 9999 else TrackingTable end as o FROM [dbo].[Tables] TBL " + " INNER JOIN [dbo].[SecureObject] SO on SO.Name = TBL.TableName " + "INNER JOIN [dbo].[SecureObjectPermission] SOP on SO.SecureObjectID = SOP.SecureObjectID " + "WHERE(SOP.PermissionID = 8 And SOP.GroupID = 0 And SOP.SecureObjectID <> 0 And SOP.SecureObjectID <> 2 And tbl.TrackingTable = 0) " + "ORDER BY o, tbl.TableName";
+            using (var conn = new SqlConnection(passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        var dt = new DataTable();
+                        da.Fill(dt);
+                        return dt;
+                    }
+                }
             }
         }
 

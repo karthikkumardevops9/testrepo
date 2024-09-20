@@ -21,7 +21,7 @@ using NLog.Targets;
 using MSRecordsEngine.Services;
 
 
-namespace FusionWebApi
+namespace MsRecordEngine
 {
     public class Startup
     {

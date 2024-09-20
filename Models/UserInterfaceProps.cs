@@ -13,6 +13,7 @@ namespace MSRecordsEngine.Models
         public int ViewId { get; set; }
         public string TableId { get; set; }
         public string DateFormat { get; set; }
+        public string StringHolder { get; set; }
     }
     public class NewUrlprops : UserInterfaceProps
     {
@@ -219,6 +220,56 @@ namespace MSRecordsEngine.Models
         public List<string> ids { get; set; }
         public string TableName { get; set; }
         public int ViewId { get; set; }
+    }
+
+    public class UIproperties : UserInterfaceProps
+    {
+        public string UserName { get; set; }
+        public string UserDDLId { get; set; }
+        public string ObjectId { get; set; }
+        public string ObjectName { get; set; }
+        public string Id { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
+        public bool AddEditDelete { get; set; } = false;
+        public bool SuccessLogin { get; set; } = false;
+        public bool ConfDataAccess { get; set; } = false;
+        public bool FailedLogin { get; set; } = false;
+        public bool ChildTable { get; set; } = false;
+        public int PageNumber { get; set; } = 0;
+    }
+    public class ReportingJsonModelReq : UserInterfaceProps
+    {
+        public ReportingJsonModel paramss { get; set; }
+    }
+    public class ReportingJsonModel
+    {
+        public ReportingJsonModel()
+        {
+            ids = new List<string>();
+            ListofPullItem = new List<Items>();
+        }
+        public int reportType { get; set; }
+        public int pageNumber { get; set; }
+        public string tableName { get; set; } = "";
+        public List<Items> ListofPullItem { get; set; }
+        public string id { get; set; } = "";
+        public bool isQueryFromDDL { get; set; }
+        public bool isBatchRequest { get; set; }
+        public List<string> ids { get; set; }
+        public string udate { get; set; }
+        public string ddlSelected { get; set; }
+        public string username { get; set; }
+        public string locationId { get; set; }
+        public string submitType { get; set; }
+        public int reportId { get; set; }
+        public bool isCountRecord { get; set; }
+    }
+
+    public class Items
+    {
+        public string tableName { get; set; }
+        public string tableid { get; set; }
     }
 
 }
