@@ -244,7 +244,7 @@ namespace MSRecordsEngine.Controllers
         {
             try
             {
-                return await _reportsservice.GetInactivePopup(props);
+                return await _reportsservice.GetSubmitForm(props);
             }
             catch (System.Exception ex)
             {

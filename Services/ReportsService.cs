@@ -55,6 +55,9 @@ namespace MSRecordsEngine.Services
             DateTime startDate = CommonFunctions.ConvertStringToCulture(paramss.StartDate, paramss.DateFormat);
             DateTime endDate = CommonFunctions.ConvertStringToCulture(paramss.EndDate, paramss.DateFormat);
 
+            paramss.StartDate = CommonFunctions.ConvertStringToSqlCulture(paramss.StartDate, paramss.DateFormat);
+            paramss.EndDate = CommonFunctions.ConvertStringToSqlCulture(paramss.EndDate, paramss.DateFormat);
+
             DateTime currentDate = DateTime.Now;
 
             if (startDate > currentDate || endDate > currentDate)
@@ -601,7 +604,7 @@ namespace MSRecordsEngine.Services
                 if (locationList.Count > 0)
                 {
                     foreach (var item in locationList)
-                        model.ddlSelection.Add(new DDLItems() { value = item.Value, text = item.Text() });
+                        model.ddlSelection.Add(new DDLItems() { value = item.Key, text = item.Value });
                 }
             }
             if (submitType == "destruction")
@@ -639,7 +642,7 @@ namespace MSRecordsEngine.Services
             model.objectDDL.Add(new DDLprops() { text = "All Tables", valuetxt = "All" });
             foreach (DataRow row in dsObject.Rows)
             {
-                bool isIdstring = Navigation.FieldIsAString(row["UserName"].ToString(), props.passport);
+                bool isIdstring = Navigation.FieldIsAString(row["ObjectValue"].ToString().Split("|")[0], props.passport);
                 model.objectDDL.Add(new DDLprops() { text = row["UserName"].ToString(), valuetxt = row["ObjectValue"].ToString(), isIdstring = isIdstring });
             }
 
@@ -3174,8 +3177,6 @@ namespace MSRecordsEngine.Services
             // get subtitle
             GetSubTitle(UIparam, conn, model);
             // format the date before sending to query
-            UIparam.StartDate = DateTime.Parse(UIparam.StartDate.ToString()).ToString(UIparam.DateFormat);
-            UIparam.EndDate = DateTime.Parse(UIparam.EndDate.ToString()).ToString(UIparam.DateFormat);
 
             UIparam.StartDate = UIparam.StartDate + " 00:00:00";
             UIparam.EndDate = UIparam.EndDate + " 23:59:59";
