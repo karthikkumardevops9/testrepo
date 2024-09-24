@@ -603,12 +603,20 @@ public static class CommonFunctions
     {
         if(culture == null)
         {
-            return DateTime.ParseExact(date, dateformat, CultureInfo.CurrentCulture);
+            return DateTime.ParseExact(date, dateformat, CultureInfo.InvariantCulture);
         }
         else
         {
             return DateTime.ParseExact(date, dateformat, new CultureInfo($"{culture}"));
         }
     }
+    public static string ConvertStringToSqlCulture(string date, string dateformat)
+    {
+        DateTime parseDate = DateTime.ParseExact(date, dateformat, CultureInfo.InvariantCulture);
+        string formatDateToSql = parseDate.ToString("yyyy-MM-dd");
+        return formatDateToSql;
+    }
+
+
 }
 

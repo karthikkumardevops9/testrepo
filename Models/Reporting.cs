@@ -52,7 +52,8 @@ namespace MSRecordsEngine.Models
         public PagingModel Paging { get; set; } = new PagingModel();
         public ReportingJsonModel UI { get; set; }
         public Dictionary<string, string> IdsByTable = null;
-        public Dictionary<string, DataTable> Descriptions = null;
+        
+        internal Dictionary<string, DataTable> Descriptions = null;
         public List<string> ListOfHeader { get; set; }
         public List<List<string>> ListOfRows { get; set; }
         public string DisplayNotAuthorized { get; set; }
@@ -63,7 +64,7 @@ namespace MSRecordsEngine.Models
         public string TotalRowsCount { get; set; }
         public CultureInfo CultureInfo { get; set; }
         public DateTime dateFromTxt { get; set; }
-        public DataTable _TrackingTables { get; set; }
+        internal DataTable _TrackingTables { get; set; }
         public string lblSelectReport { get; set; }
         public List<DDLItems> ddlSelectReport { get; set; }
         public int ddlid { get; set; }
@@ -100,6 +101,10 @@ namespace MSRecordsEngine.Models
 
     public class PagingModel
     {
+        public PagingModel()
+        {
+            PerPageRecord = 1000;
+        }
         public int TotalPage { get; set; }
         public int TotalRecord { get; set; }
         public int PerPageRecord { get; set; }

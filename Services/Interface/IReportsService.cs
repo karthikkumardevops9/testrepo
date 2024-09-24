@@ -18,5 +18,6 @@ namespace MSRecordsEngine.Services.Interface
         public Task<int> CreateEligibleRecordsForReport(UserInterfaceProps props, FinalDisposition iCurrDispositionType);
         public Task<AuditReportSearch> GetauditReportView(UserInterfaceProps props);
         public Task<RetentionButtons> GetInactivePopup(UserInterfaceProps props);
+        public Task<RetentionButtons> GetSubmitForm(UserInterfaceProps props);
     }
 }
