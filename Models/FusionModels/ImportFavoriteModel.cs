@@ -39,6 +39,7 @@ namespace MSRecordsEngine.Models.FusionModels
         public List<string> lsRecAlreadyImported { get; set; }
         public List<string> lstcoldata { get; set; }
         public string errorType { get; set; }
+        public string ImportFavReport { get; set; }
     }
 
     public class ImDropdownprops

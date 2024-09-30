@@ -13865,7 +13865,7 @@ namespace MSRecordsEngine.Controllers
 
 
         [Route("SetAttachExistingTableDetails")]
-        [HttpPost]
+        [HttpGet]
         public async Task<ReturnErrorTypeErrorMsg> SetAttachExistingTableDetails(int iParentTableId, int iTableId, string sIdFieldName, string ConnectionString)
         {
             var model = new ReturnErrorTypeErrorMsg();
