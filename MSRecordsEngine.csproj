@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.20.0" />
+    <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="EntityFramework" Version="6.4.4" />
     <PackageReference Include="Leadtools.Annotations.WinForms" Version="22.0.0.8" />
@@ -34,6 +35,7 @@
     <PackageReference Include="NLog" Version="5.2.8" />
     <PackageReference Include="NLog.Extensions.AzureBlobStorage" Version="4.3.1" />
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
+    <PackageReference Include="NPOI" Version="2.7.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
