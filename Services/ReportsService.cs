@@ -28,6 +28,8 @@ using SecureObject = Smead.Security.SecureObject;
 using System.Data.Entity.Migrations;
 using System.Diagnostics;
 using static MSRecordsEngine.Models.AuditReportSearch;
+using Microsoft.AspNetCore.Routing.Constraints;
+using Leadtools.Barcode;
 
 namespace MSRecordsEngine.Services
 {
@@ -719,33 +721,30 @@ namespace MSRecordsEngine.Services
         }
         private async Task RetentionInactiveRecords_QueryTableCount(RetentionReportModel model, ReportingJsonModelReq props)
         {
-            var inactivePulllst = false;
-            var inactiveRecords = true;
-            var dt = await GetInactivePullList_InactiveRecords(inactivePulllst, inactiveRecords, props);
+           
+            var dt = await RetentionInactiveRecords_Query(model, props, true);
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(dt.Rows.Count, model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
         private async Task InactivePullList_QueryTableCount(RetentionReportModel model, ReportingJsonModelReq props)
         {
-            var inactivePulllst = true;
-            var inactiveRecords = false;
-            var dt = await GetInactivePullList_InactiveRecords(inactivePulllst, inactiveRecords, props);
+            var dt = await InactivePullList_Query(model, props, true);
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(dt.Rows.Count, model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
@@ -781,11 +780,11 @@ namespace MSRecordsEngine.Services
             }
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
@@ -830,11 +829,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -868,11 +867,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -926,11 +925,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
@@ -983,11 +982,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
@@ -1061,11 +1060,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
         private async Task RetentionRecordsOnHold(RetentionReportModel model, ReportingJsonModelReq props)
@@ -1251,11 +1250,11 @@ namespace MSRecordsEngine.Services
             }
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
@@ -1271,8 +1270,7 @@ namespace MSRecordsEngine.Services
         private async Task<DataTable> RetentionInactiveRecords_Query(RetentionReportModel model, ReportingJsonModelReq props)
         {
 
-            bool inactiveRecords = true;
-            var dt = await GetInactivePullList_InactiveRecords(false, inactiveRecords, props);
+            var dt = await RetentionInactiveRecords_Query(model, props, false);
             RetentionMassageDataForRequests(dt, model, props);
             RetentionRemoveUnneededColumns(dt, string.Empty, model);
             return dt;
@@ -1289,89 +1287,107 @@ namespace MSRecordsEngine.Services
 
             // btnCommand.Text = Languages.Translation("btnHTMLReportsSetInactive")
 
-            var dt = await InactivePullList_Query(model, props);
+            var dt = await InactivePullList_Query(model, props, false);
+            RetentionMassageDataForRequests(dt, model, props);
+            RetentionRemoveUnneededColumns(dt, string.Empty, model);
             RetentionHeaders(dt, false, true, model);
             RetentionRows(dt, true, false, true, model, props);
         }
 
-        private async Task<DataTable> InactivePullList_Query(RetentionReportModel model, ReportingJsonModelReq props)
+        private async Task<DataTable> InactivePullList_Query(RetentionReportModel model, ReportingJsonModelReq props, bool ispaging)
         {
-            bool inactivePullList = true;
-            var dt = await GetInactivePullList_InactiveRecords(inactivePullList, false, props);
-            RetentionMassageDataForRequests(dt, model, props);
-            RetentionRemoveUnneededColumns(dt, string.Empty, model);
-            return dt;
-        }
-
-        private async Task<DataTable> GetInactivePullList_InactiveRecords(bool inactivePullList, bool inactiveRecords, ReportingJsonModelReq props)
-        {
-            DataTable dt = new DataTable();
-            var whereClause = string.Empty;
-            string query = string.Empty;
-            var allTables = Navigation.GetAllTables(props.passport);
-            foreach (RecordsManage.TablesRow oTables in allTables)
+            var dt = new DataTable();
+            string sql = string.Empty;
+            if (ispaging)
             {
-                bool isInactive = oTables.RetentionInactivityActive;
-                if (isInactive && oTables.DefaultTrackingId != null)
+                sql = "SELECT count(*) FROM (([SLRetentionInactive] " +
+                  "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] " +
+                  "AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+                  "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+                  "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id]";
+            }
+            else
+            {
+                sql = "SELECT [Tables].[UserName] AS FolderType," +
+                 "[SLRetentionInactive].[TableName], " +
+                 "CAST([FileRoomOrder] AS VARCHAR) AS [File Room Order]," +
+                 "'' AS [Item], '' AS [Currently At]," +
+                 " [SLRetentionInactive].[TableId]," +
+                 " [SLRetentionInactive].[EventDate] AS [Event Date]," +
+                 "[SLRetentionCodes].[InactivityEventType] AS [Event Type]," +
+                 "[SLRetentionInactive].[ScheduledInactivity] AS [Scheduled Inactivity]";
+                foreach (DataRow row in model._TrackingTables.Rows)
                 {
-                    var DateClosed = oTables.RetentionDateClosedField;
-                    var DateCreated = oTables.RetentionDateCreateField;
-                    var Dateopen = oTables.RetentionDateOpenedField;
-                    var DateOther = oTables.RetentionDateOtherField;
-                    var tableName = oTables.TableName;
-                    var IdFieldName = Navigation.MakeSimpleField(oTables.IdFieldName);
-
-                    if (inactivePullList)
-                    {
-                        whereClause = "WHERE [" + tableName + "].[%slRetentionInactive] = 1 AND ([" + tableName + "].[%slRetentionInactiveFinal] = 0 OR [" + tableName + "].[%slRetentionInactiveFinal] IS NULL);";
-                    }
-                    else if (inactiveRecords)
-                    {
-                        whereClause = "WHERE [" + tableName + "].[%slRetentionInactive] = 1 AND [" + tableName + "].[%slRetentionInactiveFinal] = 1";
-                    }
-                    query = "SELECT '" + tableName + "' as TableName, " +
-                        "[Tables].[UserName] AS FolderType, " +
-                        "'' AS [Item], " +
-                        "[" + tableName + "].[" + IdFieldName + "] AS TableId, " +
-                        "[" + tableName + "].RetentionCodesId AS RetentionCode, " +
-                        "CASE " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Opened' THEN [Tables].[RetentionDateOpenedField] " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Closed' THEN [Tables].[RetentionDateClosedField] " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Created' THEN [Tables].[RetentionDateCreateField] " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Other' THEN [Tables].[RetentionDateOtherField] END AS EventType," +
-                        "CASE " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Opened' THEN [" + tableName + "].[" + Dateopen + "] " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Closed' THEN [" + tableName + "].[" + DateClosed + "] " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Created' THEN [" + tableName + "].[" + DateCreated + "] " +
-                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Other' THEN [" + tableName + "].[" + DateOther + "] END AS EventDate," +
-                        "DATEADD(year, SLRetentionCodes.inactivityPeriod, " +
-                        "CASE SLRetentionCodes.inactivityEventType " +
-                        "WHEN 'Date Opened' THEN [" + tableName + "].[" + Dateopen + "] " +
-                        "WHEN 'Date Closed' THEN [" + tableName + "].[" + DateClosed + "] " +
-                        "WHEN 'Date Created' THEN [" + tableName + "].[" + DateCreated + "] " +
-                        "When 'Date Other' Then [" + tableName + "].[" + DateOther + "] END) " +
-                        "AS ScheduledInactivity " +
-                        "FROM [" + tableName + "] " +
-                        "JOIN SLRetentionCodes ON [" + tableName + "].RetentionCodesId = SLRetentionCodes.id " +
-                        "LEFT JOIN [Tables] ON [Tables].[TableName] = '" + tableName + "' " +
-                        "" + whereClause + "";
-                    using (var conn = new SqlConnection(props.passport.ConnectionString))
-                    {
-                        await conn.OpenAsync();
-                        using (var command = new SqlCommand(query, conn))
-                        {
-                            using (var adapter = new SqlDataAdapter(command))
-                            {
-                                adapter.Fill(dt);
-                            }
-                        }
-                    }
-
+                    sql = sql + ", TrackingStatus." + row["TrackingStatusFieldName"].ToString();
                 }
+
+                sql = sql + " FROM (([SLRetentionInactive]" +
+                    " LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] " +
+                    " AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+                    " LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+                    " LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ORDER BY [SLRetentionInactive].ID";
+                sql += Query.QueryPaging(props.paramss.pageNumber, model.Paging.PerPageRecord);
             }
 
+
+
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    using (var adp = new SqlDataAdapter(cmd))
+                    {
+                        adp.Fill(dt);
+                    }
+                }
+            }
             return dt;
         }
+
+        private async Task<DataTable> RetentionInactiveRecords_Query(RetentionReportModel model, ReportingJsonModelReq props, bool ispaging)
+        {
+            var dt = new DataTable();
+            string sql = string.Empty;
+            if (ispaging)
+            {
+                sql = "SELECT count(*) " +
+                      " FROM (([SLRetentionInactive] " +
+                      "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+                      "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+                      "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ";
+            }
+            else
+            {
+                sql = "SELECT [Tables].[UserName] AS [Folder Type], [SLRetentionInactive].[TableName], CAST([FileRoomOrder] AS VARCHAR) AS [File Room Order], " +
+                           "'' AS [Item],'' AS [Currently At], [SLRetentionCodes].[InactivityEventType] AS [Event Type], [SLRetentionInactive].[TableId], " +
+                           "[SLRetentionInactive].[EventDate] AS [Event Date], [SLRetentionInactive].[ScheduledInactivity] AS [Scheduled Inactivity]";
+                foreach (DataRow row in model._TrackingTables.Rows)
+                {
+                    sql = sql + ", TrackingStatus." + row["TrackingStatusFieldName"].ToString();
+                }
+                sql = sql + " FROM (([SLRetentionInactive] " +
+                    "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+                    "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+                    "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ORDER BY [SLRetentionInactive].ID ";
+                sql += Query.QueryPaging(props.paramss.pageNumber, model.Paging.PerPageRecord);
+            }
+
+            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    using (var adp = new SqlDataAdapter(cmd))
+                    {
+                        adp.Fill(dt);
+                    }
+                }
+            }
+            return dt;
+
+        }
+  
         private async Task RetentionCertifieDisposition(RetentionReportModel model, ReportingJsonModelReq props)
         {
 
@@ -1447,7 +1463,7 @@ namespace MSRecordsEngine.Services
                     model.ddlid = Convert.ToInt32(row["Id"]);
                 }
                 start = start + 1;
-                model.ddlSelectReport.Add(new DDLItems() { text = DateTime.Parse(row["DateCreated"].ToString()).ToString(props.DateFormat), value = Convert.ToString(row["Id"]), Id = Convert.ToString(row["Id"]) });
+                model.ddlSelectReport.Add(new DDLItems() { text = row["DateCreated"].ToString(), value = Convert.ToString(row["Id"]), Id = Convert.ToString(row["Id"]) });
             }
         }
         private async Task RetentionFinalDisposition(RetentionReportModel model, ReportingJsonModelReq props)
@@ -1722,7 +1738,7 @@ namespace MSRecordsEngine.Services
                             int maxIdLength = dt.Rows[0]["Id"].ToString().Length;
                             string item = string.Empty;
                             int maxUserLength = Convert.ToInt32(GetMaxUserLength(dt));
-                            extra = DateTime.Parse(row["DateCreated"].ToString()).ToString(props.DateFormat);
+                            extra = row["DateCreated"].ToString();
                             item = string.Format("{0}{1}", spacer, extra.PadRight(maxDateLength, ' '));
                             item += string.Format("{0}{1}{0}{2}", spacer, row["OperatorsId"].ToString().PadRight(maxUserLength, ' '), row["DispositionTypeDesc"].ToString());
                             model.ddlSelectReport.Add(new DDLItems() { value = Convert.ToString(row["Id"]), text = item, Id = Convert.ToString(row["Id"]) });
@@ -1804,11 +1820,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -1843,11 +1859,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -1882,11 +1898,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -1927,11 +1943,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
         private async Task RequestNewBatch_QueryCount(ReportsModels model, ReportingJsonModelReq props)
@@ -1965,11 +1981,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -2000,11 +2016,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -2044,11 +2060,11 @@ namespace MSRecordsEngine.Services
 
                 if (dts.Rows.Count > 0)
                 {
-                    ExecutePagingQueryCount(Convert.ToInt32(dts.Rows[0][0]), model);
+                    ExecutePagingQueryCount(Convert.ToInt32(dts.Rows[0][0]), model, props.paramss.pageNumber);
                 }
                 else
                 {
-                    ExecutePagingQueryCount(0, model);
+                    ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
                 }
 
             }
@@ -2069,11 +2085,11 @@ namespace MSRecordsEngine.Services
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
         }
 
@@ -2096,15 +2112,21 @@ namespace MSRecordsEngine.Services
             var param = new Parameters(props.passport);
             param.Paged = true;
             param.PageIndex = props.paramss.pageNumber;
-            var dt = Tracking.GetPagedPastDueTrackablesCount(model.dateFromTxt, props.passport, param, _trackingTables, _trackedTables, ref model.IdsByTable, ref model.Descriptions);
+
+            string todayDate = DateTime.Now.Date.ToString("d", CultureInfo.InvariantCulture);
+            DateTime dateFromTxt = DateTime.Parse(todayDate, CultureInfo.InvariantCulture);
+
+
+
+            var dt = Tracking.GetPagedPastDueTrackablesCount(dateFromTxt, props.passport, param, _trackingTables, _trackedTables, ref model.IdsByTable, ref model.Descriptions);
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
             }
             else
             {
-                ExecutePagingQueryCount(0, model);
+                ExecutePagingQueryCount(0, model, props.paramss.pageNumber);
             }
 
         }
@@ -3067,6 +3089,7 @@ namespace MSRecordsEngine.Services
 
             if (ispaging)
             {
+                model.Paging.PageNumber = UIparam.PageNumber;
                 if (dt.Rows.Count > 0)
                 {
                     ExecutePaging(Convert.ToInt32(dt.Rows[0][0]), model);
@@ -3141,9 +3164,10 @@ namespace MSRecordsEngine.Services
             }
         }
 
-        private void ExecutePagingQueryCount(int totalRecord, ReportsModels model)
+        private void ExecutePagingQueryCount(int totalRecord, ReportsModels model, int pagenumber)
         {
             model.Paging.TotalRecord = totalRecord;
+            model.Paging.PageNumber = pagenumber;
             if (model.Paging.TotalRecord > 0)
             {
                 if (model.Paging.TotalRecord / (double)model.Paging.PerPageRecord > 0d & model.Paging.TotalRecord / (double)model.Paging.PerPageRecord < 1d)
