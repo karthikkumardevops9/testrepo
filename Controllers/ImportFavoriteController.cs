@@ -19,8 +19,6 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
-using System.Reflection.Metadata;
-using Smead.Security;
 
 namespace MSRecordsEngine.Controllers
 {
