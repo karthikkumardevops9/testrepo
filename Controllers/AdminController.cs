@@ -9753,7 +9753,9 @@ namespace MSRecordsEngine.Controllers
                                 var isExists = Convert.ToInt32(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME = 'view__{i.Id}'"));
                                 if (isExists > 0)
                                 {
-                                    await conn.ExecuteAsync($"sp_refreshview 'view__{i.Id}'", commandType: CommandType.StoredProcedure);
+                                    var param = new DynamicParameters();
+                                    param.Add("@viewname", $"view__{i.Id}");
+                                    await conn.ExecuteAsync($"sp_refreshview", param, commandType: CommandType.StoredProcedure);
                                 }
                             }
                         }
