@@ -721,12 +721,12 @@ namespace MSRecordsEngine.Services
         }
         private async Task RetentionInactiveRecords_QueryTableCount(RetentionReportModel model, ReportingJsonModelReq props)
         {
-           
-            var dt = await RetentionInactiveRecords_Query(model, props, true);
+            model.lblTitle = "Inactive Records";
+            var dt = await GetInactivePullList_InactiveRecords(model, props); //await RetentionInactiveRecords_Query(model, props, true);
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows.Count), model, props.paramss.pageNumber);
             }
             else
             {
@@ -736,11 +736,12 @@ namespace MSRecordsEngine.Services
 
         private async Task InactivePullList_QueryTableCount(RetentionReportModel model, ReportingJsonModelReq props)
         {
-            var dt = await InactivePullList_Query(model, props, true);
+            model.lblTitle = "Inactive Pull Lists";
+            var dt = await GetInactivePullList_InactiveRecords(model, props);//await InactivePullList_Query(model, props, true);
 
             if (dt.Rows.Count > 0)
             {
-                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows[0][0]), model, props.paramss.pageNumber);
+                ExecutePagingQueryCount(Convert.ToInt32(dt.Rows.Count), model, props.paramss.pageNumber);
             }
             else
             {
@@ -1270,7 +1271,7 @@ namespace MSRecordsEngine.Services
         private async Task<DataTable> RetentionInactiveRecords_Query(RetentionReportModel model, ReportingJsonModelReq props)
         {
 
-            var dt = await RetentionInactiveRecords_Query(model, props, false);
+            var dt = await GetInactivePullList_InactiveRecords(model, props); //await RetentionInactiveRecords_Query(model, props, false);
             RetentionMassageDataForRequests(dt, model, props);
             RetentionRemoveUnneededColumns(dt, string.Empty, model);
             return dt;
@@ -1287,107 +1288,181 @@ namespace MSRecordsEngine.Services
 
             // btnCommand.Text = Languages.Translation("btnHTMLReportsSetInactive")
 
-            var dt = await InactivePullList_Query(model, props, false);
+            var dt = await GetInactivePullList_InactiveRecords(model, props); //await InactivePullList_Query(model, props, false);
             RetentionMassageDataForRequests(dt, model, props);
             RetentionRemoveUnneededColumns(dt, string.Empty, model);
             RetentionHeaders(dt, false, true, model);
             RetentionRows(dt, true, false, true, model, props);
         }
 
-        private async Task<DataTable> InactivePullList_Query(RetentionReportModel model, ReportingJsonModelReq props, bool ispaging)
+        private async Task<DataTable> GetInactivePullList_InactiveRecords(RetentionReportModel model, ReportingJsonModelReq props)
         {
-            var dt = new DataTable();
-            string sql = string.Empty;
-            if (ispaging)
-            {
-                sql = "SELECT count(*) FROM (([SLRetentionInactive] " +
-                  "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] " +
-                  "AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
-                  "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
-                  "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id]";
-            }
-            else
-            {
-                sql = "SELECT [Tables].[UserName] AS FolderType," +
-                 "[SLRetentionInactive].[TableName], " +
-                 "CAST([FileRoomOrder] AS VARCHAR) AS [File Room Order]," +
-                 "'' AS [Item], '' AS [Currently At]," +
-                 " [SLRetentionInactive].[TableId]," +
-                 " [SLRetentionInactive].[EventDate] AS [Event Date]," +
-                 "[SLRetentionCodes].[InactivityEventType] AS [Event Type]," +
-                 "[SLRetentionInactive].[ScheduledInactivity] AS [Scheduled Inactivity]";
-                foreach (DataRow row in model._TrackingTables.Rows)
-                {
-                    sql = sql + ", TrackingStatus." + row["TrackingStatusFieldName"].ToString();
-                }
+            DataTable dt = new DataTable();
+            var whereClause = string.Empty;
+            string query = string.Empty;
+            var allTables = Navigation.GetAllTables(props.passport);
 
-                sql = sql + " FROM (([SLRetentionInactive]" +
-                    " LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] " +
-                    " AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
-                    " LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
-                    " LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ORDER BY [SLRetentionInactive].ID";
-                sql += Query.QueryPaging(props.paramss.pageNumber, model.Paging.PerPageRecord);
+            bool inactivePullList = false;
+            if (model.lblTitle.Trim().ToLower() == ("Inactive Pull Lists").Trim().ToLower())
+            {
+                inactivePullList = true;
             }
 
-
-
-            using (var conn = new SqlConnection(props.passport.ConnectionString))
+            foreach (RecordsManage.TablesRow oTables in allTables)
             {
-                await conn.OpenAsync();
-                using (var cmd = new SqlCommand(sql, conn))
+                bool isInactive = oTables.RetentionInactivityActive;
+                if (isInactive && oTables.DefaultTrackingId != null)
                 {
-                    using (var adp = new SqlDataAdapter(cmd))
+                    var DateClosed = oTables.RetentionDateClosedField;
+                    var DateCreated = oTables.RetentionDateCreateField;
+                    var Dateopen = oTables.RetentionDateOpenedField;
+                    var DateOther = oTables.RetentionDateOtherField;
+                    var tableName = oTables.TableName;
+                    var IdFieldName = Navigation.MakeSimpleField(oTables.IdFieldName);
+
+                    whereClause = inactivePullList
+                                  ? $"WHERE [{tableName}].[%slRetentionInactive] = 1 AND ([{tableName}].[%slRetentionInactiveFinal] = 0 OR [{tableName}].[%slRetentionInactiveFinal] IS NULL);"
+                                  : $"WHERE [{tableName}].[%slRetentionInactive] = 1 AND [{tableName}].[%slRetentionInactiveFinal] = 1";
+
+                    query = "SELECT '" + tableName + "' as TableName, " +
+                        "[Tables].[UserName] AS FolderType, " +
+                        "'' AS [Item], " +
+                        "[" + tableName + "].[" + IdFieldName + "] AS TableId, " +
+                        "[" + tableName + "].RetentionCodesId AS RetentionCode, " +
+                        "CASE " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Opened' THEN [Tables].[RetentionDateOpenedField] " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Closed' THEN [Tables].[RetentionDateClosedField] " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Created' THEN [Tables].[RetentionDateCreateField] " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Other' THEN [Tables].[RetentionDateOtherField] END AS EventType," +
+                        "CASE " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Opened' THEN [" + tableName + "].[" + Dateopen + "] " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Closed' THEN [" + tableName + "].[" + DateClosed + "] " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Created' THEN [" + tableName + "].[" + DateCreated + "] " +
+                        "WHEN SLRetentionCodes.inactivityEventType = 'Date Other' THEN [" + tableName + "].[" + DateOther + "] END AS EventDate," +
+                        "DATEADD(year, SLRetentionCodes.inactivityPeriod, " +
+                        "CASE SLRetentionCodes.inactivityEventType " +
+                        "WHEN 'Date Opened' THEN [" + tableName + "].[" + Dateopen + "] " +
+                        "WHEN 'Date Closed' THEN [" + tableName + "].[" + DateClosed + "] " +
+                        "WHEN 'Date Created' THEN [" + tableName + "].[" + DateCreated + "] " +
+                        "When 'Date Other' Then [" + tableName + "].[" + DateOther + "] END) " +
+                        "AS ScheduledInactivity " +
+                        "FROM [" + tableName + "] " +
+                        "JOIN SLRetentionCodes ON [" + tableName + "].RetentionCodesId = SLRetentionCodes.id " +
+                        "LEFT JOIN [Tables] ON [Tables].[TableName] = '" + tableName + "' " +
+                        "" + whereClause + "";
+                    using (var command = new SqlCommand(query, props.passport.Connection()))
                     {
-                        adp.Fill(dt);
+                        using (var adapter = new SqlDataAdapter(command))
+                        {
+                            await Task.Run(() => adapter.Fill(dt));
+                        }
                     }
                 }
             }
+
             return dt;
         }
 
-        private async Task<DataTable> RetentionInactiveRecords_Query(RetentionReportModel model, ReportingJsonModelReq props, bool ispaging)
-        {
-            var dt = new DataTable();
-            string sql = string.Empty;
-            if (ispaging)
-            {
-                sql = "SELECT count(*) " +
-                      " FROM (([SLRetentionInactive] " +
-                      "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
-                      "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
-                      "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ";
-            }
-            else
-            {
-                sql = "SELECT [Tables].[UserName] AS [Folder Type], [SLRetentionInactive].[TableName], CAST([FileRoomOrder] AS VARCHAR) AS [File Room Order], " +
-                           "'' AS [Item],'' AS [Currently At], [SLRetentionCodes].[InactivityEventType] AS [Event Type], [SLRetentionInactive].[TableId], " +
-                           "[SLRetentionInactive].[EventDate] AS [Event Date], [SLRetentionInactive].[ScheduledInactivity] AS [Scheduled Inactivity]";
-                foreach (DataRow row in model._TrackingTables.Rows)
-                {
-                    sql = sql + ", TrackingStatus." + row["TrackingStatusFieldName"].ToString();
-                }
-                sql = sql + " FROM (([SLRetentionInactive] " +
-                    "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
-                    "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
-                    "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ORDER BY [SLRetentionInactive].ID ";
-                sql += Query.QueryPaging(props.paramss.pageNumber, model.Paging.PerPageRecord);
-            }
+        #region Commented this Method as it was depended on SLRetentionInactive to fetch data
 
-            using (var conn = new SqlConnection(props.passport.ConnectionString))
-            {
-                await conn.OpenAsync();
-                using (var cmd = new SqlCommand(sql, conn))
-                {
-                    using (var adp = new SqlDataAdapter(cmd))
-                    {
-                        adp.Fill(dt);
-                    }
-                }
-            }
-            return dt;
 
-        }
-  
+        //private async Task<DataTable> InactivePullList_Query(RetentionReportModel model, ReportingJsonModelReq props, bool ispaging)
+        //{
+        //    var dt = new DataTable();
+        //    string sql = string.Empty;
+        //    if (ispaging)
+        //    {
+        //        sql = "SELECT count(*) FROM (([SLRetentionInactive] " +
+        //          "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] " +
+        //          "AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+        //          "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+        //          "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id]";
+        //    }
+        //    else
+        //    {
+        //        sql = "SELECT [Tables].[UserName] AS FolderType," +
+        //         "[SLRetentionInactive].[TableName], " +
+        //         "CAST([FileRoomOrder] AS VARCHAR) AS [File Room Order]," +
+        //         "'' AS [Item], '' AS [Currently At]," +
+        //         " [SLRetentionInactive].[TableId]," +
+        //         " [SLRetentionInactive].[EventDate] AS [Event Date]," +
+        //         "[SLRetentionCodes].[InactivityEventType] AS [Event Type]," +
+        //         "[SLRetentionInactive].[ScheduledInactivity] AS [Scheduled Inactivity]";
+        //        foreach (DataRow row in model._TrackingTables.Rows)
+        //        {
+        //            sql = sql + ", TrackingStatus." + row["TrackingStatusFieldName"].ToString();
+        //        }
+
+        //        sql = sql + " FROM (([SLRetentionInactive]" +
+        //            " LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] " +
+        //            " AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+        //            " LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+        //            " LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ORDER BY [SLRetentionInactive].ID";
+        //        sql += Query.QueryPaging(props.paramss.pageNumber, model.Paging.PerPageRecord);
+        //    }
+
+
+
+        //    using (var conn = new SqlConnection(props.passport.ConnectionString))
+        //    {
+        //        await conn.OpenAsync();
+        //        using (var cmd = new SqlCommand(sql, conn))
+        //        {
+        //            using (var adp = new SqlDataAdapter(cmd))
+        //            {
+        //                adp.Fill(dt);
+        //            }
+        //        }
+        //    }
+        //    return dt;
+        //}
+
+        //private async Task<DataTable> RetentionInactiveRecords_Query(RetentionReportModel model, ReportingJsonModelReq props, bool ispaging)
+        //{
+        //    var dt = new DataTable();
+        //    string sql = string.Empty;
+        //    if (ispaging)
+        //    {
+        //        sql = "SELECT count(*) " +
+        //              " FROM (([SLRetentionInactive] " +
+        //              "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+        //              "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+        //              "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ";
+        //    }
+        //    else
+        //    {
+        //        sql = "SELECT [Tables].[UserName] AS [Folder Type], [SLRetentionInactive].[TableName], CAST([FileRoomOrder] AS VARCHAR) AS [File Room Order], " +
+        //                   "'' AS [Item],'' AS [Currently At], [SLRetentionCodes].[InactivityEventType] AS [Event Type], [SLRetentionInactive].[TableId], " +
+        //                   "[SLRetentionInactive].[EventDate] AS [Event Date], [SLRetentionInactive].[ScheduledInactivity] AS [Scheduled Inactivity]";
+        //        foreach (DataRow row in model._TrackingTables.Rows)
+        //        {
+        //            sql = sql + ", TrackingStatus." + row["TrackingStatusFieldName"].ToString();
+        //        }
+        //        sql = sql + " FROM (([SLRetentionInactive] " +
+        //            "LEFT JOIN [TrackingStatus] ON ([SLRetentionInactive].[TableName] = [TrackingStatus].[TrackedTable] AND [SLRetentionInactive].[TableId] = [TrackingStatus].[TrackedTableId])) " +
+        //            "LEFT JOIN [Tables] ON [SLRetentionInactive].[TableName] = [Tables].[TableName]) " +
+        //            "LEFT JOIN [SLRetentionCodes] ON [SLRetentionInactive].[RetentionCode] = [SLRetentionCodes].[Id] ORDER BY [SLRetentionInactive].ID ";
+        //        sql += Query.QueryPaging(props.paramss.pageNumber, model.Paging.PerPageRecord);
+        //    }
+
+        //    using (var conn = new SqlConnection(props.passport.ConnectionString))
+        //    {
+        //        await conn.OpenAsync();
+        //        using (var cmd = new SqlCommand(sql, conn))
+        //        {
+        //            using (var adp = new SqlDataAdapter(cmd))
+        //            {
+        //                adp.Fill(dt);
+        //            }
+        //        }
+        //    }
+        //    return dt;
+
+        //}
+
+
+        #endregion
+
         private async Task RetentionCertifieDisposition(RetentionReportModel model, ReportingJsonModelReq props)
         {
 
