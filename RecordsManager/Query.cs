@@ -3284,8 +3284,22 @@ namespace MSRecordsEngine.RecordsManager
             string NewID = "";
             var query = new Query(passport);
 
-            // Dim retentionCode As String = ""
-            sql = "INSERT INTO [" + @params.TableName + "] (insertfieldtoken) VALUES (insertvaluetoken);SELECT NEWID = SCOPE_IDENTITY()";
+            if (@params.IdFieldDataType.FullName == "System.String")
+            {
+                string keyValue = string.Empty;
+                foreach (FieldValue field in data)
+                {
+                    if (@params.KeyField.ToLower() == field.Field.ToLower())
+                    {
+                        keyValue = field.value.ToString();
+                    }
+                }
+                sql = $"INSERT INTO {@params.TableName} (insertfieldtoken) VALUES (insertvaluetoken);SELECT {@params.KeyField} As NEWID FROM {@params.TableName} WHERE {@params.KeyField} = '{keyValue}';";
+            }
+            else
+            {
+                sql = "INSERT INTO [" + @params.TableName + "] (insertfieldtoken) VALUES (insertvaluetoken);SELECT NEWID = SCOPE_IDENTITY()";
+            }
             bool counterFieldInDataList = false;
             bool hasACounterField = !string.IsNullOrEmpty(@params.TableInfo["CounterFieldName"].ToString());
             string insertFields = string.Empty;

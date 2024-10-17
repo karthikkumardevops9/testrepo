@@ -239,6 +239,7 @@ namespace MSRecordsEngine.RecordsManager
 
         public static string GetSetting(string section, string item, SqlConnection conn)
         {
+
             using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
             {
                 cmd.Parameters.AddWithValue("@section", section);
@@ -251,21 +252,29 @@ namespace MSRecordsEngine.RecordsManager
                 catch (Exception ex)
                 {
                     Debug.WriteLine(ex.Message);
-                    return string.Empty;
+                    throw new Exception($"{ex.Message} GetSetting - failing here Moti mashiah");
                 }
             }
         }
 
         public static async Task<string> GetSettingAsync(string section, string item, SqlConnection conn)
         {
-            using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
+            try
             {
-                cmd.Parameters.AddWithValue("@section", section);
-                cmd.Parameters.AddWithValue("@item", item);
-                var getsetting = await cmd.ExecuteScalarAsync();
-                return getsetting.ToString();
-            }
+                using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
+                {
 
+                    cmd.Parameters.AddWithValue("@section", section);
+                    cmd.Parameters.AddWithValue("@item", item);
+                    var getsetting = await cmd.ExecuteScalarAsync();
+                    return getsetting.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return string.Empty;
+            }
         }
 
         [SecuritySafeCritical]
