@@ -178,17 +178,17 @@ namespace MSRecordsEngine.Services
             }
 
 
-            if (TotalRows / (double)@params.RequestedRows > 0 & TotalRows / (double)@params.RequestedRows < 1)
+            if (TotalRows / (double)RequestedRows > 0 & TotalRows / (double)RequestedRows < 1)
                 TotalPages = 1;
-            else if (TotalRows % @params.RequestedRows == 0)
-                TotalPages = (int)(TotalRows / (double)@params.RequestedRows);
+            else if (TotalRows % RequestedRows == 0)
+                TotalPages = (int)(TotalRows / (double)RequestedRows);
             else
             {
-                int tp = (int)(TotalRows / (double)@params.RequestedRows);
+                int tp = (int)(TotalRows / (double)RequestedRows);
                 TotalPages = tp + 1;
             }
 
-            return TotalRows + "|" + TotalPages + "|" + @params.RequestedRows;
+            return TotalRows + "|" + TotalPages + "|" + RequestedRows;
         }
         public async Task<ScriptReturn> LinkscriptButtonClick(linkscriptPropertiesUI props)
         {

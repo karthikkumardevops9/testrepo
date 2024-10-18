@@ -239,6 +239,7 @@ namespace MSRecordsEngine.RecordsManager
 
         public static string GetSetting(string section, string item, SqlConnection conn)
         {
+
             using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
             {
                 cmd.Parameters.AddWithValue("@section", section);
@@ -252,20 +253,29 @@ namespace MSRecordsEngine.RecordsManager
                 {
                     Debug.WriteLine(ex.Message);
                     return string.Empty;
+                    //throw new Exception($"{ex.Message} GetSetting - failing here Moti mashiah");
                 }
             }
         }
 
         public static async Task<string> GetSettingAsync(string section, string item, SqlConnection conn)
         {
-            using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
+            try
             {
-                cmd.Parameters.AddWithValue("@section", section);
-                cmd.Parameters.AddWithValue("@item", item);
-                var getsetting = await cmd.ExecuteScalarAsync();
-                return getsetting.ToString();
-            }
+                using (var cmd = new SqlCommand("SELECT [ItemValue] FROM [Settings] WHERE [Section] = @section AND [Item] = @item", conn))
+                {
 
+                    cmd.Parameters.AddWithValue("@section", section);
+                    cmd.Parameters.AddWithValue("@item", item);
+                    var getsetting = await cmd.ExecuteScalarAsync();
+                    return getsetting.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return string.Empty;
+            }
         }
 
         [SecuritySafeCritical]
@@ -2326,86 +2336,94 @@ namespace MSRecordsEngine.RecordsManager
             string taskSQL = GetSetting("TaskList", "SQL", passport);
             string username = new User(passport, true).UserName;
 
-            using (var conn = passport.Connection())
+            try
             {
-                if (string.IsNullOrEmpty(taskSQL))
+                using (var conn = passport.Connection())
                 {
-                    using (var viewAdapter = new RecordsManageTableAdapters.ViewsTableAdapter())
+                    if (string.IsNullOrEmpty(taskSQL))
                     {
-                        viewAdapter.Connection = conn;
-                        dataTable = viewAdapter.GetTasks();
-                    }
-                }
-                else
-                {
-                    using (var cmd = new SqlCommand(taskSQL, conn))
-                    {
-                        using (var da = new SqlDataAdapter(cmd))
+                        using (var viewAdapter = new RecordsManageTableAdapters.ViewsTableAdapter())
                         {
-                            da.Fill(dataTable);
+                            viewAdapter.Connection = conn;
+                            dataTable = viewAdapter.GetTasks();
                         }
                     }
-                }
-
-                var count = default(int);
-                foreach (RecordsManage.ViewsRow row in dataTable.Rows)
-                {
-                    if (passport.CheckPermission(row.ViewName, SecureObject.SecureObjectType.View, Permissions.Permission.View))
+                    else
                     {
-                        string sql = Navigation.NormalizeString(row.SQLStatement).ToLower();
-
-                        if (!sql.StartsWith("select top") && !sql.StartsWith("select distinct top") && !sql.StartsWith("select distinctrow top"))
+                        using (var cmd = new SqlCommand(taskSQL, conn))
                         {
-                            sql = sql.Replace("select ", "select top 100 percent ");
+                            using (var da = new SqlDataAdapter(cmd))
+                            {
+                                da.Fill(dataTable);
+                            }
                         }
-                        sql = Strings.Replace(sql, "@@SL_ROWCOUNT", count.ToString(), 1, -1, CompareMethod.Text);
-                        sql = Strings.Replace(sql, "@@SL_ViewName", row.ViewName, 1, -1, CompareMethod.Text);
-                        sql = Strings.Replace(sql, "@@SL_UserName", username, 1, -1, CompareMethod.Text);
-                        sql = Strings.Replace(sql, "@@Today", DateTime.Today.ToString("d"), 1, -1, CompareMethod.Text);
-                        sql = Strings.Replace(sql, "@@Time", DateTime.Now.ToString("hh:mm tt"), 1, -1, CompareMethod.Text);
-                        sql = Strings.Replace(sql, "@@Now", DateTime.Today.ToString("g"), 1, -1, CompareMethod.Text);
+                    }
 
-                        using (var cmd = new SqlCommand(CountSQLStatement(sql), conn))
+                    var count = default(int);
+                    foreach (RecordsManage.ViewsRow row in dataTable.Rows)
+                    {
+                        if (passport.CheckPermission(row.ViewName, SecureObject.SecureObjectType.View, Permissions.Permission.View))
                         {
-                            // Using cmd As New SqlCommand(String.Format("SELECT COUNT(*) FROM ({0}) s", sql), passport.Connection)
-                            try
-                            {
-                                count = Conversions.ToInteger(cmd.ExecuteScalar());
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine(ex.Message);
-                                count = 0;
-                            }
+                            string sql = Navigation.NormalizeString(row.SQLStatement).ToLower();
 
-                            if (count > 0)
+                            if (!sql.StartsWith("select top") && !sql.StartsWith("select distinct top") && !sql.StartsWith("select distinctrow top"))
                             {
-                                string display = row.TaskListDisplayString;
-                                if (!string.IsNullOrEmpty(display))
+                                sql = sql.Replace("select ", "select top 100 percent ");
+                            }
+                            sql = Strings.Replace(sql, "@@SL_ROWCOUNT", count.ToString(), 1, -1, CompareMethod.Text);
+                            sql = Strings.Replace(sql, "@@SL_ViewName", row.ViewName, 1, -1, CompareMethod.Text);
+                            sql = Strings.Replace(sql, "@@SL_UserName", username, 1, -1, CompareMethod.Text);
+                            sql = Strings.Replace(sql, "@@Today", DateTime.Today.ToString("d"), 1, -1, CompareMethod.Text);
+                            sql = Strings.Replace(sql, "@@Time", DateTime.Now.ToString("hh:mm tt"), 1, -1, CompareMethod.Text);
+                            sql = Strings.Replace(sql, "@@Now", DateTime.Today.ToString("g"), 1, -1, CompareMethod.Text);
+
+                            using (var cmd = new SqlCommand(CountSQLStatement(sql), conn))
+                            {
+                                // Using cmd As New SqlCommand(String.Format("SELECT COUNT(*) FROM ({0}) s", sql), passport.Connection)
+                                try
                                 {
-                                    display = Strings.Replace(display, "@@SL_ROWCOUNT", count.ToString(), 1, -1, CompareMethod.Text);
-                                    display = Strings.Replace(display, "@@SL_ViewName", row.ViewName, 1, -1, CompareMethod.Text);
-                                    display = Strings.Replace(display, "@@SL_UserName", username, 1, -1, CompareMethod.Text);
-                                    display = Strings.Replace(display, "@@Today", DateTime.Today.ToString("d"), 1, -1, CompareMethod.Text);
-                                    display = Strings.Replace(display, "@@Time", DateTime.Now.ToString("hh:mm tt"), 1, -1, CompareMethod.Text);
-                                    display = Strings.Replace(display, "@@Now", DateTime.Today.ToString("g"), 1, -1, CompareMethod.Text);
-                                    // Dim testString As String = "taskbar.TaskbarLinks({0}, 1, this)"
-                                    // If testString.Equals(110) Then
-                                    // Ret
-                                    // Else
-                                    // Return cmd.ExecuteScalar.ToString
-                                    // End If
+                                    count = Conversions.ToInteger(cmd.ExecuteScalar());
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine(ex.Message);
+                                    count = 0;
+                                }
 
-                                    list.Add(string.Format("<a style='color: blue;' onclick=\"taskbar.TaskbarLinks({0}, 1, this)\"'>{1}</a>", (object)row.Id, ChangePlurality(display, count == 1)));
-                                    // list.Add(String.Format("<a style='color: blue;' onclick=""getElementById(taskbar.TaskbarLinks(110, 1, this))"" '  href =""www.google.com"" target=""_blank"">{1}</a>", row.Id, ChangePlurality(display, count = 1)))
+                                if (count > 0)
+                                {
+                                    string display = row.TaskListDisplayString;
+                                    if (!string.IsNullOrEmpty(display))
+                                    {
+                                        display = Strings.Replace(display, "@@SL_ROWCOUNT", count.ToString(), 1, -1, CompareMethod.Text);
+                                        display = Strings.Replace(display, "@@SL_ViewName", row.ViewName, 1, -1, CompareMethod.Text);
+                                        display = Strings.Replace(display, "@@SL_UserName", username, 1, -1, CompareMethod.Text);
+                                        display = Strings.Replace(display, "@@Today", DateTime.Today.ToString("d"), 1, -1, CompareMethod.Text);
+                                        display = Strings.Replace(display, "@@Time", DateTime.Now.ToString("hh:mm tt"), 1, -1, CompareMethod.Text);
+                                        display = Strings.Replace(display, "@@Now", DateTime.Today.ToString("g"), 1, -1, CompareMethod.Text);
+                                        // Dim testString As String = "taskbar.TaskbarLinks({0}, 1, this)"
+                                        // If testString.Equals(110) Then
+                                        // Ret
+                                        // Else
+                                        // Return cmd.ExecuteScalar.ToString
+                                        // End If
+
+                                        list.Add(string.Format("<a style='color: blue;' onclick=\"taskbar.TaskbarLinks({0}, 1, this)\"'>{1}</a>", (object)row.Id, ChangePlurality(display, count == 1)));
+                                        // list.Add(String.Format("<a style='color: blue;' onclick=""getElementById(taskbar.TaskbarLinks(110, 1, this))"" '  href =""www.google.com"" target=""_blank"">{1}</a>", row.Id, ChangePlurality(display, count = 1)))
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                return list;
+                    //return list;
+                }
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+            return list;
         }
 
         private static string ChangePlurality(string displayString, bool singular)

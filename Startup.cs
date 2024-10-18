@@ -43,26 +43,28 @@ namespace MsRecordEngine
             //transit microservices registration;
             services.AddTransient<Microservices>();
             services.AddHttpContextAccessor();
-            services.AddScoped(typeof (CommonControllersService<>));
+            services.AddScoped(typeof(CommonControllersService<>));
             services.AddCors(options =>
             {
-                //options.AddPolicy(name: "PolicyCore",
-                //builder =>
-                //{
-                //    builder.WithOrigins(Configuration["WithOrigins"]);
-                //    builder.WithMethods(Configuration["WithMethods"]);
-                //    builder.WithHeaders(Configuration["WithHeaders"]);
-                //});
+                options.AddPolicy(name: "PolicyCore",
+                builder =>
+                {
+                    builder.WithOrigins(Configuration["WithOrigins"]);
+                    builder.WithMethods(Configuration["WithMethods"]);
+                    builder.WithHeaders(Configuration["WithHeaders"]);
+                });
             });
             services.AddLogging(loggingBuilder =>
             {
                 loggingBuilder.ClearProviders();
                 loggingBuilder.AddNLog();
+                loggingBuilder.AddConsole();
             });
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo {
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
                     Title = "MS-RecordsEngine",
                     Version = "v1",
                     Description = "MS-Records Engine manager",
@@ -89,7 +91,7 @@ namespace MsRecordEngine
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
-               //c.RoutePrefix = string.Empty;
+                //c.RoutePrefix = string.Empty;
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Integrated MS-RecordsEngine v1");
                 c.InjectStylesheet("/swagger-custom/swagger-custom-style.css");
                 c.InjectJavascript("/swagger-custom/swagger-custom-script.js", "text/javascript");
@@ -103,6 +105,7 @@ namespace MsRecordEngine
             }
 
             app.UseHttpsRedirection();
+            app.UseCors("PolicyCore");
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
