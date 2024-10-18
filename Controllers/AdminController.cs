@@ -184,13 +184,21 @@ namespace MSRecordsEngine.Controllers
                             ErrorType = "W",
                         };
                     }
-                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();                    var pDefaultOutputSettingName = await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(pDefaultOpSettingsId.Trim().ToLower())).FirstOrDefaultAsync();                    if (pDefaultOutputSettingName is not null)                    {                        pSystemEntity.DefaultOutputSettingsId = pDefaultOutputSettingName.Name;                    }
-                    pSystemEntity.RenameOnScan = pRenameOnScan;                    pSystemEntity.PrintImageFooter = pPrintImageFooter;
+                    var pSystemEntity = await context.Systems.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    var pDefaultOutputSettingName = await context.SecureObjects.Where(x => x.Name.Trim().ToLower().Equals(pDefaultOpSettingsId.Trim().ToLower())).FirstOrDefaultAsync();
+
+                    if (pDefaultOutputSettingName is not null)
+                    {
+                        pSystemEntity.DefaultOutputSettingsId = pDefaultOutputSettingName.Name;
+                    }
+                    pSystemEntity.RenameOnScan = pRenameOnScan;
+                    pSystemEntity.PrintImageFooter = pPrintImageFooter;
 
                     context.Entry(pSystemEntity).State = EntityState.Modified;
                     await context.SaveChangesAsync();
 
-                    model.ErrorType = "s";                    model.ErrorMessage = "Image Service Location along with Default Output settings are applied successfully";
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Image Service Location along with Default Output settings are applied successfully";
                 }
             }
             catch (Exception ex)
@@ -637,7 +645,8 @@ namespace MSRecordsEngine.Controllers
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
             return model;
         }
@@ -808,7 +817,8 @@ namespace MSRecordsEngine.Controllers
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
 
             return model;
@@ -885,7 +895,8 @@ namespace MSRecordsEngine.Controllers
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
             return model;
         }
@@ -906,12 +917,14 @@ namespace MSRecordsEngine.Controllers
                     context.Entry(pSystemEntity).State = EntityState.Modified;
                     await context.SaveChangesAsync();
                 }
-                model.ErrorMessage = "Record saved successfully";                model.ErrorType = "s";
+                model.ErrorMessage = "Record saved successfully";
+                model.ErrorType = "s";
             }
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                model.ErrorType = "e";
+                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
 
             return model;
@@ -1055,13 +1068,58 @@ namespace MSRecordsEngine.Controllers
             {
                 using (var context = new TABFusionRMSContext(setBackgroundDataParam.ConnectionString))
                 {
-                    if (oMinValue == 0)                    {                        model.ErrorType = "w";                        model.ErrorMessage = "'MinValue' must be greater than zero";                    }
+                    if (oMinValue == 0)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = "'MinValue' must be greater than zero";
+                    }
                     var oMinValueItem = await context.Settings.Where(m => m.Section.Trim().ToLower().Equals(oSection.Trim().ToLower()) & m.Item.Trim().ToLower().Equals("minvalue")).FirstOrDefaultAsync();
-                    if (oMinValueItem is not null)                    {                        if (oId.Contains("jqg"))                        {                            model.ErrorType = "w";                            model.ErrorMessage = string.Format("Please update already configured \"{0}\" row", oMinValueItem.Section);                        }                        else                        {                            oMinValueItem.ItemValue = oMinValue.ToString();                            context.Entry(oMinValueItem).State = EntityState.Modified;                        }                    }
-                    else                    {                        oMinValueItem = new Setting();                        oMinValueItem.Section = oSection.Trim();                        oMinValueItem.Item = "MinValue";                        oMinValueItem.ItemValue = oMinValue.ToString();                        context.Settings.Add(oMinValueItem);                    }
+                    if (oMinValueItem is not null)
+                    {
+                        if (oId.Contains("jqg"))
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("Please update already configured \"{0}\" row", oMinValueItem.Section);
+                        }
+                        else
+                        {
+                            oMinValueItem.ItemValue = oMinValue.ToString();
+                            context.Entry(oMinValueItem).State = EntityState.Modified;
+                        }
+                    }
+                    else
+                    {
+                        oMinValueItem = new Setting();
+                        oMinValueItem.Section = oSection.Trim();
+                        oMinValueItem.Item = "MinValue";
+                        oMinValueItem.ItemValue = oMinValue.ToString();
+                        context.Settings.Add(oMinValueItem);
+                    }
 
-                    var oMaxValueItem = await context.Settings.Where(m => m.Section.Trim().ToLower().Equals(oSection.Trim().ToLower()) & m.Item.Trim().ToLower().Equals("maxvalue")).FirstOrDefaultAsync();                    if (oMaxValueItem is not null)                    {                        if (oId.Contains("jqg"))                        {                            model.ErrorType = "w";                            model.ErrorMessage = string.Format("Please update already configured \"{0}\" row", oMinValueItem.Section);                        }                        else                        {                            oMaxValueItem.ItemValue = oMaxValue.ToString();                            context.Entry(oMaxValueItem).State = EntityState.Modified;                        }                    }                    else                    {                        oMaxValueItem = new Setting();                        oMaxValueItem.Section = oSection.Trim();                        oMaxValueItem.Item = "MaxValue";                        oMaxValueItem.ItemValue = oMaxValue.ToString();                        context.Settings.Add(oMaxValueItem);                    }
-                    if (model.ErrorType == "s")                        model.ErrorMessage = "Provided value/s are modified Successfully";
+                    var oMaxValueItem = await context.Settings.Where(m => m.Section.Trim().ToLower().Equals(oSection.Trim().ToLower()) & m.Item.Trim().ToLower().Equals("maxvalue")).FirstOrDefaultAsync();
+                    if (oMaxValueItem is not null)
+                    {
+                        if (oId.Contains("jqg"))
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = string.Format("Please update already configured \"{0}\" row", oMinValueItem.Section);
+                        }
+                        else
+                        {
+                            oMaxValueItem.ItemValue = oMaxValue.ToString();
+                            context.Entry(oMaxValueItem).State = EntityState.Modified;
+                        }
+                    }
+                    else
+                    {
+                        oMaxValueItem = new Setting();
+                        oMaxValueItem.Section = oSection.Trim();
+                        oMaxValueItem.Item = "MaxValue";
+                        oMaxValueItem.ItemValue = oMaxValue.ToString();
+                        context.Settings.Add(oMaxValueItem);
+                    }
+                    if (model.ErrorType == "s")
+                        model.ErrorMessage = "Provided value/s are modified Successfully";
 
                     await context.SaveChangesAsync();
                 }
@@ -1508,7 +1566,17 @@ namespace MSRecordsEngine.Controllers
 
         #region Email Notification All Methods moved
 
-        private enum EmailType        {            etDelivery = 0x1,            etWaitList = 0x2,            etException = 0x4,            etCheckedOut = 0x8,            etRequest = 0x10,            etPastDue = 0x20,            etSimple = 0x40,            etBackground = 0x80        }
+        private enum EmailType
+        {
+            etDelivery = 0x1,
+            etWaitList = 0x2,
+            etException = 0x4,
+            etCheckedOut = 0x8,
+            etRequest = 0x10,
+            etPastDue = 0x20,
+            etSimple = 0x40,
+            etBackground = 0x80
+        }
 
         [Route("SetEmailDetails")]
         [HttpPost]
@@ -2673,21 +2741,108 @@ namespace MSRecordsEngine.Controllers
             var model = new ReturnGetRetentionPropertiesData();
             var passport = getRetentionPropertiesDataParams.Passport;
             var pTableId = getRetentionPropertiesDataParams.TableId;
-            var lstRetCodeFields = new List<string>();            var lstDateFields = new List<string>();            var lstRelatedTable = new List<string>();            var bFootNote = default(bool);            string lstRetentionCode = "";            string lstDateClosed = "";            string lstDateCreated = "";            string lstDateOpened = "";            string lstDateOther = "";
+            var lstRetCodeFields = new List<string>();
+            var lstDateFields = new List<string>();
+            var lstRelatedTable = new List<string>();
+            var bFootNote = default(bool);
+            string lstRetentionCode = "";
+            string lstDateClosed = "";
+            string lstDateCreated = "";
+            string lstDateOpened = "";
+            string lstDateOther = "";
 
             bool bTrackable = false;
 
 
             using (var context = new TABFusionRMSContext(passport.ConnectionString))
             {
-                var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();                model.ErrorType = "s";                model.ErrorMessage = "Record saved successfully";                bTrackable = passport.CheckPermission(pTableEntites.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);                if (pTableEntites == null)                {                    return new ReturnGetRetentionPropertiesData
+                var pTableEntites = await context.Tables.Where(x => x.TableId.Equals(pTableId)).FirstOrDefaultAsync();
+                model.ErrorType = "s";
+                model.ErrorMessage = "Record saved successfully";
+
+                bTrackable = passport.CheckPermission(pTableEntites.TableName.Trim(), (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.Table, (Permissions.Permission)Enums.PassportPermissions.Transfer);
+
+                if (pTableEntites == null)
+                {
+                    return new ReturnGetRetentionPropertiesData
                     {
                         Success = false,
                         ErrorType = "e",
                         ErrorMessage = "Record not found."
-                    };                }                var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntites.TableName.Trim().ToLower())).FirstOrDefaultAsync();                var dbRecordSet = SchemaInfoDetails.GetTableSchemaInfo(pTableEntites.TableName, passport.ConnectionString);                if (!dbRecordSet.Exists(x => x.ColumnName == "RetentionCodesId"))                {                    lstRetentionCode = "* RetentionCodesId";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOpened"))                {                    lstDateOpened = "* DateOpened";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateClosed"))                {                    lstDateClosed = "* DateClosed";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateCreated"))                {                    lstDateCreated = "* DateCreated";                    bFootNote = true;                }                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOther"))                {                    lstDateOther = "* DateOther";                    bFootNote = true;                }                foreach (var oSchemaColumn in dbRecordSet)                {                    if (!SchemaInfoDetails.IsSystemField(oSchemaColumn.ColumnName))                    {                        if (oSchemaColumn.IsADate)                        {                            lstDateFields.Add(oSchemaColumn.ColumnName);                        }                        else if (oSchemaColumn.IsString && oSchemaColumn.CharacterMaxLength == 20)                        {                            lstRetCodeFields.Add(oSchemaColumn.ColumnName);                        }                    }                }                var Setting = new JsonSerializerSettings();                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;                lstRetCodeFields.Sort();                lstDateFields.Sort();
+                    };
+                }
 
-                model.RetCodeFieldsObject = JsonConvert.SerializeObject(lstRetCodeFields, Newtonsoft.Json.Formatting.Indented, Setting);                model.DateFields = JsonConvert.SerializeObject(lstDateFields, Newtonsoft.Json.Formatting.Indented, Setting);                var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableEntites.TableName)).ToListAsync();                foreach (RelationShip item in lstRelatedTables)                    lstRelatedTable.Add(item.UpperTableName);                var lstTables = await (context.Tables.Where(x => x.RetentionPeriodActive == true && x.RetentionFinalDisposition != 0 && lstRelatedTable.Contains(x.TableName))).ToListAsync();                var pRetentionCodes = await context.SLRetentionCodes.OrderBy(x => x.Id).ToListAsync();                model.RelatedTblObj = JsonConvert.SerializeObject(lstTables, Newtonsoft.Json.Formatting.Indented, Setting);                model.TableEntity = JsonConvert.SerializeObject(pTableEntites, Newtonsoft.Json.Formatting.Indented, Setting);                model.RetentionCodesJSON = JsonConvert.SerializeObject(pRetentionCodes, Newtonsoft.Json.Formatting.Indented, Setting);                model.IsThereLocation = Tracking.GetArchiveLocations(passport);
+                var oTables = await context.Tables.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntites.TableName.Trim().ToLower())).FirstOrDefaultAsync();
+
+
+                var dbRecordSet = SchemaInfoDetails.GetTableSchemaInfo(pTableEntites.TableName, passport.ConnectionString);
+
+                if (!dbRecordSet.Exists(x => x.ColumnName == "RetentionCodesId"))
+                {
+                    lstRetentionCode = "* RetentionCodesId";
+                    bFootNote = true;
+                }
+
+                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOpened"))
+                {
+                    lstDateOpened = "* DateOpened";
+                    bFootNote = true;
+                }
+
+                if (!dbRecordSet.Exists(x => x.ColumnName == "DateClosed"))
+                {
+                    lstDateClosed = "* DateClosed";
+                    bFootNote = true;
+                }
+
+                if (!dbRecordSet.Exists(x => x.ColumnName == "DateCreated"))
+                {
+                    lstDateCreated = "* DateCreated";
+                    bFootNote = true;
+                }
+
+                if (!dbRecordSet.Exists(x => x.ColumnName == "DateOther"))
+                {
+                    lstDateOther = "* DateOther";
+                    bFootNote = true;
+                }
+
+                foreach (var oSchemaColumn in dbRecordSet)
+                {
+
+                    if (!SchemaInfoDetails.IsSystemField(oSchemaColumn.ColumnName))
+                    {
+                        if (oSchemaColumn.IsADate)
+                        {
+                            lstDateFields.Add(oSchemaColumn.ColumnName);
+                        }
+                        else if (oSchemaColumn.IsString && oSchemaColumn.CharacterMaxLength == 20)
+                        {
+                            lstRetCodeFields.Add(oSchemaColumn.ColumnName);
+                        }
+                    }
+                }
+
+                var Setting = new JsonSerializerSettings();
+                Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+
+                lstRetCodeFields.Sort();
+                lstDateFields.Sort();
+
+                model.RetCodeFieldsObject = JsonConvert.SerializeObject(lstRetCodeFields, Newtonsoft.Json.Formatting.Indented, Setting);
+                model.DateFields = JsonConvert.SerializeObject(lstDateFields, Newtonsoft.Json.Formatting.Indented, Setting);
+
+                var lstRelatedTables = await context.RelationShips.Where(x => (x.LowerTableName) == (pTableEntites.TableName)).ToListAsync();
+
+                foreach (RelationShip item in lstRelatedTables)
+                    lstRelatedTable.Add(item.UpperTableName);
+
+                var lstTables = await (context.Tables.Where(x => x.RetentionPeriodActive == true && x.RetentionFinalDisposition != 0 && lstRelatedTable.Contains(x.TableName))).ToListAsync();
+                var pRetentionCodes = await context.SLRetentionCodes.OrderBy(x => x.Id).ToListAsync();
+                model.RelatedTblObj = JsonConvert.SerializeObject(lstTables, Newtonsoft.Json.Formatting.Indented, Setting);
+                model.TableEntity = JsonConvert.SerializeObject(pTableEntites, Newtonsoft.Json.Formatting.Indented, Setting);
+                model.RetentionCodesJSON = JsonConvert.SerializeObject(pRetentionCodes, Newtonsoft.Json.Formatting.Indented, Setting);
+                model.IsThereLocation = Tracking.GetArchiveLocations(passport);
 
 
                 model.ListRetentionCode = lstRetentionCode;
@@ -2720,11 +2875,11 @@ namespace MSRecordsEngine.Controllers
                     context.Entry(pSystemEntity).State = EntityState.Modified;
                     await context.SaveChangesAsync();
 
-                    var pServiceTasks = await context.SLServiceTasks.OrderBy(x => x.Id).FirstOrDefaultAsync();
-                    pServiceTasks.Interval = setRetentionParametersParam.InactivityPeriod;
+                    //var pServiceTasks = await context.SLServiceTasks.OrderBy(x => x.Id).FirstOrDefaultAsync();
+                    //pServiceTasks.Interval = setRetentionParametersParam.InactivityPeriod;
 
-                    context.Entry(pServiceTasks).State = EntityState.Modified;
-                    await context.SaveChangesAsync();
+                    //context.Entry(pServiceTasks).State = EntityState.Modified;
+                    //await context.SaveChangesAsync();
 
                     model.ErrorType = "s";
                     model.ErrorMessage = "Properties relating to Retention are applied Successfully";
@@ -2757,7 +2912,8 @@ namespace MSRecordsEngine.Controllers
             var pDateCreated = setRetentionTblPropDataParam.DateCreated;
             var pOtherDate = setRetentionTblPropDataParam.OtherDate;
 
-            string msgVerifyRetDisposition = "";            string sSQL = "";
+            string msgVerifyRetDisposition = "";
+            string sSQL = "";
 
             try
             {
@@ -2886,8 +3042,11 @@ namespace MSRecordsEngine.Controllers
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
-                model.ErrorType = "e";                if (string.IsNullOrEmpty(model.ErrorMessage))                {
-                    model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";                }
+                model.ErrorType = "e";
+                if (string.IsNullOrEmpty(model.ErrorMessage))
+                {
+                    model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                }
             }
 
             return model;
@@ -12757,17 +12916,43 @@ namespace MSRecordsEngine.Controllers
         [HttpGet]
         public string GetAllSQLInstance()
         {
-            SqlClientFactory newFactory = SqlClientFactory.Instance;            System.Data.Common.DbDataAdapter cmd = newFactory.CreateDataAdapter();
+            SqlClientFactory newFactory = SqlClientFactory.Instance;
+            System.Data.Common.DbDataAdapter cmd = newFactory.CreateDataAdapter();
 
             DataTable dataTable = new DataTable();
 
-            System.Data.Common.DbProviderFactory factory = SqlClientFactory.Instance;            var lstSQLInstances = new string[dataTable.Rows.Count + 1];
+            System.Data.Common.DbProviderFactory factory = SqlClientFactory.Instance;
+            var lstSQLInstances = new string[dataTable.Rows.Count + 1];
 
             var jsonObject = string.Empty;
 
-            try            {                if (factory.CanCreateDataSourceEnumerator)                {                    System.Data.Common.DbDataSourceEnumerator instance =                        factory.CreateDataSourceEnumerator();                    DataTable table = instance.GetDataSources();                    foreach (DataRow row in table.Rows)                    {                        Console.WriteLine("{0}\\{1}",                            row["ServerName"], row["InstanceName"]);                    }                }                int i = 1;                lstSQLInstances[0] = "";                foreach (DataRow dr in dataTable.Rows)                {                    lstSQLInstances[i] = string.Concat(dr["ServerName"], @"\", dr["InstanceName"]);                    i = i + 1;                }                var Setting = new JsonSerializerSettings();
+            try
+            {
+                if (factory.CanCreateDataSourceEnumerator)
+                {
+                    System.Data.Common.DbDataSourceEnumerator instance =
+                        factory.CreateDataSourceEnumerator();
+                    DataTable table = instance.GetDataSources();
+
+                    foreach (DataRow row in table.Rows)
+                    {
+                        Console.WriteLine("{0}\\{1}",
+                            row["ServerName"], row["InstanceName"]);
+                    }
+                }
+                int i = 1;
+                lstSQLInstances[0] = "";
+                foreach (DataRow dr in dataTable.Rows)
+                {
+                    lstSQLInstances[i] = string.Concat(dr["ServerName"], @"\", dr["InstanceName"]);
+                    i = i + 1;
+                }
+
+                var Setting = new JsonSerializerSettings();
                 Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
-                jsonObject = JsonConvert.SerializeObject(lstSQLInstances, Newtonsoft.Json.Formatting.Indented, Setting);            }
+                jsonObject = JsonConvert.SerializeObject(lstSQLInstances, Newtonsoft.Json.Formatting.Indented, Setting);
+
+            }
             catch (Exception ex)
             {
                 _commonService.Logger.LogError($"Error:{ex.Message}");
@@ -12787,11 +12972,56 @@ namespace MSRecordsEngine.Controllers
             var userID = getDatabaseListParam.UserID;
             var pass = getDatabaseListParam.Pass;
 
-            var list = new List<string>();            string conString;            var Setting = new JsonSerializerSettings();
-            if (userID.Equals("") | pass.Equals(""))            {                conString = "Data Source=" + instance + ";Persist Security Info=True;Integrated Security=SSPI;";            }            else            {                conString = "Data Source=" + instance + ";User ID=" + userID + ";Password=" + pass + ";Persist Security Info=True;MultipleActiveResultSets=True;";            }            using (var con = new SqlConnection(conString))            {                try                {                    con.Open();
-                    using (var cmd = new SqlCommand("SELECT name from sys.databases", con))                    {                        using (IDataReader dr = (await cmd.ExecuteReaderAsync()))                        {                            while (dr.Read())                            {                                if (IsUserDatabase(dr[0].ToString()) == false)                                {                                    list.Add(dr[0].ToString());                                }                            }                        }                    }                    model.ErrorType = "s";                }
+            var list = new List<string>();
+            string conString;
+            var Setting = new JsonSerializerSettings();
+            if (userID.Equals("") | pass.Equals(""))
+            {
+                conString = "Data Source=" + instance + ";Persist Security Info=True;Integrated Security=SSPI;";
+            }
+            else
+            {
+                conString = "Data Source=" + instance + ";User ID=" + userID + ";Password=" + pass + ";Persist Security Info=True;MultipleActiveResultSets=True;";
+            }
+            using (var con = new SqlConnection(conString))
+            {
+                try
+                {
+                    con.Open();
+                    using (var cmd = new SqlCommand("SELECT name from sys.databases", con))
+                    {
+                        using (IDataReader dr = (await cmd.ExecuteReaderAsync()))
+                        {
+                            while (dr.Read())
+                            {
+                                if (IsUserDatabase(dr[0].ToString()) == false)
+                                {
+                                    list.Add(dr[0].ToString());
+                                }
+                            }
+                        }
+                    }
+                    model.ErrorType = "s";
+                }
 
-                catch (Exception ex)                {                    _commonService.Logger.LogError($"Error:{ex.Message}");                    if (userID.Equals("") & pass.Equals(""))                    {                        model.ErrorType = "e";                        model.ErrorMessage = string.Format("{0} {1} {2}", "The SQL Server", instance, "could not be opened");                    }                    else                    {                        model.ErrorType = "e";                        model.ErrorMessage = "Login failed. Please verify the user name and password";                    }                    return model;                }            }            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;            model.DatabaseList = JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented, Setting);
+                catch (Exception ex)
+                {
+                    _commonService.Logger.LogError($"Error:{ex.Message}");
+                    if (userID.Equals("") & pass.Equals(""))
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = string.Format("{0} {1} {2}", "The SQL Server", instance, "could not be opened");
+                    }
+                    else
+                    {
+                        model.ErrorType = "e";
+                        model.ErrorMessage = "Login failed. Please verify the user name and password";
+                    }
+                    return model;
+                }
+            }
+            Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+            model.DatabaseList = JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented, Setting);
 
             return model;
         }
@@ -13032,7 +13262,8 @@ namespace MSRecordsEngine.Controllers
             var pDatabase = checkIfDateChangedParam.Databas;
             var ConnectionString = checkIfDateChangedParam.Connectionstring;
 
-            bool Changed;            bool mAdd;
+            bool Changed;
+            bool mAdd;
 
             using (var context = new TABFusionRMSContext(ConnectionString))
             {
@@ -13095,7 +13326,27 @@ namespace MSRecordsEngine.Controllers
 
         private bool IsUserDatabase(string DataBaseName)
         {
-            bool IsUserDatabaseRet = default;            IsUserDatabaseRet = false;            if (DataBaseName.Trim().ToLower().Equals("master"))            {                IsUserDatabaseRet = true;            }            if (DataBaseName.Trim().ToLower().Equals("msdb"))            {                IsUserDatabaseRet = true;            }            if (DataBaseName.Trim().ToLower().Equals("model"))            {                IsUserDatabaseRet = true;            }            if (DataBaseName.Trim().ToLower().Equals("tempdb"))            {                IsUserDatabaseRet = true;            }            return IsUserDatabaseRet;
+            bool IsUserDatabaseRet = default;
+            IsUserDatabaseRet = false;
+
+            if (DataBaseName.Trim().ToLower().Equals("master"))
+            {
+                IsUserDatabaseRet = true;
+            }
+            if (DataBaseName.Trim().ToLower().Equals("msdb"))
+            {
+                IsUserDatabaseRet = true;
+            }
+            if (DataBaseName.Trim().ToLower().Equals("model"))
+            {
+                IsUserDatabaseRet = true;
+            }
+            if (DataBaseName.Trim().ToLower().Equals("tempdb"))
+            {
+                IsUserDatabaseRet = true;
+            }
+
+            return IsUserDatabaseRet;
         }
 
         #endregion
@@ -13259,17 +13510,35 @@ namespace MSRecordsEngine.Controllers
             {
                 using (var context = new TABFusionRMSContext(passport.ConnectionString))
                 {
-                    int lSecureObjectId;                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);
+                    int lSecureObjectId;
+                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);
 
                     string sUserName = "";
 
                     if (pTabsetsId > 0)
                     {
-                        var pTabletab = await context.TableTabs.Where(x => x.TabSet == pTabsetsId).ToListAsync();                        if (pTabletab.Count() > 0)                        {                            model.ErrorType = "w";                            model.ErrorMessage = "Workgroup cannot be removed because child reference exists";                            return model;                        }                        var pTabsetEntity = await context.TabSets.Where(x => x.Id == pTabsetsId).FirstOrDefaultAsync();                        sUserName = pTabsetEntity.UserName;                        if (pTabsetEntity != null)                        {                            context.TabSets.Remove(pTabsetEntity);                            await context.SaveChangesAsync();                            lSecureObjectId = oSecureObjectMain.GetSecureObjectID(sUserName, Smead.Security.SecureObject.SecureObjectType.WorkGroup);                            if (lSecureObjectId != 0)                                oSecureObjectMain.UnRegister(lSecureObjectId);
+                        var pTabletab = await context.TableTabs.Where(x => x.TabSet == pTabsetsId).ToListAsync();
+                        if (pTabletab.Count() > 0)
+                        {
+                            model.ErrorType = "w";
+                            model.ErrorMessage = "Workgroup cannot be removed because child reference exists";
+                            return model;
+                        }
+                        var pTabsetEntity = await context.TabSets.Where(x => x.Id == pTabsetsId).FirstOrDefaultAsync();
+                        sUserName = pTabsetEntity.UserName;
+                        if (pTabsetEntity != null)
+                        {
+                            context.TabSets.Remove(pTabsetEntity);
+                            await context.SaveChangesAsync();
+
+                            lSecureObjectId = oSecureObjectMain.GetSecureObjectID(sUserName, Smead.Security.SecureObject.SecureObjectType.WorkGroup);
+                            if (lSecureObjectId != 0)
+                                oSecureObjectMain.UnRegister(lSecureObjectId);
                         }
                     }
 
-                    model.ErrorType = "s";                    model.ErrorMessage = "Selected Workgroup has been removed successfully";
+                    model.ErrorType = "s";
+                    model.ErrorMessage = "Selected Workgroup has been removed successfully";
                 }
             }
             catch (Exception ex)
@@ -13510,25 +13779,103 @@ namespace MSRecordsEngine.Controllers
             {
                 using (var context = new TABFusionRMSContext(passport.ConnectionString))
                 {
-                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);                    switch (pRenameOperation.Trim().ToUpper())                    {                        case "A":                            {                                var lSystemEntities = await context.Systems.ToListAsync();                                if (lSystemEntities.Any(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.Id != pId) == false)                                {                                    var pSystemEntity = lSystemEntities.Where(x => x.Id == pId).FirstOrDefault();                                    if (pSystemEntity is not null)                                    {                                        pSystemEntity.UserName = pNewNodeName.Trim();
+                    var oSecureObjectMain = new Smead.Security.SecureObject(passport);
+
+                    switch (pRenameOperation.Trim().ToUpper())
+                    {
+                        case "A":
+                            {
+                                var lSystemEntities = await context.Systems.ToListAsync();
+                                if (lSystemEntities.Any(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.Id != pId) == false)
+                                {
+                                    var pSystemEntity = lSystemEntities.Where(x => x.Id == pId).FirstOrDefault();
+                                    if (pSystemEntity is not null)
+                                    {
+                                        pSystemEntity.UserName = pNewNodeName.Trim();
                                         //_iSystem.Update(pSystemEntity);
-                                        context.Entry(pSystemEntity).State = EntityState.Modified;                                    }                                    model.ErrorMessage = "Application name has been changed Successfully";                                    await context.SaveChangesAsync();                                }                                else                                {                                    model.ErrorType = "w";                                    model.ErrorMessage = string.Format("The Application name \"{0}\" is already used", pNewNodeName.Trim());                                    break;                                }                                break;                            }                        case "W":                            {                                var pOutputSettingsEntities = await context.SecureObjects.ToListAsync();
+                                        context.Entry(pSystemEntity).State = EntityState.Modified;
+                                    }
+                                    model.ErrorMessage = "Application name has been changed Successfully";
+                                    await context.SaveChangesAsync();
+                                }
+                                else
+                                {
+                                    model.ErrorType = "w";
+                                    model.ErrorMessage = string.Format("The Application name \"{0}\" is already used", pNewNodeName.Trim());
+                                    break;
+                                }
 
-                                if (await context.TabSets.AnyAsync(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.Id != pId) == false)                                {                                    //_iTabset.BeginTransaction();
-                                    var pTabsetEntity = await context.TabSets.Where(x => x.Id == pId).FirstOrDefaultAsync();                                    string pOldWGName = "";                                    if (pTabsetEntity != null)                                    {                                        pOldWGName = pTabsetEntity.UserName;                                        pTabsetEntity.UserName = pNewNodeName.Trim();
+                                break;
+                            }
+
+                        case "W":
+                            {
+                                var pOutputSettingsEntities = await context.SecureObjects.ToListAsync();
+
+                                if (await context.TabSets.AnyAsync(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.Id != pId) == false)
+                                {
+                                    //_iTabset.BeginTransaction();
+                                    var pTabsetEntity = await context.TabSets.Where(x => x.Id == pId).FirstOrDefaultAsync();
+                                    string pOldWGName = "";
+                                    if (pTabsetEntity != null)
+                                    {
+                                        pOldWGName = pTabsetEntity.UserName;
+                                        pTabsetEntity.UserName = pNewNodeName.Trim();
                                         //_iTabset.Update(pTabsetEntity);
-                                        context.Entry(pTabsetEntity).State = EntityState.Modified;                                        oSecureObjectMain.Rename(pOldWGName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.WorkGroup, pNewNodeName.Trim());
+                                        context.Entry(pTabsetEntity).State = EntityState.Modified;
 
-                                    }                                    model.ErrorMessage = "Selected Workgroup has been updated successfully";
+                                        oSecureObjectMain.Rename(pOldWGName, (Smead.Security.SecureObject.SecureObjectType)Enums.SecureObjects.WorkGroup, pNewNodeName.Trim());
+
+                                    }
+                                    model.ErrorMessage = "Selected Workgroup has been updated successfully";
                                     //_iTabset.CommitTransaction();
-                                    await context.SaveChangesAsync();                                }
-                                else                                {                                    model.ErrorType = "w";                                    model.ErrorMessage = string.Format("The Workgroup name \"{0}\" is already used", pNewNodeName.Trim());                                    break;                                }                                break;                            }                        case "T":                            {                                var lTableEntities = await context.Tables.ToListAsync();                                if (lTableEntities.Any(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.TableId != pId) == false)                                {
+                                    await context.SaveChangesAsync();
+                                }
+                                else
+                                {
+                                    model.ErrorType = "w";
+                                    model.ErrorMessage = string.Format("The Workgroup name \"{0}\" is already used", pNewNodeName.Trim());
+                                    break;
+                                }
+
+                                break;
+                            }
+
+                        case "T":
+                            {
+
+                                var lTableEntities = await context.Tables.ToListAsync();
+                                if (lTableEntities.Any(x => (x.UserName.Trim().ToLower()) == (pNewNodeName.Trim().ToLower()) && x.TableId != pId) == false)
+                                {
                                     //_iTable.BeginTransaction();
-                                    var pTableEntity = lTableEntities.Where(x => x.TableId == pId && (x.UserName.Trim().ToLower()) == (pPrevNodeName.Trim().ToLower())).FirstOrDefault();                                    if (pTableEntity is not null)                                    {                                        pTableEntity.UserName = pNewNodeName.Trim();
+                                    var pTableEntity = lTableEntities.Where(x => x.TableId == pId && (x.UserName.Trim().ToLower()) == (pPrevNodeName.Trim().ToLower())).FirstOrDefault();
+                                    if (pTableEntity is not null)
+                                    {
+                                        pTableEntity.UserName = pNewNodeName.Trim();
                                         //_iTable.Update(pTableEntity);
-                                        context.Entry(pTableEntity).State = EntityState.Modified;                                    }                                    model.ErrorMessage = "Provided Name reflected on the Selected Table";
+                                        context.Entry(pTableEntity).State = EntityState.Modified;
+                                    }
+                                    model.ErrorMessage = "Provided Name reflected on the Selected Table";
                                     //_iTable.CommitTransaction();
-                                    await context.SaveChangesAsync();                                }                                else                                {                                    model.ErrorType = "w";                                    model.ErrorMessage = string.Format("The Table Name \"{0}\" is already used", pNewNodeName.Trim());                                    break;                                }                                break;                            }                        default:                            {                                model.ErrorType = "e";                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";                                break;                            }                    }
+                                    await context.SaveChangesAsync();
+                                }
+                                else
+                                {
+                                    model.ErrorType = "w";
+                                    model.ErrorMessage = string.Format("The Table Name \"{0}\" is already used", pNewNodeName.Trim());
+                                    break;
+                                }
+
+                                break;
+                            }
+
+                        default:
+                            {
+                                model.ErrorType = "e";
+                                model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
+                                break;
+                            }
+                    }
 
                     model.ErrorType = "s";
 
@@ -13600,7 +13947,8 @@ namespace MSRecordsEngine.Controllers
                     iExtraValue = 1;
                     pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
                     pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
-                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableEntity.TableName, ConnectionString, pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableEntity.TableName, ConnectionString, pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+
                     bCreateNew = true;
                     if (ConfAns)
                     {
@@ -13671,7 +14019,9 @@ namespace MSRecordsEngine.Controllers
             var model = new ReturnErrorTypeErrorMsg();
 
             List<SchemaColumns> oSchemaColumns;
-            var pTableEntity = new Table();            var pParentTableEntity = new Table();            var pViewEntity = new View();
+            var pTableEntity = new Table();
+            var pParentTableEntity = new Table();
+            var pViewEntity = new View();
             bool SaveData = false;
 
             try
@@ -13683,17 +14033,55 @@ namespace MSRecordsEngine.Controllers
                     int iTableTabId = 0;
                     int iRelId = 0;
 
-                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();                    if (pTableEntity is not null)                    {                        pViewEntity = lViewEntities.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntity.TableName.Trim().ToLower())).FirstOrDefault();                    }
+                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+                    if (pTableEntity is not null)
+                    {
+                        pViewEntity = lViewEntities.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntity.TableName.Trim().ToLower())).FirstOrDefault();
+                    }
 
-                    if (pViewEntity is not null)                    {                        if (pViewEntity.Id != 0)                        {                            if (iParentTableId != 0)                            {
+                    if (pViewEntity is not null)
+                    {
+                        if (pViewEntity.Id != 0)
+                        {
+                            if (iParentTableId != 0)
+                            {
                                 pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
                                 oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pTableEntity.TableName, pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
                                 //bCreateNew = true;
-                                if (oSchemaColumns.Count > 0)                                {                                    model.ErrorType = "c";                                    model.ErrorMessage = string.Format("Column \"{0}\" already exists. Reuse this Column?", pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));                                    return model;                                }                                else                                {                                    oSchemaColumns = null;
-                                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pParentTableEntity.TableName, DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));                                    if ((await _databaseMapService.CreateNewField(pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName), (Enums.DataTypeEnum)Convert.ToInt32(Interaction.IIf(oSchemaColumns.Count > 0, oSchemaColumns[0].DataType, Enums.DataTypeEnum.rmInteger)), Convert.ToInt64("0" + Strings.Trim(oSchemaColumns[0].CharacterMaxLength.ToString())), pTableEntity.TableName, ConnectionString)) == true)                                    {                                        if ((await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId)).Success == true)                                        {                                            SaveData = true;                                        }                                    }                                }                            }                            else                            {
-                                if ((await _databaseMapService.SetTabSetEntity(iTabSetId, pViewEntity.Id, pTableEntity.TableName, ConnectionString, iTableTabId)).Success == true)                                {                                    SaveData = true;                                }                            }                        }                    }
+                                if (oSchemaColumns.Count > 0)
+                                {
+                                    model.ErrorType = "c";
+                                    model.ErrorMessage = string.Format("Column \"{0}\" already exists. Reuse this Column?", pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+                                    return model;
+                                }
+                                else
+                                {
+                                    oSchemaColumns = null;
+                                    oSchemaColumns = SchemaInfoDetails.GetSchemaInfo(pParentTableEntity.TableName, DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName));
+                                    if ((await _databaseMapService.CreateNewField(pParentTableEntity.TableName + DatabaseMap.RemoveTableNameFromField(pParentTableEntity.IdFieldName), (Enums.DataTypeEnum)Convert.ToInt32(Interaction.IIf(oSchemaColumns.Count > 0, oSchemaColumns[0].DataType, Enums.DataTypeEnum.rmInteger)), Convert.ToInt64("0" + Strings.Trim(oSchemaColumns[0].CharacterMaxLength.ToString())), pTableEntity.TableName, ConnectionString)) == true)
+                                    {
+                                        if ((await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId)).Success == true)
+                                        {
+                                            SaveData = true;
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if ((await _databaseMapService.SetTabSetEntity(iTabSetId, pViewEntity.Id, pTableEntity.TableName, ConnectionString, iTableTabId)).Success == true)
+                                {
+                                    SaveData = true;
+                                }
+                            }
+                        }
+                    }
 
-                    if (SaveData)                    {                        model.ErrorType = "s";                        model.ErrorMessage = "Selected Table Attached Successfully";                    }
+                    if (SaveData)
+                    {
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Selected Table Attached Successfully";
+                    }
                 }
             }
             catch (Exception ex)
@@ -13703,7 +14091,10 @@ namespace MSRecordsEngine.Controllers
                 model.ErrorMessage = "Oops an error occurred.  Please contact your administrator.";
             }
 
-            oSchemaColumns = null;            pParentTableEntity = null;            pTableEntity = null;            pViewEntity = null;
+            oSchemaColumns = null;
+            pParentTableEntity = null;
+            pTableEntity = null;
+            pViewEntity = null;
 
             return model;
         }
@@ -13718,7 +14109,8 @@ namespace MSRecordsEngine.Controllers
             {
                 using (var context = new TABFusionRMSContext(ConnectionString))
                 {
-                    var lTableEntities = await context.Tables.ToListAsync();
+                    var lTableEntities = await context.Tables.ToListAsync();
+
                     var pTableTabTableEntity = lTableEntities.Where(x => x.TableId == iTabSetId).FirstOrDefault();
                     var pTableTabsEntity = await context.TableTabs.Where(x => x.TableName.Trim().ToLower().Equals(pTableTabTableEntity.TableName.Trim().ToLower()) && x.TabSet == iNewTableSetId).FirstOrDefaultAsync();
                     if (pTableTabsEntity.Id != 0)
@@ -13838,21 +14230,33 @@ namespace MSRecordsEngine.Controllers
         {
             var model = new ReturnDeleteTable();
 
-            string sViewMessage = "";            bool IsUnattached = true;
+            string sViewMessage = "";
+            bool IsUnattached = true;
             try
             {
                 using (var context = new TABFusionRMSContext(ConnectionString))
                 {
-                    var lTableEntities = await context.Tables.ToListAsync();                    var pUpperTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();                    var pLowerTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+                    var lTableEntities = await context.Tables.ToListAsync();
+
+                    var pUpperTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+                    var pLowerTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
 
                     sViewMessage = await _databaseMapService.GetTableDependency(lTableEntities, ConnectionString, pUpperTableEntity, pLowerTableEntity, sViewMessage);
 
-                    if (!string.IsNullOrEmpty(sViewMessage))                    {                        sViewMessage = string.Format("The \"{0}\" table is in use in the following places and cannot be removed from the \"{1}\" table:</br></br> {2}", pLowerTableEntity.UserName, Strings.Trim(pUpperTableEntity.UserName), sViewMessage);
+                    if (!string.IsNullOrEmpty(sViewMessage))
+                    {
+                        sViewMessage = string.Format("The \"{0}\" table is in use in the following places and cannot be removed from the \"{1}\" table:</br></br> {2}", pLowerTableEntity.UserName, Strings.Trim(pUpperTableEntity.UserName), sViewMessage);
                         model.ErrorType = "w";
                         model.ErrorMessage = "<html>" + sViewMessage + "</html>";
                         pUpperTableEntity = null;
                         pLowerTableEntity = null;
-                        model.IsUnattached = false;                    }                    else                    {                        model.ErrorType = "c";                        model.ErrorMessage = string.Format("Are you sure you want to remove the attachment between \"{0}\" and \"{1}\"?", Strings.Trim(pLowerTableEntity.UserName), Strings.Trim(pUpperTableEntity.UserName));                    }
+                        model.IsUnattached = false;
+                    }
+                    else
+                    {
+                        model.ErrorType = "c";
+                        model.ErrorMessage = string.Format("Are you sure you want to remove the attachment between \"{0}\" and \"{1}\"?", Strings.Trim(pLowerTableEntity.UserName), Strings.Trim(pUpperTableEntity.UserName));
+                    }
                 }
             }
             catch (Exception ex)
@@ -13871,7 +14275,11 @@ namespace MSRecordsEngine.Controllers
         public async Task<ReturnErrorTypeErrorMsg> SetAttachExistingTableDetails(int iParentTableId, int iTableId, string sIdFieldName, string ConnectionString)
         {
             var model = new ReturnErrorTypeErrorMsg();
-            var pTableEntity = new Table();            var pParentTableEntity = new Table();            var pViewEntity = new View();            bool SaveData = true;            int iRelId = 0;
+            var pTableEntity = new Table();
+            var pParentTableEntity = new Table();
+            var pViewEntity = new View();
+            bool SaveData = true;
+            int iRelId = 0;
             try
             {
                 using (var context = new TABFusionRMSContext(ConnectionString))
@@ -13879,9 +14287,37 @@ namespace MSRecordsEngine.Controllers
                     var lTableEntities = await context.Tables.ToListAsync();
                     var lViewEntities = await context.Views.ToListAsync();
 
-                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();                    if (pTableEntity is not null)                    {                        pViewEntity = lViewEntities.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntity.TableName.Trim().ToLower())).FirstOrDefault();                    }                    if (pViewEntity is not null)                    {                        if (pViewEntity.Id != 0)                        {                            if (iParentTableId != 0)                            {                                pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();                                var rtnSetRelationShipEntity = await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId, sIdFieldName: sIdFieldName);                                if (rtnSetRelationShipEntity.Success)                                {                                    SaveData = true;                                    iRelId = rtnSetRelationShipEntity.RelationshipId;                                }                                pParentTableEntity = null;                            }                        }                    }                    pTableEntity = null;                    pViewEntity = null;                    if (iParentTableId != 0)                    {
+                    pTableEntity = lTableEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+                    if (pTableEntity is not null)
+                    {
+                        pViewEntity = lViewEntities.Where(x => x.TableName.Trim().ToLower().Equals(pTableEntity.TableName.Trim().ToLower())).FirstOrDefault();
+                    }
+
+                    if (pViewEntity is not null)
+                    {
+                        if (pViewEntity.Id != 0)
+                        {
+                            if (iParentTableId != 0)
+                            {
+                                pParentTableEntity = lTableEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+                                var rtnSetRelationShipEntity = await _databaseMapService.SetRelationshipsEntity(pTableEntity.TableName, pParentTableEntity, ConnectionString, iRelId, sIdFieldName: sIdFieldName);
+                                if (rtnSetRelationShipEntity.Success)
+                                {
+                                    SaveData = true;
+                                    iRelId = rtnSetRelationShipEntity.RelationshipId;
+                                }
+                                pParentTableEntity = null;
+                            }
+                        }
+                    }
+                    pTableEntity = null;
+                    pViewEntity = null;
+                    if (iParentTableId != 0)
+                    {
                         //_iRelationShip.CommitTransaction();
-                        model.ErrorType = "s";                        model.ErrorMessage = "Record saved successfully";                    }
+                        model.ErrorType = "s";
+                        model.ErrorMessage = "Record saved successfully";
+                    }
                 }
             }
             catch (Exception ex)
@@ -13905,7 +14341,17 @@ namespace MSRecordsEngine.Controllers
                     var lTablesEntities = await context.Tables.ToListAsync();
                     var lTables = new List<string>();
 
-                    var pTableEntity = lTablesEntities.Where(x => x.TableId == iTableId).FirstOrDefault();                    var pParentTableEntity = lTablesEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();                    lTables = await _databaseMapService.GetAttachTableFieldsList(pTableEntity, pParentTableEntity, ConnectionString);                    if (lTables.Count == 0)                    {                        model.ErrorType = "w";                        model.ErrorMessage = string.Format("The \"{0}\" table does not contain any fields matching the same data type as \"{1}\"", pTableEntity.UserName, sCurrIdFieldName);                        model.lstColumnNames = "";                        return model;                    }                    model.ErrorType = "s";
+                    var pTableEntity = lTablesEntities.Where(x => x.TableId == iTableId).FirstOrDefault();
+                    var pParentTableEntity = lTablesEntities.Where(x => x.TableId == iParentTableId).FirstOrDefault();
+                    lTables = await _databaseMapService.GetAttachTableFieldsList(pTableEntity, pParentTableEntity, ConnectionString);
+                    if (lTables.Count == 0)
+                    {
+                        model.ErrorType = "w";
+                        model.ErrorMessage = string.Format("The \"{0}\" table does not contain any fields matching the same data type as \"{1}\"", pTableEntity.UserName, sCurrIdFieldName);
+                        model.lstColumnNames = "";
+                        return model;
+                    }
+                    model.ErrorType = "s";
                     var Setting = new JsonSerializerSettings();
                     Setting.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
                     model.lstColumnNames = JsonConvert.SerializeObject(lTables, Newtonsoft.Json.Formatting.Indented, Setting);
@@ -14299,7 +14745,9 @@ namespace MSRecordsEngine.Controllers
         {
             var model = new ReturnGetAvailableDatabase();
 
-            var systemDBList = new List<KeyValuePair<string, string>>();            string ExternalDB = string.Empty;            string systemDB = string.Empty;
+            var systemDBList = new List<KeyValuePair<string, string>>();
+            string ExternalDB = string.Empty;
+            string systemDB = string.Empty;
 
             try
             {
@@ -15587,7 +16035,9 @@ namespace MSRecordsEngine.Controllers
 
         private async Task<string> VerifyRetentionDispositionTypesForParentAndChildren(string ConnectionString, int pTableId)
         {
-            string sMessage = string.Empty;            Table oTable;            try
+            string sMessage = string.Empty;
+            Table oTable;
+            try
             {
                 using (var context = new TABFusionRMSContext(ConnectionString))
                 {
@@ -15826,7 +16276,10 @@ namespace MSRecordsEngine.Controllers
                             {
                                 if (typeOfFunctionality.Equals(Common.SECURE_MYQUERY))
                                 {
-                                    SQLQuery = string.Format(@"SELECT COUNT(SUG.GroupId) as cntGroups FROM SecureUser SU                                                                INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                                                INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID                                                                WHERE SU.UserID = {0} AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{1}')", userid, Common.SECURE_MYQUERY);
+                                    SQLQuery = string.Format(@"SELECT COUNT(SUG.GroupId) as cntGroups FROM SecureUser SU
+                                                                INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID
+                                                                INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID
+                                                                WHERE SU.UserID = {0} AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{1}')", userid, Common.SECURE_MYQUERY);
 
                                     cntOfGrpUserPartOf = Convert.ToInt32(await conn.ExecuteScalarAsync(SQLQuery, commandType: CommandType.Text));
 
@@ -15853,7 +16306,10 @@ namespace MSRecordsEngine.Controllers
                                 {
                                     try
                                     {
-                                        SQLQuery = string.Format(@"SELECT COUNT(SUG.GroupId) as cntGroups FROM SecureUser SU                                                                INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                                                INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID                                                                WHERE SU.UserID = {0} AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{1}')", userid, Common.SECURE_MYFAVORITE);
+                                        SQLQuery = string.Format(@"SELECT COUNT(SUG.GroupId) as cntGroups FROM SecureUser SU
+                                                                INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID
+                                                                INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID
+                                                                WHERE SU.UserID = {0} AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{1}')", userid, Common.SECURE_MYFAVORITE);
 
                                         cntOfGrpUserPartOf = Convert.ToInt32(await conn.ExecuteScalarAsync(SQLQuery, commandType: CommandType.Text));
                                         if (!IsMyFavForEveryone)
@@ -15891,7 +16347,15 @@ namespace MSRecordsEngine.Controllers
                             {
                                 var dtUserIds = new DataTable();
 
-                                SQLQuery = string.Format(@"                                SELECT Distinct UserId FROM s_SavedCriteria                                 WHERE UserId NOT IN (                                        SELECT SU.UserID FROM SecureUser SU                                        INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                        INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID        	                            INNER JOIN SecureGroup SG ON SUG.GroupID = SG.GroupID            	                            AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{0}')                                )", Common.SECURE_MYQUERY);
+                                SQLQuery = string.Format(@"
+                                SELECT Distinct UserId FROM s_SavedCriteria 
+                                WHERE UserId NOT IN (
+                                        SELECT SU.UserID FROM SecureUser SU
+                                        INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID
+                                        INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID
+        	                            INNER JOIN SecureGroup SG ON SUG.GroupID = SG.GroupID    
+        	                            AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{0}')
+                                )", Common.SECURE_MYQUERY);
 
                                 var res = await conn.ExecuteReaderAsync(SQLQuery, commandType: CommandType.Text);
                                 if (res != null)
@@ -15921,7 +16385,15 @@ namespace MSRecordsEngine.Controllers
                                 var dsUserIds = new DataSet();
                                 var dtUserIds = new DataTable();
 
-                                SQLQuery = string.Format(@"                                SELECT Distinct UserId FROM s_SavedCriteria                                 WHERE UserId NOT IN (                                        SELECT SU.UserID FROM SecureUser SU                                        INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID                                        INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID        	                            INNER JOIN SecureGroup SG ON SUG.GroupID = SG.GroupID            	                            AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{0}')                                )", Common.SECURE_MYFAVORITE);
+                                SQLQuery = string.Format(@"
+                                SELECT Distinct UserId FROM s_SavedCriteria 
+                                WHERE UserId NOT IN (
+                                        SELECT SU.UserID FROM SecureUser SU
+                                        INNER JOIN SecureUserGroup SUG ON SU.UserID = SUG.UserID
+                                        INNER JOIN SecureObjectPermission SOG ON SUG.GroupID = SOG.GroupID
+        	                            INNER JOIN SecureGroup SG ON SUG.GroupID = SG.GroupID    
+        	                            AND SecureObjectID = (SELECT SecureObjectID FROM SecureObject WHERE Name = '{0}')
+                                )", Common.SECURE_MYFAVORITE);
 
                                 var res = await conn.ExecuteReaderAsync(SQLQuery, commandType: CommandType.Text);
                                 if (res != null)
@@ -15966,7 +16438,13 @@ namespace MSRecordsEngine.Controllers
             return bSucceed;
         }
 
-        private async Task<string> VerifyRetentionDispositionTypesForParentAndChildren(int pTableId, string ConnectionString)        {            Table oTable;            string sMessage = string.Empty;            try
+        private async Task<string> VerifyRetentionDispositionTypesForParentAndChildren(int pTableId, string ConnectionString)
+        {
+            Table oTable;
+
+            string sMessage = string.Empty;
+
+            try
             {
                 using (var context = new TABFusionRMSContext(ConnectionString))
                 {
@@ -16021,8 +16499,12 @@ namespace MSRecordsEngine.Controllers
             }
             catch (Exception ex)
             {
-                _commonService.Logger.LogError($"Error:{ex.Message}");                sMessage = string.Empty;
-            }            return sMessage;        }
+                _commonService.Logger.LogError($"Error:{ex.Message}");
+                sMessage = string.Empty;
+            }
+
+            return sMessage;
+        }
 
         #endregion
     }
